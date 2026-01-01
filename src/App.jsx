@@ -606,7 +606,7 @@ function App() {
       // 2. Rob Bank Modal
       if (showRobBankModal) {
         if (robStatus === 'idle') {
-          if (e.code === 'Enter') {
+          if (e.code === 'Enter' || e.code === 'Space') {
             e.preventDefault();
             handleRobBankAttempt();
           } else if (e.code === 'Escape') {
@@ -2633,7 +2633,7 @@ function App() {
                   </div>
                   <div className="modal-buttons">
                     <button className="modal-btn cancel" onClick={() => closeAllModals(() => endTurn(currentPlayer, false))}>LEAVE</button>
-                    <button className="modal-btn buy" onClick={handleRobBankAttempt} style={{ background: '#D32F2F' }}>ROB!</button>
+                    <button className="modal-btn buy" onClick={handleRobBankAttempt} style={{ background: '#4CAF50' }}>ROB!</button>
                   </div>
                 </>
               )}

@@ -414,13 +414,7 @@ body {
   50% { transform: translateX(-50%) rotate(2deg); }
 }
 
-.money-pile {
-  position: absolute;
-  bottom: 10%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 50px;
-}
+
 
 /* Dice Area */
 .dice-area {
@@ -483,36 +477,114 @@ body {
 }
 
 /* Roll Button */
-/* Roll Button */
+/* Button Group */
+.button-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  gap: 10px;
+  width: 240px; /* Fixed width to prevent shifting */
+  align-items: center;
+  justify-items: center;
+}
+
+/* Shared Button Styles */
+.roll-button, .buy-button {
+  height: 45px;
+  width: 100%; /* Fill grid cell */
+  min-width: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Junegull', sans-serif;
+  font-size: 18px;
+  letter-spacing: 1px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Roll Button Specifics - Always in 2nd column */
 .roll-button {
+  grid-column: 2;
   background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
   color: white;
-  border: none;
-  padding: 12px 35px;
-  font-family: 'Junegull', sans-serif;
-  font-size: 24px;
-  letter-spacing: 1px;
-  border-radius: 8px;
-  cursor: pointer;
   box-shadow: 
-    0 4px 0 #0D47A1,
-    0 6px 15px rgba(0,0,0,0.4);
-  transition: all 0.1s;
-  text-shadow: 0 2px 2px rgba(0,0,0,0.3);
+    0 3px 0 #0D47A1,
+    0 5px 10px rgba(0,0,0,0.4);
 }
 
 .roll-button:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 6px 0 #0D47A1,
-    0 8px 20px rgba(0,0,0,0.4);
+    0 5px 0 #0D47A1,
+    0 7px 15px rgba(0,0,0,0.4);
 }
 
 .roll-button:active {
   transform: translateY(2px);
   box-shadow: 
     0 2px 0 #1B0000,
-    0 4px 10px rgba(0,0,0,0.4);
+    0 3px 8px rgba(0,0,0,0.4);
+}
+
+/* Done Button State */
+.roll-button.done {
+  background: linear-gradient(180deg, #66BB6A 0%, #43A047 100%);
+  box-shadow: 
+    0 3px 0 #2E7D32,
+    0 5px 10px rgba(0,0,0,0.4);
+}
+
+.roll-button.done:hover {
+  box-shadow: 
+    0 5px 0 #2E7D32,
+    0 7px 15px rgba(0,0,0,0.4);
+}
+
+.roll-button.done:active {
+  box-shadow: 
+    0 2px 0 #1B5E20,
+    0 3px 8px rgba(0,0,0,0.4);
+}
+
+/* Buy Button Specifics - Always in 1st column */
+.buy-button {
+  grid-column: 1;
+  background: linear-gradient(180deg, #FFB300 0%, #FF8F00 100%);
+  color: white;
+  box-shadow: 
+    0 3px 0 #E65100,
+    0 5px 10px rgba(0,0,0,0.4);
+}
+
+.buy-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 5px 0 #E65100,
+    0 7px 15px rgba(0,0,0,0.4);
+}
+
+.buy-button:active {
+  transform: translateY(2px);
+  box-shadow: 
+    0 2px 0 #BF360C,
+    0 3px 8px rgba(0,0,0,0.4);
+}
+
+/* Responsive Button Sizing */
+@media (max-height: 600px), (max-width: 600px) {
+  .button-group {
+    width: 200px;
+    gap: 8px;
+  }
+
+  .roll-button, .buy-button {
+    height: 35px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
 }
 
 /* Action Buttons */
@@ -1387,5 +1459,85 @@ body {
 
   .buy-modal {
     width: 340px;
+  }
+}
+
+/* Small Screen Modal Fix - Optimized Single Column */
+@media (max-height: 600px) {
+  .buy-modal {
+    transform: scale(0.85);
+    transform-origin: center;
+    max-height: 98vh;
+    width: 250px !important;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .modal-body {
+    padding: 8px 12px !important;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .modal-city-name {
+    font-size: 16px !important;
+    margin-bottom: 4px !important;
+    flex-shrink: 0;
+  }
+
+  .modal-divider {
+    margin: 0 auto 6px !important;
+    flex-shrink: 0;
+  }
+
+  .modal-details {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 8px !important;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* Rent Level Rows (inside the first div of details) */
+  .modal-details > div:first-child > div {
+    font-size: 9px !important; /* Tiny font for rent levels */
+    padding: 1px 4px !important;
+  }
+  
+  /* Rent Level Header */
+  .modal-details > div:first-child > div:first-child {
+    font-size: 10px !important;
+    margin-bottom: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  /* Cost Rows (Cost per House, Hotel) - Keep slightly larger */
+  .modal-row {
+    font-size: 11px !important;
+    padding: 2px 0 !important;
+    margin-top: 2px !important;
+    border-bottom: none !important;
+  }
+  
+  .modal-row span {
+    font-size: 11px !important;
+  }
+
+  .modal-value {
+    font-size: 11px !important;
+  }
+  
+  .modal-buttons {
+    margin-top: auto !important;
+    padding-top: 4px !important;
+    flex-shrink: 0;
+  }
+  
+  .modal-btn {
+    padding: 6px 0 !important;
+    font-size: 12px !important;
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   bottomRow, 
   leftColumn, 
@@ -24,6 +24,8 @@ import './App.css';
 function App() {
   const [diceValues, setDiceValues] = useState([6, 6]);
   const [isRolling, setIsRolling] = useState(false);
+  const [isProcessingTurn, setIsProcessingTurn] = useState(false); // New flag to prevent double turns
+  const [turnFinished, setTurnFinished] = useState(false); // New flag for manual turn end
   const [currentPlayer, setCurrentPlayer] = useState(0);
   const [history, setHistory] = useState(['Player 3 starts turn']);
   const [playerPositions, setPlayerPositions] = useState([0, 0, 0, 0]);
@@ -42,10 +44,7 @@ function App() {
   // Parking modal state
   const [showParkingModal, setShowParkingModal] = useState(false);
 
-  // Rob Bank modal state
-  const [showRobBankModal, setShowRobBankModal] = useState(false);
-  const [robBankStatus, setRobBankStatus] = useState('idle'); // 'idle', 'processing', 'success', 'caught'
-  const [robBankReward, setRobBankReward] = useState(0);
+
 
   // Property Details/Upgrade Modal state
   const [showPropertyModal, setShowPropertyModal] = useState(false);
@@ -83,23 +82,27 @@ function App() {
   // Skip turn state { playerIndex: boolean }
   const [skippedTurns, setSkippedTurns] = useState({});
 
+  // Rob Bank State
+  const [showRobBankModal, setShowRobBankModal] = useState(false);
+  const [robProgress, setRobProgress] = useState(0);
+  const [robStatus, setRobStatus] = useState('idle'); // 'idle', 'robbing', 'success', 'caught'
+  const [robResult, setRobResult] = useState({ amount: 0, message: '' });
+
   // Helper: Close any modal with animation
-  const closeAllModals = (callback) => {
+  const closeAllModals = (callback, keepBuyingState = false) => {
     setIsModalClosing(true);
     setTimeout(() => {
       setShowBuyModal(false);
-      setBuyingProperty(null);
-      setShowBuyModal(false);
-      setBuyingProperty(null);
+      if (!keepBuyingState) {
+        setBuyingProperty(null);
+      }
       setShowParkingModal(false);
       setShowRobBankModal(false);
       setShowPropertyModal(false);
       setSelectedProperty(null);
-      setShowPropertyModal(false);
-      setSelectedProperty(null);
       setShowChanceModal(false);
       setShowChestModal(false);
-      setRobBankStatus('idle'); // Reset status
+      setRobStatus('idle'); // Reset status
       setIsModalClosing(false);
       if (callback) callback();
     }, 300); // 300ms matches CSS animation duration
@@ -108,13 +111,25 @@ function App() {
   // Floating price animation state - array to support multiple animations
   const [floatingPrices, setFloatingPrices] = useState([]); // [{ price, tileIndex, key, isPositive }]
   
+  // Unique key generator for floating prices to prevent duplicate React keys
+  const floatingKeyCounter = useRef(0);
+  const getUniqueKey = () => {
+    floatingKeyCounter.current += 1;
+    return `fp_${Date.now()}_${floatingKeyCounter.current}`;
+  };
+  
   // Player money state (mutable copy of initial data)
   const [playerMoney, setPlayerMoney] = useState(players.map(p => p.money));
 
+  // Clear floating prices on mount to remove any stale state with duplicate keys
+  useEffect(() => {
+    setFloatingPrices([]);
+  }, []);
+
   // Helper to get property info by tile index
   const getPropertyByTileIndex = (tileIndex) => {
-    // Corners are not properties
-    if (tileIndex === 0 || tileIndex === 10 || tileIndex === 18 || tileIndex === 28) {
+    // Corners and Robber are not properties
+    if (tileIndex === 0 || tileIndex === 10 || tileIndex === 18 || tileIndex === 28 || tileIndex === 26) {
       return null;
     }
     
@@ -285,46 +300,101 @@ function App() {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Space to Roll
-      if (e.code === 'Space') {
-        e.preventDefault(); // Prevent scrolling
-        if (!showBuyModal && !showParkingModal && !showRobBankModal && !isRolling && !skippedTurns[currentPlayer]) {
-          rollDice();
-        }
+      // Prevent default for common keys to avoid scrolling
+      if (['Space', 'Enter', 'Escape'].includes(e.code)) {
+        // We handle preventDefault inside specific blocks to avoid blocking unrelated interactions if needed,
+        // but for these keys in a game context, it's usually safe to block globally when handled.
       }
-      
-      // Enter to Confirm
-      if (e.code === 'Enter') {
-        if (showBuyModal) {
+
+      // --- Modals First (Priority) ---
+
+      // 1. Buy Modal
+      if (showBuyModal) {
+        if (e.code === 'Enter') {
+          e.preventDefault();
           handleBuyProperty();
-        } else if (showParkingModal) {
-          handleParkingConfirm();
-        } else if (showRobBankModal) {
-          if (robBankStatus === 'idle') {
+        } else if (e.code === 'Escape') {
+          e.preventDefault();
+          handleCancelBuy();
+        }
+        return;
+      }
+
+      // 2. Rob Bank Modal
+      if (showRobBankModal) {
+        if (robStatus === 'idle') {
+          if (e.code === 'Enter') {
+            e.preventDefault();
             handleRobBankAttempt();
-          } else if (robBankStatus === 'success' || robBankStatus === 'caught') {
+          } else if (e.code === 'Escape') {
+            e.preventDefault();
+            // Cancel robbing: Close modal and allow turn end
+            closeAllModals(() => {
+              setIsProcessingTurn(false);
+              setTurnFinished(true);
+            });
+          }
+        } else if (robStatus === 'success' || robStatus === 'caught') {
+          if (e.code === 'Enter' || e.code === 'Space') {
+            e.preventDefault();
             handleRobBankComplete();
           }
         }
+        return;
       }
+
+      // 3. Parking Modal
+      if (showParkingModal) {
+        if (e.code === 'Enter' || e.code === 'Space') {
+          e.preventDefault();
+          handleParkingConfirm();
+        }
+        return;
+      }
+
+      // 4. Property Detail Modal
+      if (showPropertyModal) {
+        if (e.code === 'Escape' || e.code === 'Space') {
+          e.preventDefault();
+          closeAllModals();
+        }
+        return;
+      }
+
+      // 5. Chance Modal
+      if (showChanceModal) {
+        if (e.code === 'Enter' || e.code === 'Space') {
+          e.preventDefault();
+          handleChanceCardAction(currentChanceCard);
+        }
+        return;
+      }
+
+      // 6. Chest Modal
+      if (showChestModal) {
+        if (e.code === 'Enter' || e.code === 'Space') {
+          e.preventDefault();
+          handleChestCardAction(currentChestCard);
+        }
+        return;
+      }
+
+      // --- General Game Actions (No Modals) ---
       
-      // Escape to Cancel
-      if (e.code === 'Escape') {
-        if (showBuyModal) {
-          handleCancelBuy();
-        } else if (showRobBankModal) {
-          if (robBankStatus === 'idle') {
-            handleCancelBuy();
-          } else if (robBankStatus === 'success' || robBankStatus === 'caught') {
-            handleRobBankComplete();
-          }
+      // Space to Roll or Finish Turn
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (turnFinished) {
+          handleEndTurn();
+        } else if (!isRolling && !isProcessingTurn && !skippedTurns[currentPlayer]) {
+          rollDice();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showBuyModal, showParkingModal, isRolling, skippedTurns, currentPlayer, buyingProperty]);
+  }, [showBuyModal, showParkingModal, isRolling, isProcessingTurn, skippedTurns, currentPlayer, buyingProperty]);
 
   // Helper to handle turn end (switch or stay for doubles)
   const endTurn = (movingPlayer, isDoubles) => {
@@ -333,37 +403,45 @@ function App() {
         `🎲 ${players[movingPlayer].name} rolled doubles! Extra turn!`,
         ...historyPrev.slice(0, 9)
       ]);
-      // Don't switch player
+      // Unlock turn for next roll
+      setIsProcessingTurn(false);
     } else {
-      setTimeout(() => {
-        // Find next player who isn't skipped
-        let nextIdx = (movingPlayer + 1) % players.length;
-        let skippedPlayers = [];
-        
-        // Loop to find next valid player
-        while (skippedTurns[nextIdx]) {
-           skippedPlayers.push(nextIdx);
-           nextIdx = (nextIdx + 1) % players.length;
-           // Safety break
-           if (nextIdx === movingPlayer) break; 
-        }
-        
-        // Clear skipped flags for those we skipped
-        if (skippedPlayers.length > 0) {
-          setSkippedTurns(prev => {
-            const updated = { ...prev };
-            skippedPlayers.forEach(idx => updated[idx] = false);
-            return updated;
-          });
-          setHistory(prev => [
-            `🚫 Skipped: ${skippedPlayers.map(idx => players[idx].name).join(', ')}`, 
-            ...prev.slice(0, 9)
-          ]);
-        }
-        
-        setCurrentPlayer(nextIdx);
-      }, 500);
+      // Manual Turn End: Show "Done" button
+      setTurnFinished(true);
+      setIsProcessingTurn(false);
     }
+  };
+
+  // Handle Manual Turn End (Done Button Click)
+  const handleEndTurn = () => {
+    // Find next player who isn't skipped
+    let nextIdx = (currentPlayer + 1) % players.length;
+    let skippedPlayers = [];
+    
+    // Loop to find next valid player
+    while (skippedTurns[nextIdx]) {
+       skippedPlayers.push(nextIdx);
+       nextIdx = (nextIdx + 1) % players.length;
+       // Safety break
+       if (nextIdx === currentPlayer) break; 
+    }
+    
+    // Clear skipped flags for those we skipped
+    if (skippedPlayers.length > 0) {
+      setSkippedTurns(prev => {
+        const updated = { ...prev };
+        skippedPlayers.forEach(idx => updated[idx] = false);
+        return updated;
+      });
+      setHistory(prev => [
+        `🚫 Skipped: ${skippedPlayers.map(idx => players[idx].name).join(', ')}`, 
+        ...prev.slice(0, 9)
+      ]);
+    }
+    
+    setCurrentPlayer(nextIdx);
+    setTurnFinished(false);
+    setBuyingProperty(null); // Ensure cleanup
   };
 
   // Smart Chance Card Selection
@@ -383,7 +461,28 @@ function App() {
       return true;
     });
     
-    return validCards[Math.floor(Math.random() * validCards.length)];
+    let selectedCard = { ...validCards[Math.floor(Math.random() * validCards.length)] };
+    
+    // Pre-calculate random values for movement cards and update text
+    if (selectedCard.action === 'MOVE_FORWARD_RANDOM') {
+      const steps = Math.floor(Math.random() * 10) + 1;
+      selectedCard.steps = steps;
+      selectedCard.text = `Take a ride! Move forward ${steps} spaces.`;
+    } else if (selectedCard.action === 'MOVE_BACKWARD_RANDOM') {
+      const steps = Math.floor(Math.random() * 10) + 1;
+      selectedCard.steps = -steps;
+      selectedCard.text = `Go back ${steps} spaces.`;
+    } else if (selectedCard.action === 'MOVE_TO_RANDOM') {
+      const currentPos = playerPositions[playerIndex];
+      let randomTarget;
+      do {
+        randomTarget = Math.floor(Math.random() * 36);
+      } while (randomTarget === currentPos);
+      selectedCard.targetIndex = randomTarget;
+      selectedCard.text = `Teleport! Advance to ${getTileName(randomTarget)}.`;
+    }
+    
+    return selectedCard;
   };
 
   // Smart Chest Card Selection
@@ -413,39 +512,34 @@ function App() {
       return; 
     }
 
-    // Rob Bank (Index 18)
+    // Rob Bank (Index 18) - Mini Game
     if (tileIndex === 18) {
+      setRobStatus('idle');
+      setRobProgress(0);
+      setRobResult({ amount: 0, message: '' });
+      setShowRobBankModal(true);
+      return;
+    }
+
+    // Robber (Index 26) - Lose Money
+    if (tileIndex === 26) {
       // Robbery Event: Lose $300
       setPlayerMoney(prev => {
         const updated = [...prev];
         updated[playerIndex] -= 300;
         return updated;
       });
-      const animKey = Date.now();
-      setFloatingPrices(prev => [...prev, { price: 300, tileIndex: 18, key: animKey, isPositive: false }]);
+      const animKey = getUniqueKey();
+      setFloatingPrices(prev => [...prev, { price: 300, tileIndex: 26, key: animKey, isPositive: false }]);
+      setTimeout(() => {
+        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
+      }, 3000);
       setHistory(prev => [`💸 ${players[playerIndex].name} was robbed of $300!`, ...prev.slice(0, 9)]);
-      
-      // Optional: Show Rob Bank Modal only if we want the "Risk it all" mechanic. 
-      // User said "robber tile shows modal like usual buying one, but it shoudl be a robbery, saying youre robbed $300"
-      // So we replace the modal trigger with this direct effect.
-      // However, the "Rob Bank" modal was for a specific mini-game. 
-      // If the user wants the mini-game to be separate or removed, we should clarify.
-      // But based on "robber tile shows modal like usual buying one", it implies tile 18 was treated as property.
-      // My previous code had `if (tileIndex === 18) { setShowRobBankModal(true); return; }`
-      // The user says "shows modal like usual buying one". This suggests my previous check might have failed or fallen through.
-      // Wait, tile 18 is "Rob Bank". If I look at `handleTileArrival`, it checks tile 18 explicitly.
-      // If the user sees a "buying" modal, maybe `getPropertyByTileIndex` returns something for 18?
-      // `getPropertyByTileIndex` returns null for 18.
-      // Ah, maybe the user means the "Rob Bank" modal LOOKS like a buying modal?
-      // "robber tile shows modal like usual buying one" -> The Rob Bank modal I made reuses the "buy-modal" class.
-      // But the user says "it shoudl be a robbery, saying youre robbed $300".
-      // So I will change the behavior of landing on tile 18 to just be a robbery.
-      // I will keep the "Rob Bank" modal for the "Risk it all" mechanic if it's triggered by something else, or remove it if tile 18 was the only trigger.
-      // For now, I'll make landing on 18 just take money.
-      
       endTurn(playerIndex, isDoubles);
       return;
     }
+      
+
 
     // Chance Tiles (7, 23, 31)
     if (tileIndex === 7 || tileIndex === 23 || tileIndex === 31) {
@@ -485,8 +579,11 @@ function App() {
         updated[playerIndex] -= 200;
         return updated;
       });
-      const animKey = Date.now();
+      const animKey = getUniqueKey();
       setFloatingPrices(prev => [...prev, { price: 200, tileIndex, key: animKey, isPositive: false }]);
+      setTimeout(() => {
+        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
+      }, 3000);
       setHistory(prev => [`${players[playerIndex].name} paid $200 Tax`, ...prev.slice(0, 9)]);
       endTurn(playerIndex, isDoubles);
       return;
@@ -517,14 +614,15 @@ function App() {
       });
       
       // Trigger dual floating price animations
-      const animKey = Date.now();
+      const animKey1 = getUniqueKey();
+      const animKey2 = getUniqueKey();
       setFloatingPrices(prev => [
         ...prev, 
-        { price: rent, tileIndex: tileIndex, key: animKey, isPositive: false },
-        { price: rent, tileIndex: ownerPosition, key: animKey + 1, isPositive: true }
+        { price: rent, tileIndex: tileIndex, key: animKey1, isPositive: false },
+        { price: rent, tileIndex: ownerPosition, key: animKey2, isPositive: true }
       ]);
       setTimeout(() => {
-        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey && fp.key !== animKey + 1));
+        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey1 && fp.key !== animKey2));
       }, 3000);
       
       // Add to history
@@ -538,6 +636,102 @@ function App() {
     } else {
       // No action needed (e.g. own property, or non-action tile)
       endTurn(playerIndex, isDoubles);
+    }
+  };
+
+
+
+  // Handle Rob Bank Attempt
+  const handleRobBankAttempt = () => {
+    setRobStatus('processing');
+    setRobProgress(0);
+    
+    // Animate progress bar
+    const duration = 2000; // 2 seconds
+    const interval = 50;
+    const steps = duration / interval;
+    let currentStep = 0;
+    
+    const timer = setInterval(() => {
+      currentStep++;
+      const progress = Math.min((currentStep / steps) * 100, 100);
+      setRobProgress(progress);
+      
+      if (currentStep >= steps) {
+        clearInterval(timer);
+        
+        // Determine result (60% success)
+        const isSuccess = Math.random() < 0.6;
+        
+        if (isSuccess) {
+          // Success: Gain $1000 - $10000
+          const amount = Math.floor(Math.random() * 9001) + 1000; // 1000 to 10000
+          setRobResult({ amount, message: 'Success!' });
+          setRobStatus('success');
+        } else {
+          // Failure: Go to Jail
+          setRobResult({ amount: 0, message: 'Caught!' });
+          setRobStatus('caught');
+        }
+      }
+    }, interval);
+  };
+
+  // Handle Rob Bank Complete (Success or Failure)
+  const handleRobBankComplete = async () => {
+    const playerIndex = currentPlayer;
+    
+    if (robStatus === 'success') {
+      // Add money
+      setPlayerMoney(prev => {
+        const updated = [...prev];
+        updated[playerIndex] += robResult.amount;
+        return updated;
+      });
+      
+      // Floating Price
+      const animKey = getUniqueKey();
+      setFloatingPrices(prev => [
+        ...prev, 
+        { price: robResult.amount, tileIndex: 18, key: animKey, isPositive: true }
+      ]);
+      setTimeout(() => {
+        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
+      }, 3000);
+      
+      setHistory(prev => [`💰 ${players[playerIndex].name} robbed the bank for $${robResult.amount}!`, ...prev.slice(0, 9)]);
+      
+      closeAllModals(() => {
+        endTurn(playerIndex, false); // No doubles on rob bank? Or preserve? Usually turn ends.
+      });
+      
+    } else if (robStatus === 'caught') {
+      // Go to Jail
+      setHistory(prev => [`👮 ${players[playerIndex].name} was caught robbing the bank!`, ...prev.slice(0, 9)]);
+      
+      closeAllModals(async () => {
+        // Move to Jail (Tile 28)
+        // Simple teleport for now, or use movePlayerToken if we want animation
+        // Let's use handleTileArrival logic for Jail? Or just set position.
+        // Usually "Go to Jail" moves you directly.
+        
+        // We can use the same logic as "Go To Jail" chance card
+        const jailIndex = 28;
+        const currentPos = playerPositions[playerIndex];
+        let stepsToJail = (jailIndex - currentPos + 36) % 36;
+        if (stepsToJail === 0) stepsToJail = 0;
+        
+        if (stepsToJail > 0) {
+           await movePlayerToken(playerIndex, stepsToJail, 50);
+        }
+        
+        // Jail logic (if we had specific jail state, we'd set it here)
+        // For now, just end turn at Jail.
+        endTurn(playerIndex, false);
+      });
+    } else {
+      // Cancelled (shouldn't happen here if button is only for success/caught)
+      closeAllModals(() => endTurn(playerIndex, false));
     }
   };
 
@@ -560,10 +754,14 @@ function App() {
             return updated;
           });
           // Floating Price
+          const animKeyAdd = getUniqueKey();
           setFloatingPrices(prev => [
             ...prev, 
-            { price: card.amount, tileIndex: currentPos, key: Date.now(), isPositive: true }
+            { price: card.amount, tileIndex: currentPos, key: animKeyAdd, isPositive: true }
           ]);
+          setTimeout(() => {
+            setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyAdd));
+          }, 3000);
           setHistory(prev => [`${players[playerIndex].name} gained $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
@@ -574,10 +772,14 @@ function App() {
             return updated;
           });
           // Floating Price
+          const animKeySub = getUniqueKey();
           setFloatingPrices(prev => [
             ...prev, 
-            { price: card.amount, tileIndex: currentPos, key: Date.now(), isPositive: false }
+            { price: card.amount, tileIndex: currentPos, key: animKeySub, isPositive: false }
           ]);
+          setTimeout(() => {
+            setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeySub));
+          }, 3000);
           setHistory(prev => [`${players[playerIndex].name} lost $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
@@ -603,10 +805,14 @@ function App() {
                updated[playerIndex] += 200;
                return updated;
              });
+             const animKeyStart = getUniqueKey();
              setFloatingPrices(prev => [
                 ...prev, 
-                { price: 200, tileIndex: 0, key: Date.now(), isPositive: true }
+                { price: 200, tileIndex: 0, key: animKeyStart, isPositive: true }
              ]);
+             setTimeout(() => {
+               setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyStart));
+             }, 3000);
              setHistory(prev => [`${players[playerIndex].name} collected $200 for passing Start`, ...prev.slice(0, 9)]);
           }
           
@@ -624,33 +830,28 @@ function App() {
           return;
 
         case 'MOVE_FORWARD_RANDOM':
-          const fwdSteps = Math.floor(Math.random() * 10) + 1;
-          await movePlayerToken(playerIndex, fwdSteps);
-          const newPosFwd = (currentPos + fwdSteps + 36) % 36;
-          setHistory(prev => [`${players[playerIndex].name} moved forward ${fwdSteps} steps`, ...prev.slice(0, 9)]);
+          // Use pre-calculated steps from card
+          await movePlayerToken(playerIndex, card.steps);
+          const newPosFwd = (currentPos + card.steps + 36) % 36;
+          setHistory(prev => [`${players[playerIndex].name} moved forward ${card.steps} spaces`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosFwd, false);
           return;
 
         case 'MOVE_BACKWARD_RANDOM':
-          const backSteps = -(Math.floor(Math.random() * 10) + 1);
-          await movePlayerToken(playerIndex, backSteps);
-          const newPosBack = (currentPos + backSteps + 36) % 36;
-          setHistory(prev => [`${players[playerIndex].name} moved back ${Math.abs(backSteps)} steps`, ...prev.slice(0, 9)]);
+          // Use pre-calculated steps from card (already negative)
+          await movePlayerToken(playerIndex, card.steps);
+          const newPosBack = (currentPos + card.steps + 36) % 36;
+          setHistory(prev => [`${players[playerIndex].name} moved back ${Math.abs(card.steps)} spaces`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosBack, false);
           return;
 
         case 'MOVE_TO_RANDOM':
-          let randomTarget;
-          do {
-            randomTarget = Math.floor(Math.random() * 36);
-          } while (randomTarget === currentPos);
-          
-          // Calculate steps to animate properly
-          const stepsToRandom = (randomTarget - currentPos + 36) % 36;
+          // Use pre-calculated target from card
+          const stepsToRandom = (card.targetIndex - currentPos + 36) % 36;
           await movePlayerToken(playerIndex, stepsToRandom);
           
-          setHistory(prev => [`${players[playerIndex].name} teleported to ${getTileName(randomTarget)}`, ...prev.slice(0, 9)]);
-          handleTileArrival(playerIndex, randomTarget, false);
+          setHistory(prev => [`${players[playerIndex].name} teleported to ${getTileName(card.targetIndex)}`, ...prev.slice(0, 9)]);
+          handleTileArrival(playerIndex, card.targetIndex, false);
           return;
           
         case 'GO_TO_JAIL':
@@ -688,10 +889,14 @@ function App() {
               updated[playerIndex] -= totalCost;
               return updated;
             });
+            const animKeyRepairs = getUniqueKey();
             setFloatingPrices(prev => [
               ...prev, 
-              { price: totalCost, tileIndex: currentPos, key: Date.now(), isPositive: false }
+              { price: totalCost, tileIndex: currentPos, key: animKeyRepairs, isPositive: false }
             ]);
+            setTimeout(() => {
+              setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyRepairs));
+            }, 3000);
             setHistory(prev => [`${players[playerIndex].name} paid $${totalCost} for repairs`, ...prev.slice(0, 9)]);
           } else {
              setHistory(prev => [`${players[playerIndex].name} has no buildings to repair`, ...prev.slice(0, 9)]);
@@ -713,10 +918,14 @@ function App() {
             });
             return updated;
           });
+          const animKeyPayAll = getUniqueKey();
           setFloatingPrices(prev => [
             ...prev, 
-            { price: totalDeduction, tileIndex: currentPos, key: Date.now(), isPositive: false }
+            { price: totalDeduction, tileIndex: currentPos, key: animKeyPayAll, isPositive: false }
           ]);
+          setTimeout(() => {
+            setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyPayAll));
+          }, 3000);
           setHistory(prev => [`${players[playerIndex].name} paid $${amount} to each player`, ...prev.slice(0, 9)]);
           break;
           
@@ -811,9 +1020,10 @@ function App() {
 
   // Handle dice roll
   const rollDice = async () => {
-    if (isRolling || skippedTurns[currentPlayer]) return; // Prevent rolling if skipped (just in case)
+    if (isRolling || isProcessingTurn || skippedTurns[currentPlayer]) return; // Prevent rolling if skipped or busy
     
     setIsRolling(true);
+    setIsProcessingTurn(true); // Lock turn start
 
     // 1. Roll Animation (1s)
     const rollDuration = 1000;
@@ -921,10 +1131,11 @@ function App() {
           `🎲 ${players[buyerIndex].name} rolled doubles! Extra turn!`,
           ...historyPrev.slice(0, 9)
         ]);
-        // Don't switch player
+        // Unlock turn for next roll
+        setIsProcessingTurn(false);
       } else {
         setTimeout(() => {
-          setCurrentPlayer(prev => (prev + 1) % players.length);
+          endTurn(buyerIndex, false);
         }, 300);
       }
     });
@@ -935,19 +1146,26 @@ function App() {
     const buyerIndex = buyingProperty?.buyerIndex;
     const isDoubles = buyingProperty?.isDoubles;
     
+    // Pass true to keepBuyingState so the button remains available
+    console.log('[DEBUG] handleCancelBuy called. Preserving buyingProperty.');
     closeAllModals(() => {
       if (isDoubles && buyerIndex !== undefined) {
         setHistory(historyPrev => [
           `🎲 ${players[buyerIndex].name} rolled doubles! Extra turn!`,
           ...historyPrev.slice(0, 9)
         ]);
-        // Don't switch player
+        // Unlock turn
+        setIsProcessingTurn(false);
       } else {
         setTimeout(() => {
-          setCurrentPlayer(prev => (prev + 1) % players.length);
+          // Do NOT end turn yet, let user decide via Done or Buy button
+          // But we need to unlock processing so buttons work
+          console.log('[DEBUG] handleCancelBuy timeout. Setting turnFinished=true');
+          setIsProcessingTurn(false);
+          setTurnFinished(true); // Show Done button
         }, 300);
       }
-    });
+    }, true);
   };
 
   // Handle Parking Confirm
@@ -957,77 +1175,12 @@ function App() {
     
     closeAllModals(() => {
       setTimeout(() => {
-        setCurrentPlayer(prev => (prev + 1) % players.length);
+        endTurn(currentPlayer, false);
       }, 300);
     });
   };
 
-  // Handle Rob Bank Attempt
-  const handleRobBankAttempt = async () => {
-    // 1. Set status to processing (suspense)
-    setRobBankStatus('processing');
-    
-    // 2. Wait for animation (4 seconds)
-    await wait(4000);
-    
-    // 3. Determine Result
-    const success = Math.random() < 0.5;
-    
-    if (success) {
-      // Calculate variable reward: $1,000 - $10,000
-      const reward = Math.floor(Math.random() * 9001) + 1000;
-      // Round to nearest 100 for cleaner numbers
-      const roundedReward = Math.round(reward / 100) * 100;
-      
-      setRobBankReward(roundedReward);
-      setRobBankStatus('success');
-    } else {
-      setRobBankStatus('caught');
-    }
-  };
 
-  // Handle Rob Bank Complete (Close Modal & Apply Effects)
-  const handleRobBankComplete = () => {
-    closeAllModals(() => {
-      if (robBankStatus === 'success') {
-        // Add Money
-        setPlayerMoney(prev => {
-          const updated = [...prev];
-          updated[currentPlayer] += robBankReward;
-          return updated;
-        });
-        
-        // Floating price animation (positive)
-        const animKey = Date.now();
-        setFloatingPrices(prev => [...prev, { price: robBankReward, tileIndex: 18, key: animKey, isPositive: true }]);
-        setTimeout(() => {
-          setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
-        }, 3000);
-        
-        setHistory(historyPrev => [
-          `💰 ${players[currentPlayer].name} ROBBED THE BANK! +$${robBankReward}`,
-          ...historyPrev.slice(0, 9)
-        ]);
-      } else if (robBankStatus === 'caught') {
-        // Go to Jail
-        setPlayerPositions(prev => {
-          const updated = [...prev];
-          updated[currentPlayer] = 28; // Jail index
-          return updated;
-        });
-        
-        setHistory(historyPrev => [
-          `👮 ${players[currentPlayer].name} caught robbing bank! Go to Jail!`,
-          ...historyPrev.slice(0, 9)
-        ]);
-      }
-      
-      // End turn
-      setTimeout(() => {
-        setCurrentPlayer(prev => (prev + 1) % players.length);
-      }, 300);
-    });
-  };
 
   // Handle Tile Click (Open Property Details)
   const handleTileClick = (tileIndex) => {
@@ -1523,7 +1676,6 @@ function App() {
           {/* Decorative Elements */}
           <div className="center-decorations">
             <div className="yacht">🛥️</div>
-            <div className="money-pile">💰💵💎</div>
           </div>
 
           {/* Dice Area */}
@@ -1536,9 +1688,25 @@ function App() {
                 {renderDiceDots(diceValues[1])}
               </div>
             </div>
-            <button className="roll-button" onClick={rollDice} tabIndex="-1">
-              ROLL
-            </button>
+            <div className="button-group">
+
+              {buyingProperty && (
+                <button 
+                  className="buy-button" 
+                  onClick={() => setShowBuyModal(true)}
+                >
+                  BUY
+                </button>
+              )}
+              <button 
+                className={`roll-button ${turnFinished ? 'done' : ''}`} 
+                onClick={turnFinished ? handleEndTurn : rollDice} 
+                tabIndex="-1" 
+                disabled={!turnFinished && (isRolling || isProcessingTurn || skippedTurns[currentPlayer])}
+              >
+                {turnFinished ? 'DONE ✔️' : 'ROLL'}
+              </button>
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -1572,9 +1740,9 @@ function App() {
         </div>
 
         {/* Floating Price Animations */}
-        {floatingPrices.map(fp => (
+        {floatingPrices.map((fp, index) => (
           <div 
-            key={fp.key}
+            key={`${fp.key}-${index}`}
             className={`floating-price ${fp.isPositive ? 'positive' : 'negative'}`}
             style={{
               top: `${getFloatingPosition(fp.tileIndex).top}vh`,
@@ -1702,22 +1870,22 @@ function App() {
           <div className="buy-modal">
             {/* Header */}
             <div className="modal-heading" style={{ 
-              background: robBankStatus === 'caught' 
+              background: robStatus === 'caught' 
                 ? 'linear-gradient(to bottom, #C62828 0%, #B71C1C 100%)' 
-                : robBankStatus === 'success'
+                : robStatus === 'success'
                   ? 'linear-gradient(to bottom, #2E7D32 0%, #1B5E20 100%)'
                   : 'linear-gradient(to bottom, #1A237E 0%, #0D47A1 100%)' 
             }}>
               <span className="modal-heading-text">
-                {robBankStatus === 'processing' ? 'ROBBING...' : 
-                 robBankStatus === 'success' ? 'SUCCESS!' : 
-                 robBankStatus === 'caught' ? 'BUSTED!' : 'ROB BANK'}
+                {robStatus === 'processing' ? 'ROBBING...' : 
+                 robStatus === 'success' ? 'SUCCESS!' : 
+                 robStatus === 'caught' ? 'BUSTED!' : 'ROB BANK'}
               </span>
             </div>
             
             {/* Body */}
             <div className="modal-body">
-              {robBankStatus === 'idle' && (
+              {robStatus === 'idle' && (
                 <>
                   <div className="modal-city-name">RISK IT ALL?</div>
                   <div className="modal-divider"></div>
@@ -1739,21 +1907,21 @@ function App() {
                 </>
               )}
 
-              {robBankStatus === 'processing' && (
+              {robStatus === 'processing' && (
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <div className="modal-city-name" style={{ fontSize: '24px', marginBottom: '20px' }}>CRACKING SAFE...</div>
                   
                   <div className="cracking-progress">
-                    <div className="cracking-bar"></div>
+                    <div className="cracking-bar" style={{ width: `${robProgress}%` }}></div>
                   </div>
                 </div>
               )}
 
-              {robBankStatus === 'success' && (
+              {robStatus === 'success' && (
                 <>
                   <div className="modal-city-name" style={{ color: '#2E7D32' }}>YOU STOLE</div>
                   <div className="modal-city-name" style={{ fontSize: '40px', color: '#2E7D32', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                    ${robBankReward.toLocaleString()}
+                    ${robResult.amount.toLocaleString()}
                   </div>
                   <div className="modal-buttons" style={{ marginTop: '20px' }}>
                     <button className="modal-btn buy" onClick={handleRobBankComplete} style={{ width: '100%' }}>COLLECT</button>
@@ -1761,7 +1929,89 @@ function App() {
                 </>
               )}
 
-              {robBankStatus === 'caught' && (
+              {robStatus === 'caught' && (
+                <>
+                  <div className="modal-city-name" style={{ color: '#C62828' }}>POLICE CAUGHT YOU!</div>
+                  <div style={{ fontSize: '50px', textAlign: 'center', margin: '10px 0' }}>👮‍♂️</div>
+                  <div className="modal-buttons" style={{ marginTop: '20px' }}>
+                    <button className="modal-btn cancel" onClick={handleRobBankComplete} style={{ width: '100%' }}>GO TO JAIL</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rob Bank Modal */}
+      {(showRobBankModal || (isModalClosing && robStatus !== 'idle')) && (
+        <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
+          <div className="buy-modal">
+            {/* Header */}
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #1A237E 0%, #0D47A1 100%)' }}>
+              <span className="modal-heading-text">ROB BANK</span>
+            </div>
+            
+            {/* Body */}
+            <div className="modal-body">
+              {robStatus === 'idle' && (
+                <>
+                  <div className="modal-city-name" style={{ fontSize: '20px', marginBottom: '20px' }}>
+                    RISK IT ALL?
+                  </div>
+                  <div className="modal-details" style={{ textAlign: 'center', marginBottom: '20px' }}>
+                    <div className="modal-row" style={{ justifyContent: 'center', color: '#2E7D32' }}>
+                      <span>WIN $1,000 - $10,000</span>
+                    </div>
+                    <div className="modal-row" style={{ justifyContent: 'center', fontSize: '14px', margin: '5px 0' }}>
+                      <span>OR</span>
+                    </div>
+                    <div className="modal-row" style={{ justifyContent: 'center', color: '#C62828' }}>
+                      <span>GO TO JAIL</span>
+                    </div>
+                  </div>
+                  <div className="modal-buttons">
+                    <button className="modal-btn cancel" onClick={() => closeAllModals(() => endTurn(currentPlayer, false))}>LEAVE</button>
+                    <button className="modal-btn buy" onClick={handleRobBankAttempt} style={{ background: '#D32F2F' }}>ROB!</button>
+                  </div>
+                </>
+              )}
+
+              {robStatus === 'processing' && (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <div className="modal-city-name" style={{ fontSize: '24px', marginBottom: '20px' }}>CRACKING SAFE...</div>
+                  
+                  <div className="cracking-progress" style={{ 
+                    width: '100%', 
+                    height: '20px', 
+                    backgroundColor: '#eee', 
+                    borderRadius: '10px', 
+                    overflow: 'hidden',
+                    border: '1px solid #ccc'
+                  }}>
+                    <div className="cracking-bar" style={{ 
+                      width: `${robProgress}%`, 
+                      height: '100%', 
+                      backgroundColor: '#D32F2F',
+                      transition: 'width 0.05s linear'
+                    }}></div>
+                  </div>
+                </div>
+              )}
+
+              {robStatus === 'success' && (
+                <>
+                  <div className="modal-city-name" style={{ color: '#2E7D32' }}>YOU STOLE</div>
+                  <div className="modal-city-name" style={{ fontSize: '40px', color: '#2E7D32', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                    ${robResult.amount.toLocaleString()}
+                  </div>
+                  <div className="modal-buttons" style={{ marginTop: '20px' }}>
+                    <button className="modal-btn buy" onClick={handleRobBankComplete} style={{ width: '100%', background: '#2E7D32' }}>COLLECT</button>
+                  </div>
+                </>
+              )}
+
+              {robStatus === 'caught' && (
                 <>
                   <div className="modal-city-name" style={{ color: '#C62828' }}>POLICE CAUGHT YOU!</div>
                   <div style={{ fontSize: '50px', textAlign: 'center', margin: '10px 0' }}>👮‍♂️</div>

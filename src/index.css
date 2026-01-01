@@ -1041,64 +1041,233 @@ body {
   }
 }
 
-/* Mobile Landscape Adjustments */
-@media screen and (orientation: landscape) and (max-height: 600px) {
-  /* Scale down the entire board container if needed, or adjust specific elements */
-  .board-container {
-    transform: scale(0.9);
-    transform-origin: center;
+/* Mobile Landscape Adjustments - Transform-based */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  /* Scale entire game using transform - preserves proportions */
+  .game-container {
+    gap: 10px;
+    transform: scale(0.85);
+    transform-origin: center center;
   }
-  
-  /* Make dice smaller */
+
+  /* Tile fonts */
+  .tile .tile-name {
+    font-size: 10px;
+  }
+
+  .tile .tile-price {
+    font-size: 12px;
+  }
+
+  .tile .tile-icon {
+    font-size: 20px;
+  }
+
+  /* Corner fonts */
+  .corner {
+    font-size: 10px;
+  }
+
+  .corner .corner-icon {
+    font-size: 28px;
+  }
+
+  /* Dice */
   .dice {
-    width: 50px;
-    height: 50px;
-    padding: 5px;
+    width: 55px;
+    height: 55px;
   }
-  
+
   .dice .dot {
-    width: 10px;
-    height: 10px;
+    width: 11px;
+    height: 11px;
   }
-  
-  /* Make buttons smaller */
+
+  /* Roll Button */
   .roll-button {
-    padding: 8px 20px;
     font-size: 18px;
+    padding: 8px 25px;
   }
-  
+
+  /* Action Buttons */
   .action-btn {
-    width: 50px;
-    height: 40px;
+    width: 55px;
+    height: 42px;
     font-size: 9px;
   }
-  
+
   .action-btn .btn-icon {
     font-size: 16px;
   }
-  
-  /* Adjust modal sizes */
-  .buy-modal {
-    width: 300px;
-    transform: scale(0.85);
-  }
-  
-  .modal-heading-text {
-    font-size: 18px;
-  }
-  
-  .modal-city-name {
-    font-size: 20px;
-  }
-  
-  .modal-row {
-    font-size: 16px;
-  }
-  
+
   /* Sidebar adjustments */
   .sidebar {
+    width: 200px;
+  }
+
+  .control-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .player-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .player-name, .player-money {
+    font-size: 14px;
+  }
+
+  .history-header h2 {
+    font-size: 16px;
+  }
+
+  .history-content {
+    font-size: 11px;
+  }
+
+  /* Modal adjustments */
+  .buy-modal {
     width: 280px;
-    transform: scale(0.9);
-    transform-origin: top right;
+  }
+
+  .modal-heading-text {
+    font-size: 16px;
+  }
+
+  .modal-city-name {
+    font-size: 18px;
+  }
+
+  .modal-row, .modal-value {
+    font-size: 14px;
+  }
+
+  .modal-btn {
+    padding: 10px 0;
+    font-size: 13px;
+  }
+}
+
+/* Extra Small Mobile Landscape (very short screens) */
+@media screen and (orientation: landscape) and (max-height: 400px) {
+  .game-container {
+    transform: scale(0.65);
+  }
+
+  /* Tile fonts - smaller */
+  .tile .tile-name {
+    font-size: 8px;
+  }
+
+  .tile .tile-price {
+    font-size: 10px;
+  }
+
+  .tile .tile-icon {
+    font-size: 16px;
+  }
+
+  /* Corner fonts - smaller */
+  .corner {
+    font-size: 8px;
+  }
+
+  .corner .corner-icon {
+    font-size: 22px;
+  }
+
+  /* Dice - smaller */
+  .dice {
+    width: 45px;
+    height: 45px;
+  }
+
+  .dice .dot {
+    width: 9px;
+    height: 9px;
+  }
+
+  /* Roll Button - smaller */
+  .roll-button {
+    font-size: 14px;
+    padding: 6px 18px;
+  }
+
+  /* Action Buttons - smaller */
+  .action-btn {
+    width: 45px;
+    height: 35px;
+    font-size: 7px;
+  }
+
+  .action-btn .btn-icon {
+    font-size: 12px;
+  }
+
+  .sidebar {
+    width: 160px;
+  }
+
+  .control-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+  }
+
+  .player-name, .player-money {
+    font-size: 11px;
+  }
+
+  .player-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .history-header h2 {
+    font-size: 12px;
+  }
+
+  .history-content {
+    font-size: 9px;
+  }
+
+  .buy-modal {
+    width: 230px;
+  }
+
+  .modal-heading-text {
+    font-size: 12px;
+  }
+
+  .modal-city-name {
+    font-size: 14px;
+  }
+
+  .modal-row, .modal-value {
+    font-size: 11px;
+  }
+
+  .modal-btn {
+    padding: 7px 0;
+    font-size: 10px;
+  }
+}
+
+/* Medium Mobile Landscape */
+@media screen and (orientation: landscape) and (min-height: 500px) and (max-height: 700px) {
+  .game-container {
+    transform: scale(0.95);
+    transform-origin: center center;
+  }
+
+  .sidebar {
+    width: 240px;
+  }
+
+  .buy-modal {
+    width: 320px;
   }
 }

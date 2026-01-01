@@ -24,7 +24,8 @@ export const SPACE_TYPES = {
   UTILITY: 'utility',
   CHANCE: 'chance',
   CHEST: 'chest',
-  TAX: 'tax',
+  CASH_STACK: 'cash_stack',
+  PROPERTY_WAR: 'property_war',
   CORNER: 'corner',
 };
 
@@ -32,7 +33,7 @@ export const SPACE_TYPES = {
 export const bottomRow = [
   { id: 1, name: 'Shop', price: 400, color: PROPERTY_COLORS.yellow, type: SPACE_TYPES.PROPERTY },
   { id: 2, name: 'Super market', price: 500, color: PROPERTY_COLORS.yellow, type: SPACE_TYPES.PROPERTY },
-  { id: 3, name: 'Tax', price: null, color: PROPERTY_COLORS.special, type: SPACE_TYPES.TAX, icon: '💰' },
+  { id: 3, name: 'Cash Stack', price: null, color: PROPERTY_COLORS.special, type: SPACE_TYPES.CASH_STACK, icon: '💵' },
   { id: 4, name: 'Train', price: 1000, color: PROPERTY_COLORS.special, type: SPACE_TYPES.RAILROAD, icon: '🚂' },
   { id: 5, name: 'Service station', price: 600, color: PROPERTY_COLORS.yellow, type: SPACE_TYPES.PROPERTY },
   { id: 6, name: 'Swim. pool', price: 700, color: PROPERTY_COLORS.red, type: SPACE_TYPES.PROPERTY },
@@ -61,7 +62,7 @@ export const topRow = [
   { id: 21, name: 'Chance', price: null, color: PROPERTY_COLORS.special, type: SPACE_TYPES.CHANCE, icon: '❓' },
   { id: 22, name: 'Toy factory', price: 1900, color: PROPERTY_COLORS.purple, type: SPACE_TYPES.PROPERTY },
   { id: 23, name: 'Candy factory', price: 2000, color: PROPERTY_COLORS.purple, type: SPACE_TYPES.PROPERTY },
-  { id: 24, name: 'Robber', price: null, color: PROPERTY_COLORS.special, type: SPACE_TYPES.UTILITY, icon: '🦹' },
+  { id: 24, name: 'Property War', price: null, color: PROPERTY_COLORS.special, type: SPACE_TYPES.PROPERTY_WAR, icon: '⚔️' },
   { id: 25, name: 'Organic farm', price: 2100, color: PROPERTY_COLORS.purple, type: SPACE_TYPES.PROPERTY },
 ];
 

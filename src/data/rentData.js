@@ -66,7 +66,9 @@ export const RENT_DATA = {
 
   // --- Left Column ---
   // Group 3: Pink (3 Properties)
-  10: { // Pizzeria
+  // --- Left Column ---
+  // Group 3: Pink (3 Properties)
+  11: { // Pizzeria
     id: 7,
     name: "Pizzeria",
     groupId: 3,
@@ -75,7 +77,7 @@ export const RENT_DATA = {
     upgradeCost: 500,
     rentLevels: [100, 400, 1500, 3500, 4300, 5000]
   },
-  11: { // Cinema
+  12: { // Cinema
     id: 8,
     name: "Cinema",
     groupId: 3,
@@ -84,7 +86,7 @@ export const RENT_DATA = {
     upgradeCost: 550,
     rentLevels: [110, 440, 1650, 3850, 4730, 5500]
   },
-  13: { // Night club
+  14: { // Night club
     id: 9,
     name: "Night club",
     groupId: 3,
@@ -95,7 +97,7 @@ export const RENT_DATA = {
   },
 
   // Group 4: Dark Orange (3 Properties - including Harbor)
-  14: { // Airport
+  15: { // Airport
     id: 10,
     name: "Airport",
     groupId: 4,
@@ -104,7 +106,7 @@ export const RENT_DATA = {
     upgradeCost: 650,
     rentLevels: [130, 520, 1950, 4550, 5590, 6500]
   },
-  15: { // Car salon
+  16: { // Car salon
     id: 11,
     name: "Car salon",
     groupId: 4,
@@ -113,7 +115,7 @@ export const RENT_DATA = {
     upgradeCost: 700,
     rentLevels: [140, 560, 2100, 4900, 6020, 7000]
   },
-  16: { // Harbor
+  17: { // Harbor
     id: 12,
     name: "Harbor",
     groupId: 4,
@@ -125,7 +127,7 @@ export const RENT_DATA = {
 
   // --- Top Row ---
   // Group 5: Light Green (3 Properties)
-  17: { // News paper
+  19: { // News paper
     id: 13,
     name: "News paper",
     groupId: 5,
@@ -134,7 +136,7 @@ export const RENT_DATA = {
     upgradeCost: 800,
     rentLevels: [160, 640, 2400, 5600, 6880, 8000]
   },
-  18: { // TV channel
+  20: { // TV channel
     id: 14,
     name: "TV channel",
     groupId: 5,
@@ -143,7 +145,7 @@ export const RENT_DATA = {
     upgradeCost: 850,
     rentLevels: [170, 680, 2550, 5950, 7310, 8500]
   },
-  20: { // Mobile op.
+  22: { // Mobile op.
     id: 15,
     name: "Mobile op.",
     groupId: 5,
@@ -154,7 +156,7 @@ export const RENT_DATA = {
   },
 
   // Group 6: Purple (3 Properties)
-  22: { // Toy factory
+  24: { // Toy factory
     id: 16,
     name: "Toy factory",
     groupId: 6,
@@ -163,7 +165,7 @@ export const RENT_DATA = {
     upgradeCost: 950,
     rentLevels: [190, 760, 2850, 6650, 8170, 9500]
   },
-  23: { // Candy factory
+  25: { // Candy factory
     id: 17,
     name: "Candy factory",
     groupId: 6,
@@ -172,7 +174,7 @@ export const RENT_DATA = {
     upgradeCost: 1000,
     rentLevels: [200, 800, 3000, 7000, 8600, 10000]
   },
-  25: { // Organic farm
+  27: { // Organic farm
     id: 18,
     name: "Organic farm",
     groupId: 6,
@@ -184,7 +186,7 @@ export const RENT_DATA = {
 
   // --- Right Column ---
   // Group 7: Dark Green (2 Properties)
-  26: { // Oil well
+  29: { // Oil well
     id: 19,
     name: "Oil well",
     groupId: 7,
@@ -193,7 +195,7 @@ export const RENT_DATA = {
     upgradeCost: 1100,
     rentLevels: [220, 880, 3300, 7700, 9460, 11000]
   },
-  27: { // Diamond mine
+  30: { // Diamond mine
     id: 20,
     name: "Diamond mine",
     groupId: 7,
@@ -204,7 +206,7 @@ export const RENT_DATA = {
   },
 
   // Group 8: Lime Green (2 Properties)
-  31: { // Hollywood
+  34: { // Hollywood
     id: 21,
     name: "Hollywood",
     groupId: 8,
@@ -213,7 +215,7 @@ export const RENT_DATA = {
     upgradeCost: 1200,
     rentLevels: [240, 960, 3600, 8400, 10320, 12000]
   },
-  32: { // Electronics factory
+  35: { // Electronics factory
     id: 22,
     name: "Electronics factory",
     groupId: 8,
@@ -225,4 +227,4 @@ export const RENT_DATA = {
 };
 
 export const TRAIN_RENT = [125, 250, 500, 1000];
-export const TRAIN_TILES = [4, 12, 19, 29]; // Updated indices: 4, 12, 19, 29
+export const TRAIN_TILES = [4, 13, 21, 32]; // Updated indices: 4, 13, 21, 32

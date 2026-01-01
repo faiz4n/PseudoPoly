@@ -455,8 +455,8 @@ function App() {
       return;
     }
     
-    // Community Chest (Index 30)
-    if (tileIndex === 30) {
+    // Community Chest (Index 33 - in rightColumn)
+    if (tileIndex === 33) {
       const randomCard = getSmartChestCard(playerIndex);
       setCurrentChestCard(randomCard);
       setShowChestModal(true);
@@ -1357,45 +1357,6 @@ function App() {
 
   return (
     <div className="game-container">
-      {/* Debug Button */}
-      <button 
-        onClick={debugRobBank}
-        style={{
-          position: 'fixed',
-          top: '10px',
-          left: '10px',
-          zIndex: 10000,
-          padding: '10px',
-          background: 'red',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          fontWeight: 'bold'
-        }}
-      >
-        TEST ROB BANK
-      </button>
-
-      <button 
-        onClick={debugGrantMonopoly}
-        style={{
-          position: 'fixed',
-          top: '50px',
-          left: '10px',
-          zIndex: 10000,
-          padding: '10px',
-          background: 'blue',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          fontWeight: 'bold'
-        }}
-      >
-        GRANT MONOPOLY
-      </button>
-
       {/* Game Board */}
       <div className="board">
         {/* Corner Spaces */}
@@ -1598,8 +1559,6 @@ function App() {
           <button className="control-btn sound">🔊</button>
           <button className="control-btn help">❓</button>
           <button className="control-btn menu">☰</button>
-          <button className="control-btn" onClick={handleTestChance} title="Test Chance" style={{fontSize: '12px'}}>🎲❓</button>
-          <button className="control-btn" onClick={handleTestChest} title="Test Chest" style={{fontSize: '12px'}}>📦</button>
         </div>
 
         {/* Player Panel */}

@@ -1433,7 +1433,7 @@ function App() {
                   className={`tile-price ${ownerStyle ? 'owned' : ''}`}
                   style={ownerStyle ? { backgroundColor: ownerStyle.bgColor, color: ownerStyle.textColor } : {}}
                 >
-                  {tile.price}
+                  {ownerStyle ? calculateRent(tileIndex) : tile.price}
                 </span>
               )}
             </div>
@@ -1459,7 +1459,7 @@ function App() {
                   className={`tile-price ${ownerStyle ? 'owned' : ''}`}
                   style={ownerStyle ? { backgroundColor: ownerStyle.bgColor, color: ownerStyle.textColor } : {}}
                 >
-                  {tile.price}
+                  {ownerStyle ? calculateRent(tileIndex) : tile.price}
                 </span>
               )}
             </div>
@@ -1485,7 +1485,7 @@ function App() {
                   className={`tile-price ${ownerStyle ? 'owned' : ''}`}
                   style={ownerStyle ? { backgroundColor: ownerStyle.bgColor, color: ownerStyle.textColor } : {}}
                 >
-                  {tile.price}
+                  {ownerStyle ? calculateRent(tileIndex) : tile.price}
                 </span>
               )}
             </div>
@@ -1511,7 +1511,7 @@ function App() {
                   className={`tile-price ${ownerStyle ? 'owned' : ''}`}
                   style={ownerStyle ? { backgroundColor: ownerStyle.bgColor, color: ownerStyle.textColor } : {}}
                 >
-                  {tile.price}
+                  {ownerStyle ? calculateRent(tileIndex) : tile.price}
                 </span>
               )}
             </div>

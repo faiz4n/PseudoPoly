@@ -16,6 +16,14 @@
   box-sizing: border-box;
 }
 
+/* PWA Fullscreen - extend to safe area */
+html, body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: #1a1a2e;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+
 :root {
   /* Property Colors */
   --brown: #8B4513;
@@ -143,7 +151,7 @@ body {
 }
 
 .corner.robbank .rob-text {
-  font-size: 14px;
+  font-size: 8px;
   z-index: 2;
   position: relative;
 }
@@ -160,12 +168,12 @@ body {
 }
 
 .corner.robbank .bank-text {
-  font-size: 14px;
+  font-size: 8px;
   z-index: 2;
 }
 
 .corner.robbank .bank-text {
-  font-size: 14px;
+  font-size: 8px;
   z-index: 2;
   position: relative;
 }
@@ -178,7 +186,7 @@ body {
 }
 
 .corner.jail .jail-text {
-  font-size: 14px;
+  font-size: 8px;
   font-weight: 800;
   z-index: 2;
   color: #5b260b;
@@ -1018,27 +1026,75 @@ body {
   }
 }
 
-/* Force Landscape on Mobile */
+/* Force Landscape on Mobile - Overlay Container */
 @media screen and (orientation: portrait) and (max-width: 768px) {
-  body::after {
-    content: "Please rotate your device 🔄";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: #000;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 99999;
-    font-size: 24px;
-    font-weight: bold;
-  }
   #root {
     display: none;
   }
+
+  .portrait-overlay {
+    display: flex !important;
+  }
+}
+
+.portrait-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: white;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  gap: 30px;
+  text-align: center;
+  padding: 20px;
+}
+
+.portrait-overlay .rotate-icon {
+  font-size: 80px;
+  animation: rotateHint 2s ease-in-out infinite;
+}
+
+@keyframes rotateHint {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
+.portrait-overlay .rotate-text {
+  font-size: 22px;
+  font-weight: 600;
+  font-family: 'Nunito', sans-serif;
+}
+
+.portrait-overlay .rotate-btn {
+  padding: 15px 40px;
+  font-size: 18px;
+  font-weight: bold;
+  font-family: 'Fredoka One', cursive;
+  background: linear-gradient(180deg, #4CAF50, #2E7D32);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #1B5E20, 0 6px 20px rgba(0,0,0,0.4);
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.portrait-overlay .rotate-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #1B5E20, 0 4px 10px rgba(0,0,0,0.4);
+}
+
+.portrait-overlay .rotate-subtext {
+  font-size: 14px;
+  color: #888;
+  margin-top: 10px;
 }
 
 /* Mobile Landscape Adjustments - No board scaling */
@@ -1048,34 +1104,37 @@ body {
     gap: 8px;
   }
 
-  /* Tile fonts - reduced by 2px */
+  /* Tile fonts - reduced */
   .tile .tile-name {
     font-size: 8px;
+    -webkit-text-stroke: 0.3px;
   }
 
   .tile .tile-price {
-    font-size: 10px;
+    font-size: 9px;
+    -webkit-text-stroke: 0.3px;
   }
 
   .tile .tile-icon {
-    font-size: 18px;
+    font-size: 16px;
   }
 
-  /* Corner fonts - reduced */
+  /* Corner fonts - match tile size */
   .corner {
-    font-size: 8px;
+    font-size: 7px;
   }
 
   .corner .corner-icon {
-    font-size: 24px;
+    font-size: 18px;
   }
 
-  /* Dice - proper sizing with padding */
+  /* Dice - proper sizing with reduced border-radius */
   .dice {
     width: 50px;
     height: 50px;
     padding: 8px;
     gap: 2px;
+    border-radius: 6px;
   }
 
   .dice .dot {
@@ -1083,17 +1142,19 @@ body {
     height: 10px;
   }
 
-  /* Roll Button */
+  /* Roll Button - reduced border-radius */
   .roll-button {
     font-size: 16px;
     padding: 6px 20px;
+    border-radius: 6px;
   }
 
-  /* Action Buttons */
+  /* Action Buttons - reduced border-radius */
   .action-btn {
     width: 50px;
     height: 38px;
     font-size: 8px;
+    border-radius: 5px;
   }
 
   .action-btn .btn-icon {
@@ -1146,26 +1207,65 @@ body {
     font-size: 10px;
   }
 
-  /* Modal adjustments */
+  /* Pawn - remove white border */
+  .player-pawn {
+    border: none !important;
+  }
+
+  .player-pawn img,
+  .pawn-img {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Modal adjustments - compact, no scroll */
   .buy-modal {
-    width: 260px;
+    width: 220px;
+    overflow: hidden;
+  }
+
+  .modal-heading {
+    padding: 5px 0;
+    
   }
 
   .modal-heading-text {
-    font-size: 14px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  .modal-body {
+    padding: 8px 10px 10px;
   }
 
   .modal-city-name {
-    font-size: 16px;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .modal-divider {
+    margin: 0 auto 6px;
+  }
+
+  .modal-details {
+    width: 92%;
+    margin: 0 auto 8px;
   }
 
   .modal-row, .modal-value {
-    font-size: 12px;
+    font-size: 10px;
+    padding: 2px 0;
+  }
+
+  .modal-buttons {
+    gap: 5px;
+    padding: 0 3px;
   }
 
   .modal-btn {
-    padding: 8px 0;
-    font-size: 11px;
+    padding: 6px 0;
+    font-size: 9px;
+    border-radius: 8px;
   }
 }
 

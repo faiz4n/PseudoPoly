@@ -1355,9 +1355,44 @@ function App() {
     );
   };
 
+  // Handle landscape rotation request
+  const handleRotateToLandscape = async () => {
+    try {
+      // Request fullscreen first (required for orientation lock)
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        await elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) {
+        await elem.msRequestFullscreen();
+      }
+
+      // Lock orientation to landscape
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock('landscape');
+      }
+    } catch (err) {
+      // Orientation lock may fail on some browsers, just let user rotate manually
+      console.log('Orientation lock not supported:', err);
+      alert('Please rotate your device manually to landscape mode 📱↔️');
+    }
+  };
+
   return (
-    <div className="game-container">
-      {/* Game Board */}
+    <>
+      {/* Portrait Mode Overlay */}
+      <div className="portrait-overlay">
+        <div className="rotate-icon">📱</div>
+        <div className="rotate-text">Rotate for the best experience!</div>
+        <button className="rotate-btn" onClick={handleRotateToLandscape}>
+          TAP TO GO LANDSCAPE
+        </button>
+        <div className="rotate-subtext">Or rotate your device manually</div>
+      </div>
+
+      <div className="game-container">
+        {/* Game Board */}
       <div className="board">
         {/* Corner Spaces */}
         <div className="corner start">
@@ -1842,13 +1877,13 @@ function App() {
                 
                 <div className="modal-divider"></div>
                 
-                <div className="modal-row" style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '10px' }}>
-                  <span>Cost per House</span>
-                  <span className="modal-value">${selectedProperty.upgradeCost?.toLocaleString()}</span>
+                <div className="modal-row" style={{ marginTop: '10px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Cost per House</span>
+                  <span className="modal-value" style={{ fontSize: '14px', fontWeight: 'bold' }}>${selectedProperty.upgradeCost?.toLocaleString()}</span>
                 </div>
-                <div className="modal-row" style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                  <span>Cost for Hotel</span>
-                  <span className="modal-value">${(selectedProperty.upgradeCost * 2)?.toLocaleString()} <span style={{fontSize: '14px', color: '#666', fontWeight: 'normal'}}>(2x House)</span></span>
+                <div className="modal-row">
+                  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Cost for Hotel</span>
+                  <span className="modal-value" style={{ fontSize: '14px', fontWeight: 'bold' }}>${(selectedProperty.upgradeCost * 2)?.toLocaleString()}</span>
                 </div>
               </div>
               
@@ -1882,6 +1917,7 @@ function App() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

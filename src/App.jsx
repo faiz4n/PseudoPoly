@@ -107,6 +107,9 @@ function App() {
   const [robProgress, setRobProgress] = useState(0);
   const [robStatus, setRobStatus] = useState('idle'); // 'idle', 'robbing', 'success', 'caught'
   const [robResult, setRobResult] = useState({ amount: 0, message: '' });
+  
+  // Debug Dice State
+  const [debugDiceValue, setDebugDiceValue] = useState(7);
 
   // Helper: Close any modal with animation
   const closeAllModals = (callback, keepBuyingState = false) => {
@@ -1377,7 +1380,7 @@ function App() {
   };
 
   // Handle dice roll
-  const rollDice = async () => {
+  const rollDice = async (overrideValue = null) => {
     if (isRolling || isProcessingTurn || skippedTurns[currentPlayer]) return; // Prevent rolling if skipped or busy
     
     setIsRolling(true);
@@ -1400,8 +1403,18 @@ function App() {
     clearInterval(rollInterval);
 
     // 2. Determine Result
-    const die1 = Math.floor(Math.random() * 6) + 1;
-    const die2 = Math.floor(Math.random() * 6) + 1;
+    let die1, die2;
+    
+    if (overrideValue) {
+      // Force specific roll
+      die1 = Math.floor(overrideValue / 2);
+      die2 = overrideValue - die1;
+    } else {
+      // Random roll
+      die1 = Math.floor(Math.random() * 6) + 1;
+      die2 = Math.floor(Math.random() * 6) + 1;
+    }
+
     const moveAmount = die1 + die2;
 
     setDiceValues([die1, die2]);
@@ -2123,7 +2136,10 @@ function App() {
       6: [true, false, true, true, false, true, true, false, true],
     };
     
-    return patterns[value].map((show, i) => (
+    const pattern = patterns[value];
+    if (!pattern) return null;
+
+    return pattern.map((show, i) => (
       <div key={i} className={`dot ${show ? '' : 'hidden'}`}></div>
     ));
   };
@@ -2352,7 +2368,7 @@ function App() {
               )}
               <button 
                 className={`roll-button ${turnFinished ? 'done' : ''}`} 
-                onClick={turnFinished ? handleEndTurn : rollDice} 
+                onClick={turnFinished ? handleEndTurn : () => rollDice()} 
                 tabIndex="-1" 
                 disabled={!turnFinished && (isRolling || isProcessingTurn || skippedTurns[currentPlayer])}
               >
@@ -3125,6 +3141,20 @@ function App() {
           </div>
         </div>
       )}
+      {/* Debug Panel */}
+      <div className="debug-panel">
+        <input 
+          type="number" 
+          min="2" 
+          max="12" 
+          value={debugDiceValue} 
+          onChange={(e) => setDebugDiceValue(parseInt(e.target.value))}
+          style={{ width: '50px', marginRight: '5px', padding: '5px' }}
+        />
+        <button onClick={() => rollDice(debugDiceValue)} disabled={isRolling || isProcessingTurn}>
+          Force Roll
+        </button>
+      </div>
     </div>
     </>
   );

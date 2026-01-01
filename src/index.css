@@ -1017,3 +1017,88 @@ body {
     transform: translateX(-50%) translateY(-85px);
   }
 }
+
+/* Force Landscape on Mobile */
+@media screen and (orientation: portrait) and (max-width: 768px) {
+  body::after {
+    content: "Please rotate your device 🔄";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  #root {
+    display: none;
+  }
+}
+
+/* Mobile Landscape Adjustments */
+@media screen and (orientation: landscape) and (max-height: 600px) {
+  /* Scale down the entire board container if needed, or adjust specific elements */
+  .board-container {
+    transform: scale(0.9);
+    transform-origin: center;
+  }
+  
+  /* Make dice smaller */
+  .dice {
+    width: 50px;
+    height: 50px;
+    padding: 5px;
+  }
+  
+  .dice .dot {
+    width: 10px;
+    height: 10px;
+  }
+  
+  /* Make buttons smaller */
+  .roll-button {
+    padding: 8px 20px;
+    font-size: 18px;
+  }
+  
+  .action-btn {
+    width: 50px;
+    height: 40px;
+    font-size: 9px;
+  }
+  
+  .action-btn .btn-icon {
+    font-size: 16px;
+  }
+  
+  /* Adjust modal sizes */
+  .buy-modal {
+    width: 300px;
+    transform: scale(0.85);
+  }
+  
+  .modal-heading-text {
+    font-size: 18px;
+  }
+  
+  .modal-city-name {
+    font-size: 20px;
+  }
+  
+  .modal-row {
+    font-size: 16px;
+  }
+  
+  /* Sidebar adjustments */
+  .sidebar {
+    width: 280px;
+    transform: scale(0.9);
+    transform-origin: top right;
+  }
+}

@@ -60,14 +60,21 @@ function App() {
   // Inventory State (Immunity cards, etc.)
   // Structure: { playerIndex: { jail_card: 0, robbery_immunity: 0, tax_immunity: 0 } }
   const [playerInventory, setPlayerInventory] = useState({});
+  
+  // Active Effects State (Discounts, etc.)
+  // Structure: { playerIndex: { discount_50: false } }
+  const [activeEffects, setActiveEffects] = useState({});
 
-  // Initialize inventory
+  // Initialize inventory and effects
   useEffect(() => {
     const initialInventory = {};
+    const initialEffects = {};
     players.forEach((_, idx) => {
       initialInventory[idx] = { jail_card: 0, robbery_immunity: 0, tax_immunity: 0 };
+      initialEffects[idx] = { discount_50: false };
     });
     setPlayerInventory(initialInventory);
+    setActiveEffects(initialEffects);
   }, []);
   
   // Modal closing animation state
@@ -223,7 +230,20 @@ function App() {
       setPlayerPositions(prev => {
         const newPositions = [...prev];
         // Handle wrapping correctly for both directions
-        newPositions[playerIdx] = (startPos + (i * direction) + 36) % 36;
+        const nextPos = (startPos + (i * direction) + 36) % 36;
+        newPositions[playerIdx] = nextPos;
+        
+        // Check for GO (passing index 0)
+        if (nextPos === 0 && direction > 0) {
+             setPlayerMoney(moneyPrev => {
+               const moneyUpdated = [...moneyPrev];
+               moneyUpdated[playerIdx] += 1000;
+               return moneyUpdated;
+             });
+             setFloatingPrices(fpPrev => [...fpPrev, { price: 1000, tileIndex: 0, key: Date.now(), isPositive: true }]);
+             setHistory(histPrev => [`${players[playerIdx].name} passed GO! Collect $1000`, ...histPrev.slice(0, 9)]);
+        }
+        
         return newPositions;
       });
 
@@ -366,6 +386,24 @@ function App() {
     return validCards[Math.floor(Math.random() * validCards.length)];
   };
 
+  // Smart Chest Card Selection
+  const getSmartChestCard = (playerIndex) => {
+    const validCards = CHEST_CARDS.filter(card => {
+      // 1. Debt Forgiveness: Only if player has negative money (debt)
+      if (card.action === 'CLEAR_DEBT' || card.action === 'EXTEND_DEBT') {
+        return playerMoney[playerIndex] < 0;
+      }
+      return true;
+    });
+    
+    // If no valid cards (e.g. no debt), fallback to non-debt cards
+    if (validCards.length === 0) {
+      return CHEST_CARDS.filter(c => c.action !== 'CLEAR_DEBT' && c.action !== 'EXTEND_DEBT')[0];
+    }
+    
+    return validCards[Math.floor(Math.random() * validCards.length)];
+  };
+
   // Helper to process tile arrival (Rent, Buy, Special Tiles)
   const handleTileArrival = (playerIndex, tileIndex, isDoubles = false) => {
     // 1. Check Special Tiles
@@ -377,7 +415,35 @@ function App() {
 
     // Rob Bank (Index 18)
     if (tileIndex === 18) {
-      setShowRobBankModal(true);
+      // Robbery Event: Lose $300
+      setPlayerMoney(prev => {
+        const updated = [...prev];
+        updated[playerIndex] -= 300;
+        return updated;
+      });
+      const animKey = Date.now();
+      setFloatingPrices(prev => [...prev, { price: 300, tileIndex: 18, key: animKey, isPositive: false }]);
+      setHistory(prev => [`💸 ${players[playerIndex].name} was robbed of $300!`, ...prev.slice(0, 9)]);
+      
+      // Optional: Show Rob Bank Modal only if we want the "Risk it all" mechanic. 
+      // User said "robber tile shows modal like usual buying one, but it shoudl be a robbery, saying youre robbed $300"
+      // So we replace the modal trigger with this direct effect.
+      // However, the "Rob Bank" modal was for a specific mini-game. 
+      // If the user wants the mini-game to be separate or removed, we should clarify.
+      // But based on "robber tile shows modal like usual buying one", it implies tile 18 was treated as property.
+      // My previous code had `if (tileIndex === 18) { setShowRobBankModal(true); return; }`
+      // The user says "shows modal like usual buying one". This suggests my previous check might have failed or fallen through.
+      // Wait, tile 18 is "Rob Bank". If I look at `handleTileArrival`, it checks tile 18 explicitly.
+      // If the user sees a "buying" modal, maybe `getPropertyByTileIndex` returns something for 18?
+      // `getPropertyByTileIndex` returns null for 18.
+      // Ah, maybe the user means the "Rob Bank" modal LOOKS like a buying modal?
+      // "robber tile shows modal like usual buying one" -> The Rob Bank modal I made reuses the "buy-modal" class.
+      // But the user says "it shoudl be a robbery, saying youre robbed $300".
+      // So I will change the behavior of landing on tile 18 to just be a robbery.
+      // I will keep the "Rob Bank" modal for the "Risk it all" mechanic if it's triggered by something else, or remove it if tile 18 was the only trigger.
+      // For now, I'll make landing on 18 just take money.
+      
+      endTurn(playerIndex, isDoubles);
       return;
     }
 
@@ -391,7 +457,7 @@ function App() {
     
     // Community Chest (Index 30)
     if (tileIndex === 30) {
-      const randomCard = CHEST_CARDS[Math.floor(Math.random() * CHEST_CARDS.length)];
+      const randomCard = getSmartChestCard(playerIndex);
       setCurrentChestCard(randomCard);
       setShowChestModal(true);
       return;
@@ -550,16 +616,42 @@ function App() {
           handleTileArrival(playerIndex, targetPos, false); // Assume no doubles for chance movement
           break;
           
-        case 'MOVE_RELATIVE':
-          const relSteps = card.steps;
-          await movePlayerToken(playerIndex, relSteps, 100);
+        case 'MOVE_STEPS':
+          await movePlayerToken(playerIndex, card.steps);
+          const newPosSteps2 = (currentPos + card.steps + 36) % 36;
+          setHistory(prev => [`${players[playerIndex].name} moved ${card.steps} steps`, ...prev.slice(0, 9)]);
+          handleTileArrival(playerIndex, newPosSteps2, false);
+          return;
+
+        case 'MOVE_FORWARD_RANDOM':
+          const fwdSteps = Math.floor(Math.random() * 10) + 1;
+          await movePlayerToken(playerIndex, fwdSteps);
+          const newPosFwd = (currentPos + fwdSteps + 36) % 36;
+          setHistory(prev => [`${players[playerIndex].name} moved forward ${fwdSteps} steps`, ...prev.slice(0, 9)]);
+          handleTileArrival(playerIndex, newPosFwd, false);
+          return;
+
+        case 'MOVE_BACKWARD_RANDOM':
+          const backSteps = -(Math.floor(Math.random() * 10) + 1);
+          await movePlayerToken(playerIndex, backSteps);
+          const newPosBack = (currentPos + backSteps + 36) % 36;
+          setHistory(prev => [`${players[playerIndex].name} moved back ${Math.abs(backSteps)} steps`, ...prev.slice(0, 9)]);
+          handleTileArrival(playerIndex, newPosBack, false);
+          return;
+
+        case 'MOVE_TO_RANDOM':
+          let randomTarget;
+          do {
+            randomTarget = Math.floor(Math.random() * 36);
+          } while (randomTarget === currentPos);
           
-          const newPos = (playerPositions[playerIndex] + relSteps + 36) % 36;
-          setHistory(prev => [`${players[playerIndex].name} moved ${relSteps} spaces`, ...prev.slice(0, 9)]);
+          // Calculate steps to animate properly
+          const stepsToRandom = (randomTarget - currentPos + 36) % 36;
+          await movePlayerToken(playerIndex, stepsToRandom);
           
-          // Process arrival at new tile
-          handleTileArrival(playerIndex, newPos, false);
-          break;
+          setHistory(prev => [`${players[playerIndex].name} teleported to ${getTileName(randomTarget)}`, ...prev.slice(0, 9)]);
+          handleTileArrival(playerIndex, randomTarget, false);
+          return;
           
         case 'GO_TO_JAIL':
           // Move fast to Jail
@@ -628,6 +720,14 @@ function App() {
           setHistory(prev => [`${players[playerIndex].name} paid $${amount} to each player`, ...prev.slice(0, 9)]);
           break;
           
+        case 'MOVE_STEPS':
+          await movePlayerToken(playerIndex, card.steps);
+          const newPosSteps = (currentPos + card.steps + 36) % 36;
+          setHistory(prev => [`${players[playerIndex].name} moved ${card.steps} steps`, ...prev.slice(0, 9)]);
+          handleTileArrival(playerIndex, newPosSteps, false);
+          // Note: handleTileArrival calls endTurn, so we don't need to call it here if we return
+          return;
+
         default:
           break;
       }
@@ -646,41 +746,6 @@ function App() {
       const currentPos = playerPositions[playerIndex];
       
       switch (card.action) {
-        case 'MONEY_ADD':
-          setPlayerMoney(prev => {
-            const updated = [...prev];
-            updated[playerIndex] += card.amount;
-            return updated;
-          });
-          setFloatingPrices(prev => [...prev, { price: card.amount, tileIndex: currentPos, key: Date.now(), isPositive: true }]);
-          setHistory(prev => [`${players[playerIndex].name} gained $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
-          break;
-          
-        case 'MONEY_SUBTRACT':
-          setPlayerMoney(prev => {
-            const updated = [...prev];
-            updated[playerIndex] -= card.amount;
-            return updated;
-          });
-          setFloatingPrices(prev => [...prev, { price: card.amount, tileIndex: currentPos, key: Date.now(), isPositive: false }]);
-          setHistory(prev => [`${players[playerIndex].name} lost $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
-          break;
-          
-        case 'COLLECT_FROM_ALL':
-          const amount = card.amount;
-          setPlayerMoney(prev => {
-            const updated = [...prev];
-            players.forEach((_, idx) => {
-              if (idx !== playerIndex) {
-                updated[idx] -= amount;
-                updated[playerIndex] += amount;
-              }
-            });
-            return updated;
-          });
-          setHistory(prev => [`${players[playerIndex].name} collected $${amount} from everyone`, ...prev.slice(0, 9)]);
-          break;
-          
         case 'ADD_INVENTORY':
           setPlayerInventory(prev => ({
             ...prev,
@@ -689,53 +754,26 @@ function App() {
               [card.type]: (prev[playerIndex]?.[card.type] || 0) + 1
             }
           }));
-          setHistory(prev => [`${players[playerIndex].name} got ${card.type.replace('_', ' ')}`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${players[playerIndex].name} got ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
-        case 'REPAIRS':
-          // Same logic as Chance
-          let totalCost = 0;
-          Object.entries(propertyOwnership).forEach(([tileIdx, ownerIdx]) => {
-            if (parseInt(ownerIdx) === playerIndex) {
-              const level = propertyLevels[tileIdx] || 0;
-              if (level === 5) {
-                totalCost += card.hotelCost;
-              } else {
-                totalCost += level * card.houseCost;
-              }
+        case 'ADD_EFFECT':
+          setActiveEffects(prev => ({
+            ...prev,
+            [playerIndex]: {
+              ...prev[playerIndex],
+              [card.type]: true
             }
-          });
-          if (totalCost > 0) {
-            setPlayerMoney(prev => {
-              const updated = [...prev];
-              updated[playerIndex] -= totalCost;
-              return updated;
-            });
-            setFloatingPrices(prev => [...prev, { price: totalCost, tileIndex: currentPos, key: Date.now(), isPositive: false }]);
-            setHistory(prev => [`${players[playerIndex].name} paid $${totalCost} for repairs`, ...prev.slice(0, 9)]);
-          }
-          break;
-          
-        case 'GO_TO_JAIL':
-          const jailIndex = 28;
-          let stepsToJail = (jailIndex - currentPos + 36) % 36;
-          if (stepsToJail > 0) await movePlayerToken(playerIndex, stepsToJail, 50);
-          setHistory(prev => [`${players[playerIndex].name} went to Jail!`, ...prev.slice(0, 9)]);
+          }));
+          setHistory(prev => [`${players[playerIndex].name} activated: ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
         case 'CLEAR_DEBT':
           setPlayerMoney(prev => {
             const updated = [...prev];
-            const currentMoney = updated[playerIndex];
-            if (currentMoney < 0) {
-              if (card.debtType === 'full') {
-                updated[playerIndex] = 0;
-                setHistory(prev => [`${players[playerIndex].name}'s debt was cleared!`, ...prev.slice(0, 9)]);
-              } else if (card.debtType === 'percentage') {
-                const forgiveness = Math.floor(Math.abs(currentMoney) * card.value);
-                updated[playerIndex] += forgiveness;
-                setHistory(prev => [`${players[playerIndex].name} got $${forgiveness} debt forgiveness`, ...prev.slice(0, 9)]);
-              }
+            if (updated[playerIndex] < 0) {
+              updated[playerIndex] = 0;
+              setHistory(prev => [`${players[playerIndex].name}'s debt was cleared!`, ...prev.slice(0, 9)]);
             } else {
                setHistory(prev => [`${players[playerIndex].name} has no debt to clear`, ...prev.slice(0, 9)]);
             }
@@ -743,6 +781,10 @@ function App() {
           });
           break;
           
+        case 'EXTEND_DEBT':
+           setHistory(prev => [`${players[playerIndex].name} got Debt Extension (Not Implemented)`, ...prev.slice(0, 9)]);
+           break;
+
         default:
           break;
       }
@@ -825,11 +867,25 @@ function App() {
     const { tileIndex, price, buyerIndex } = buyingProperty;
     
     // Check if player has enough money
-    if (playerMoney[buyerIndex] >= price) {
+    let finalPrice = price;
+    
+    // Check for 50% Discount
+    if (activeEffects[buyerIndex]?.discount_50) {
+      finalPrice = Math.floor(price / 2);
+      setHistory(prev => [`🏷️ ${players[buyerIndex].name} used 50% Discount!`, ...prev.slice(0, 9)]);
+      
+      // Consume discount
+      setActiveEffects(prev => ({
+        ...prev,
+        [buyerIndex]: { ...prev[buyerIndex], discount_50: false }
+      }));
+    }
+
+    if (playerMoney[buyerIndex] >= finalPrice) {
       // Deduct money
       setPlayerMoney(prev => {
         const updated = [...prev];
-        updated[buyerIndex] -= price;
+        updated[buyerIndex] -= finalPrice;
         return updated;
       });
       
@@ -841,14 +897,14 @@ function App() {
       
       // Trigger floating price animation (negative/red for buyer)
       const animKey = Date.now();
-      setFloatingPrices(prev => [...prev, { price, tileIndex, key: animKey, isPositive: false }]);
+      setFloatingPrices(prev => [...prev, { price: finalPrice, tileIndex, key: animKey, isPositive: false }]);
       setTimeout(() => {
         setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
       }, 3000);
       
       // Add to history
       setHistory(historyPrev => [
-        `${players[buyerIndex].name} bought ${buyingProperty.name} for $${price}`,
+        `${players[buyerIndex].name} bought ${buyingProperty.name} for $${finalPrice}`,
         ...historyPrev.slice(0, 9)
       ]);
     }
@@ -997,8 +1053,20 @@ function App() {
     if (currentLevel >= 5) return; // Max level
     
     // Determine cost (Hotel = 2 * House Cost)
-    const currentUpgradeCost = currentLevel === 4 ? upgradeCost * 2 : upgradeCost;
+    let currentUpgradeCost = currentLevel === 4 ? upgradeCost * 2 : upgradeCost;
     
+    // Check for 50% Discount
+    if (activeEffects[currentPlayer]?.discount_50) {
+      currentUpgradeCost = Math.floor(currentUpgradeCost / 2);
+      setHistory(prev => [`🏷️ ${players[currentPlayer].name} used 50% Discount on Upgrade!`, ...prev.slice(0, 9)]);
+      
+      // Consume discount
+      setActiveEffects(prev => ({
+        ...prev,
+        [currentPlayer]: { ...prev[currentPlayer], discount_50: false }
+      }));
+    }
+
     if (playerMoney[ownerIndex] < currentUpgradeCost) return; // Not enough money
     
     // Deduct money
@@ -1008,6 +1076,13 @@ function App() {
       return updated;
     });
     
+    // Trigger floating price animation
+    const animKey = Date.now();
+    setFloatingPrices(prev => [...prev, { price: currentUpgradeCost, tileIndex: selectedProperty.tileIndex, key: animKey, isPositive: false }]);
+    setTimeout(() => {
+      setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
+    }, 3000);
+
     // Increase level
     setPropertyLevels(prev => ({
       ...prev,
@@ -1015,7 +1090,7 @@ function App() {
     }));
     
     setHistory(historyPrev => [
-      `🔨 ${players[ownerIndex].name} upgraded ${selectedProperty.name} to Level ${currentLevel + 1}`,
+      `🔨 ${players[ownerIndex].name} upgraded ${selectedProperty.name} to Level ${currentLevel + 1} for $${currentUpgradeCost}`,
       ...historyPrev.slice(0, 9)
     ]);
   };
@@ -1576,7 +1651,20 @@ function App() {
               <div className="modal-details">
                 <div className="modal-row">
                   <span>cost</span>
-                  <span className="modal-value">${buyingProperty.price?.toLocaleString()}</span>
+                  <span className="modal-value">
+                    {activeEffects[buyingProperty.buyerIndex]?.discount_50 ? (
+                      <>
+                        <span style={{ textDecoration: 'line-through', color: '#999', marginRight: '8px', fontSize: '0.8em' }}>
+                          ${buyingProperty.price?.toLocaleString()}
+                        </span>
+                        <span style={{ color: '#4CAF50' }}>
+                          ${Math.floor(buyingProperty.price / 2)?.toLocaleString()}
+                        </span>
+                      </>
+                    ) : (
+                      `$${buyingProperty.price?.toLocaleString()}`
+                    )}
+                  </span>
                 </div>
                 <div className="modal-row">
                   <span>rent</span>
@@ -1728,7 +1816,7 @@ function App() {
           <div className="buy-modal">
             {/* Header */}
             <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #795548 0%, #5D4037 100%)' }}>
-              <span className="modal-heading-text">COMMUNITY CHEST</span>
+              <span className="modal-heading-text">TREASURE CHEST</span>
             </div>
             
             {/* Body */}

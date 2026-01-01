@@ -751,132 +751,13 @@ function App() {
     });
   };
 
-  // Handle Chest Card Action
-  const handleChestCardAction = (card) => {
-    if (!card) return;
-    
-    closeAllModals(async () => {
-      const playerIndex = currentPlayer;
-      const currentPos = playerPositions[playerIndex];
-      
-      switch (card.action) {
-        case 'MONEY_ADD':
-          setPlayerMoney(prev => {
-            const updated = [...prev];
-            updated[playerIndex] += card.amount;
-            return updated;
-          });
-          setFloatingPrices(prev => [...prev, { price: card.amount, tileIndex: currentPos, key: Date.now(), isPositive: true }]);
-          setHistory(prev => [`${players[playerIndex].name} gained $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
-          break;
-          
-        case 'MONEY_SUBTRACT':
-          setPlayerMoney(prev => {
-            const updated = [...prev];
-            updated[playerIndex] -= card.amount;
-            return updated;
-          });
-          setFloatingPrices(prev => [...prev, { price: card.amount, tileIndex: currentPos, key: Date.now(), isPositive: false }]);
-          setHistory(prev => [`${players[playerIndex].name} lost $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
-          break;
-          
-        case 'COLLECT_FROM_ALL':
-          const amount = card.amount;
-          setPlayerMoney(prev => {
-            const updated = [...prev];
-            players.forEach((_, idx) => {
-              if (idx !== playerIndex) {
-                updated[idx] -= amount;
-                updated[playerIndex] += amount;
-              }
-            });
-            return updated;
-          });
-          setHistory(prev => [`${players[playerIndex].name} collected $${amount} from everyone`, ...prev.slice(0, 9)]);
-          break;
-          
-        case 'ADD_INVENTORY':
-          setPlayerInventory(prev => ({
-            ...prev,
-            [playerIndex]: {
-              ...prev[playerIndex],
-              [card.type]: (prev[playerIndex]?.[card.type] || 0) + 1
-            }
-          }));
-          setHistory(prev => [`${players[playerIndex].name} got ${card.type.replace('_', ' ')}`, ...prev.slice(0, 9)]);
-          break;
-          
-        case 'REPAIRS':
-          // Same logic as Chance
-          let totalCost = 0;
-          Object.entries(propertyOwnership).forEach(([tileIdx, ownerIdx]) => {
-            if (parseInt(ownerIdx) === playerIndex) {
-              const level = propertyLevels[tileIdx] || 0;
-              if (level === 5) {
-                totalCost += card.hotelCost;
-              } else {
-                totalCost += level * card.houseCost;
-              }
-            }
-          });
-          if (totalCost > 0) {
-            setPlayerMoney(prev => {
-              const updated = [...prev];
-              updated[playerIndex] -= totalCost;
-              return updated;
-            });
-            setFloatingPrices(prev => [...prev, { price: totalCost, tileIndex: currentPos, key: Date.now(), isPositive: false }]);
-            setHistory(prev => [`${players[playerIndex].name} paid $${totalCost} for repairs`, ...prev.slice(0, 9)]);
-          }
-          break;
-          
-        case 'GO_TO_JAIL':
-          const jailIndex = 28;
-          let stepsToJail = (jailIndex - currentPos + 36) % 36;
-          if (stepsToJail > 0) await movePlayerToken(playerIndex, stepsToJail, 50);
-          setHistory(prev => [`${players[playerIndex].name} went to Jail!`, ...prev.slice(0, 9)]);
-          break;
-          
-        case 'CLEAR_DEBT':
-          setPlayerMoney(prev => {
-            const updated = [...prev];
-            const currentMoney = updated[playerIndex];
-            if (currentMoney < 0) {
-              if (card.debtType === 'full') {
-                updated[playerIndex] = 0;
-                setHistory(prev => [`${players[playerIndex].name}'s debt was cleared!`, ...prev.slice(0, 9)]);
-              } else if (card.debtType === 'percentage') {
-                const forgiveness = Math.floor(Math.abs(currentMoney) * card.value);
-                updated[playerIndex] += forgiveness;
-                setHistory(prev => [`${players[playerIndex].name} got $${forgiveness} debt forgiveness`, ...prev.slice(0, 9)]);
-              }
-            } else {
-               setHistory(prev => [`${players[playerIndex].name} has no debt to clear`, ...prev.slice(0, 9)]);
-            }
-            return updated;
-          });
-          break;
-          
-        default:
-          break;
-      }
-      
-      endTurn(currentPlayer, false);
-    });
-  };
+
 
   // Debug: Test Chance Card
   const handleTestChance = () => {
     const randomCard = getSmartChanceCard(currentPlayer);
     setCurrentChanceCard(randomCard);
     setShowChanceModal(true);
-  };
-  
-  // Debug: Test Chest Card
-  const handleTestChest = () => {
-    const randomCard = CHEST_CARDS[Math.floor(Math.random() * CHEST_CARDS.length)];
-    setCurrentChestCard(randomCard);
-    setShowChestModal(true);
   };
   
   // Debug: Test Chest Card
@@ -1931,16 +1812,23 @@ function App() {
                 {/* Actually, in local multiplayer, anyone can click. But logically only the owner should upgrade. */}
                 {propertyOwnership[selectedProperty.tileIndex] !== undefined && 
                  hasMonopoly(selectedProperty.tileIndex, propertyOwnership[selectedProperty.tileIndex]) && 
-                 (propertyLevels[selectedProperty.tileIndex] || 0) < 5 && (
-                  <button 
-                    className="modal-btn buy" 
-                    onClick={handleUpgradeProperty}
-                    disabled={playerMoney[propertyOwnership[selectedProperty.tileIndex]] < ((propertyLevels[selectedProperty.tileIndex] || 0) === 4 ? selectedProperty.upgradeCost * 2 : selectedProperty.upgradeCost)}
-                    style={{ opacity: playerMoney[propertyOwnership[selectedProperty.tileIndex]] < ((propertyLevels[selectedProperty.tileIndex] || 0) === 4 ? selectedProperty.upgradeCost * 2 : selectedProperty.upgradeCost) ? 0.5 : 1 }}
-                  >
-                    UPGRADE
-                  </button>
-                )}
+                 (
+                   <button 
+                     className="modal-btn buy" 
+                     onClick={handleUpgradeProperty}
+                     disabled={
+                       propertyLevels[selectedProperty.tileIndex] >= 5 || 
+                       playerMoney[currentPlayer] < (propertyLevels[selectedProperty.tileIndex] === 4 ? selectedProperty.upgradeCost * 2 : selectedProperty.upgradeCost)
+                     }
+                     style={{ 
+                       background: '#4CAF50', 
+                       opacity: (propertyLevels[selectedProperty.tileIndex] >= 5 || playerMoney[currentPlayer] < (propertyLevels[selectedProperty.tileIndex] === 4 ? selectedProperty.upgradeCost * 2 : selectedProperty.upgradeCost)) ? 0.5 : 1 
+                     }}
+                   >
+                     {propertyLevels[selectedProperty.tileIndex] === 4 ? 'BUY HOTEL' : 'UPGRADE'}
+                   </button>
+                 )
+                }
               </div>
             </div>
           </div>

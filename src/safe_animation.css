@@ -1,0 +1,78 @@
+/* Safe Dial Animation */
+.safe-dial-container {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+}
+
+.safe-dial {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #546E7A, #263238);
+  border: 4px solid #B0BEC5;
+  box-shadow: 
+    0 5px 15px rgba(0,0,0,0.5),
+    inset 0 2px 5px rgba(255,255,255,0.3);
+  position: relative;
+  animation: dial-spin 2s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+}
+
+.safe-dial::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 15px;
+  background: #FF5252;
+  border-radius: 3px;
+}
+
+.safe-dial::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #B0BEC5, #78909C);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+@keyframes dial-spin {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(180deg); }
+  40% { transform: rotate(90deg); }
+  60% { transform: rotate(270deg); }
+  80% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Progress Bar */
+.cracking-progress {
+  width: 80%;
+  height: 10px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 5px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.cracking-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #FFD54F, #FF6F00);
+  width: 0%;
+  animation: progress-fill 4s linear forwards;
+  box-shadow: 0 0 10px rgba(255, 160, 0, 0.5);
+}
+
+@keyframes progress-fill {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}

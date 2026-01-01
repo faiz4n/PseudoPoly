@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<body>
+<img src="/gradient_ref.png" id="img" style="display:block; max-width:100%;" onload="analyze()">
+<div id="results" style="font-size: 30px; font-weight: bold;">Waiting...</div>
+<script>
+  function analyze() {
+    var img = document.getElementById('img');
+    var canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    
+    function hex(x, y) {
+       x = Math.floor(x);
+       y = Math.floor(y);
+       var p = ctx.getImageData(x, y, 1, 1).data;
+       return '#' + ((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1);
+    }
+    
+    var w = img.width;
+    var h = img.height;
+    
+    // Find content bounding box (scan for non-transparent pixels)
+    var minX = w, maxX = 0, minY = h, maxY = 0;
+    var found = false;
+    
+    var imageData = ctx.getImageData(0, 0, w, h);
+    var data = imageData.data;
+    
+    for (var y = 0; y < h; y += 5) {
+      for (var x = 0; x < w; x += 5) {
+        var alpha = data[(y * w + x) * 4 + 3];
+        if (alpha > 50) { // Not transparent
+           if (x < minX) minX = x;
+           if (x > maxX) maxX = x;
+           if (y < minY) minY = y;
+           if (y > maxY) maxY = y;
+           found = true;
+        }
+      }
+    }
+    
+    if (!found) {
+        document.getElementById('results').innerText = "No opaque content found";
+        return;
+    }
+    
+    // Sample along the horizontal center of the content
+    var centerY = Math.floor((minY + maxY) / 2);
+    
+    // Check Vertical Gradient along Center Line
+    var centerX = Math.floor(w / 2);
+    
+    var trueMinY = -1;
+    var trueMaxY = -1;
+    
+    for (var y = 0; y < h; y++) {
+        var alpha = data[(y * w + centerX) * 4 + 3];
+        if (alpha > 100) {
+            if (trueMinY === -1) trueMinY = y;
+            trueMaxY = y;
+        }
+    }
+    
+    if (trueMinY === -1) {
+         document.getElementById('results').innerText = "No content at center line";
+         return;
+    }
+    
+    // Sample Vertical Gradient
+    var topY = trueMinY + 10;
+    var bottomY = trueMaxY - 10;
+    var topColor = hex(centerX, topY);
+    var bottomColor = hex(centerX, bottomY);
+    
+    // Check Horizontal Gradient along Center Y
+    var centerY = Math.floor((trueMinY + trueMaxY) / 2);
+    
+    // Scan horizontal at centerY
+    var trueMinX = -1, trueMaxX = -1;
+    for(var x=0; x<w; x++){
+       var alpha = data[(centerY * w + x) * 4 + 3];
+       if(alpha > 100){
+          if(trueMinX === -1) trueMinX = x;
+          trueMaxX = x;
+       }
+    }
+
+    var startX = trueMinX + 10;
+    var endX = trueMaxX - 10;
+    var startColor = hex(startX, centerY);
+    var endColor = hex(endX, centerY);
+    
+    document.getElementById('results').innerText = `V_Top:${topColor} V_Btm:${bottomColor} H_Start:${startColor} H_End:${endColor}`;
+  }
+</script>
+</body>
+</html>

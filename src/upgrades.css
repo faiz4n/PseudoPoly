@@ -1,0 +1,49 @@
+/* Upgrade Indicators - Positioned OUTSIDE tiles with HIGH z-index */
+.upgrade-container {
+  position: absolute;
+  display: flex;
+  gap: 2px;
+  z-index: 1000; /* Very high z-index to be above board background */
+  pointer-events: none;
+}
+
+.house-icon {
+  width: 14px;
+  height: 14px;
+  color: #4CAF50; /* Green */
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+}
+
+.hotel-icon {
+  width: 20px;
+  height: 20px;
+  color: #F44336; /* Red */
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+}
+
+/* Positioning OUTSIDE the tile (towards board center) */
+.upgrade-container.bottom {
+  top: -18px; /* Above the tile */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.upgrade-container.top {
+  bottom: -18px; /* Below the tile */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.upgrade-container.left {
+  right: -18px; /* Right of the tile */
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: column;
+}
+
+.upgrade-container.right {
+  left: -18px; /* Left of the tile */
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: column;
+}

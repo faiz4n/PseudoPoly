@@ -1,0 +1,35 @@
+/* Player Pawn Tokens on Board */
+.player-pawn {
+  position: absolute;
+  width: 5vh;
+  height: 5vh;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* Use linear transition for position to avoid stop-start feel during rapid updates */
+  transition: top 0.3s linear, left 0.3s linear;
+  z-index: 20;
+}
+
+.pawn-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Hopping Animation */
+@keyframes hop {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4vh) scale(1.1); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.pawn-hopping {
+  animation: hop 0.3s ease-in-out infinite;
+  z-index: 100 !important; /* Keep on top while hopping */
+}

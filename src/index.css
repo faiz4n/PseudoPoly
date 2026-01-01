@@ -1,0 +1,1019 @@
+/* Monopoly Game - Main Stylesheet */
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&family=Varela+Round&display=swap');
+
+/* Custom Junegull font for prices */
+@font-face {
+  font-family: 'Junegull';
+  src: url('/junegull rg.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Property Colors */
+  --brown: #8B4513;
+  --pink: #E91E8C;
+  --light-blue: #29B6F6;
+  --blue: #1976D2;
+  --orange: #FF9800;
+  --red: #E53935;
+  --yellow: #FFEB3B;
+  --green: #4CAF50;
+  --gray: #9E9E9E;
+  
+  /* UI Colors */
+  --bg-ocean: linear-gradient(135deg, #1565C0 0%, #0D47A1 50%, #1976D2 100%);
+  --sidebar-orange: #FF9800;
+  --sidebar-dark-orange: #F57C00;
+  --history-blue: #0D47A1;
+  --button-green: #4CAF50;
+  --button-red: #C62828;
+  --button-gold: #FFB300;
+  --button-blue: #1976D2;
+  
+  /* Board layout - viewport-relative sizing, NO GAPS */
+  /* Board fills 100vh, corners are 13.5vh each (27vh total) */
+  /* Available space: 100vh - 27vh = 73vh */
+  /* Horizontal tiles (9): 73vh / 9 = 8.111vh each */
+  /* Vertical tiles (7): 73vh / 7 = 10.428vh each */
+  --board-bg: #E8F5E9;
+  --tile-border: #333;
+  --corner-size: 13.5vh;
+  --tile-width: 8.111vh;
+  --tile-height: 10.428vh;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: url('/board-bg.png');
+  background-size: cover;
+  background-position: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Main Game Container */
+.game-container {
+  display: flex;
+  gap: 15px;
+  padding: 0;
+  height: 100vh;
+  align-items: center;
+}
+
+/* ==================== BOARD STYLES ==================== */
+.board {
+  position: relative;
+  width: 100vh;
+  height: 100vh;
+  background: url('/board-bg.png');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Corner Spaces - White background, dark brown text */
+.corner {
+  position: absolute;
+  width: var(--corner-size);
+  height: var(--corner-size);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #5b260b;
+  background: white;
+  border: 1px solid #1E88E5;
+  border-radius: 0;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.corner.start {
+  bottom: 0;
+  right: 0;
+}
+
+.corner.start {
+  padding: 5px;
+}
+
+.corner-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.corner.parking {
+  bottom: 0;
+  left: 0;
+}
+
+.corner.parking {
+  padding: 5px;
+}
+
+.corner.robbank {
+  top: 0;
+  left: 0;
+  font-size: 11px;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.corner.robbank .rob-text {
+  font-size: 14px;
+  z-index: 2;
+  position: relative;
+}
+
+.corner-icon-center {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.corner.robbank .bank-text {
+  font-size: 14px;
+  z-index: 2;
+}
+
+.corner.robbank .bank-text {
+  font-size: 14px;
+  z-index: 2;
+  position: relative;
+}
+
+.corner.jail {
+  top: 0;
+  right: 0;
+  justify-content: flex-start;
+  padding-top: 8px;
+}
+
+.corner.jail .jail-text {
+  font-size: 14px;
+  font-weight: 800;
+  z-index: 2;
+  color: #5b260b;
+  position: relative;
+}
+
+.corner.jail .jail-icon {
+  font-size: 28px;
+  margin-top: 5px;
+}
+
+/* Property Tiles - Single Unified Background with 3D shadow effect */
+.tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 2px;
+  margin: 0;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 0;
+  overflow: visible;
+  box-sizing: border-box;
+  /* Inset shadow for vignette edges */
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1), inset 0 -4px 10px rgba(0,0,0,0.1);
+}
+
+/* 3D gradient overlay: Clear at top -> Dark at bottom */
+.tile::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.3) 100%);
+  pointer-events: none;
+}
+
+/* Tile content elements - all transparent backgrounds, no partitions */
+.tile .tile-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  background: transparent;
+}
+
+/* City name - TOP aligned */
+.tile .tile-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #5b260b;
+  text-align: center;
+  line-height: 1.1;
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+/* Price - BOTTOM aligned, Junegull font */
+.tile .tile-price {
+  font-family: 'Junegull', sans-serif;
+  font-size: 17px;
+  font-weight: 500;
+  color: white;
+  text-shadow: 
+    -1px -1px 0 #5a3000,
+     1px -1px 0 #5a3000,
+    -1px  1px 0 #5a3000,
+     1px  1px 0 #5a3000,
+     0 1px 2px rgba(0,0,0,0.4);
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+/* Owned property - player color background */
+.tile .tile-price.owned {
+  width: 90%;
+  padding: 3px 0;
+  border-radius: 6px;
+  -webkit-text-stroke: 0px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  box-shadow: 
+    0 2px 4px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  text-align: center;
+}
+
+/* Horizontal tiles (top and bottom rows) - height matches corner */
+.tile.horizontal {
+  width: var(--tile-width);
+  height: var(--corner-size);
+}
+
+/* Vertical tiles (left and right columns) - width matches corner */
+.tile.vertical {
+  width: var(--corner-size);
+  height: var(--tile-height);
+  flex-direction: column-reverse;
+  justify-content: space-between;
+  padding: 4px;
+}
+
+.tile.vertical .tile-icon {
+  margin-bottom: 0;
+}
+
+.tile.vertical .tile-name {
+  writing-mode: horizontal-tb;
+}
+
+/* Adjust vertical tile gradients */
+.tile.vertical::before {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: auto;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,0.35) 0%,
+    rgba(255,255,255,0.15) 50%,
+    rgba(255,255,255,0) 100%);
+}
+
+.tile.vertical::after {
+  top: 0;
+  left: auto;
+  bottom: 0;
+  right: 0;
+  width: 25%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,0.1) 100%);
+}
+
+.tile.vertical.left {
+  flex-direction: column;
+}
+
+.tile.vertical.right {
+  flex-direction: column;
+}
+
+.tile.vertical.right::before {
+  left: auto;
+  right: 0;
+  background: linear-gradient(270deg, 
+    rgba(255,255,255,0.35) 0%,
+    rgba(255,255,255,0.15) 50%,
+    rgba(255,255,255,0) 100%);
+}
+
+.tile.vertical.right::after {
+  right: auto;
+  left: 0;
+  background: linear-gradient(270deg, 
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,0.1) 100%);
+}
+
+/* ==================== CENTER AREA ==================== */
+.board-center {
+  position: absolute;
+  top: var(--corner-size);
+  left: var(--corner-size);
+  right: var(--corner-size);
+  bottom: var(--corner-size);
+  background: url('/center-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Decorative elements */
+.center-decorations {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.airplane {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%) rotate(-5deg);
+  font-size: 80px;
+  filter: drop-shadow(3px 5px 8px rgba(0,0,0,0.3));
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateX(-50%) rotate(-5deg) translateY(0); }
+  50% { transform: translateX(-50%) rotate(-5deg) translateY(-10px); }
+}
+
+.yacht {
+  position: absolute;
+  bottom: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 60px;
+  filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+  animation: bob 3s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateX(-50%) rotate(-2deg); }
+  50% { transform: translateX(-50%) rotate(2deg); }
+}
+
+.money-pile {
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 50px;
+}
+
+/* Dice Area */
+.dice-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  z-index: 10;
+}
+
+.dice-container {
+  display: flex;
+  gap: 25px;
+}
+
+.dice {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(145deg, #e62222, #b01a1a);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+  padding: 10px;
+  border: none;
+}
+
+/* Dice Roll Animations - Fan-like high-speed spinning in opposite directions */
+@keyframes dice-rotate-cw {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(2160deg); } /* 6 full rotations */
+}
+
+@keyframes dice-rotate-ccw {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-2160deg); } /* 6 full rotations */
+}
+
+.dice.rolling-left {
+  animation: dice-rotate-cw 1s ease-out forwards;
+}
+
+.dice.rolling-right {
+  animation: dice-rotate-ccw 1s ease-out forwards;
+}
+
+.dice .dot {
+  width: 16px;
+  height: 16px;
+  background: radial-gradient(circle at 30% 30%, #ffffff, #e0e0e0);
+  border-radius: 50%;
+  box-shadow: 
+    inset 0 2px 4px rgba(0,0,0,0.3),
+    0 1px 2px rgba(0,0,0,0.2);
+}
+
+.dice .dot.hidden {
+  visibility: hidden;
+}
+
+/* Roll Button */
+/* Roll Button */
+.roll-button {
+  background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
+  color: white;
+  border: none;
+  padding: 12px 35px;
+  font-family: 'Junegull', sans-serif;
+  font-size: 24px;
+  letter-spacing: 1px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 
+    0 4px 0 #0D47A1,
+    0 6px 15px rgba(0,0,0,0.4);
+  transition: all 0.1s;
+  text-shadow: 0 2px 2px rgba(0,0,0,0.3);
+}
+
+.roll-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 0 #0D47A1,
+    0 8px 20px rgba(0,0,0,0.4);
+}
+
+.roll-button:active {
+  transform: translateY(2px);
+  box-shadow: 
+    0 2px 0 #1B0000,
+    0 4px 10px rgba(0,0,0,0.4);
+}
+
+/* Action Buttons */
+.action-buttons {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 55px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 11px;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  transition: all 0.2s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.action-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+}
+
+.action-btn .btn-icon {
+  font-size: 22px;
+  margin-bottom: 2px;
+}
+
+.action-btn.build {
+  background: linear-gradient(180deg, #66BB6A, #43A047);
+}
+
+.action-btn.sell {
+  background: linear-gradient(180deg, #A1887F, #795548);
+}
+
+.action-btn.bank {
+  background: linear-gradient(180deg, #FFD54F, #FFB300);
+  color: #5D4037;
+}
+
+.action-btn.deal {
+  background: linear-gradient(180deg, #42A5F5, #1E88E5);
+}
+
+/* ==================== SIDEBAR ==================== */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 360px;
+  height: 100vh;
+  padding: 10px 0;
+  box-sizing: border-box;
+}
+
+/* Top Controls */
+.top-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.control-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  transform: scale(1.05);
+}
+
+.control-btn.settings {
+  background: linear-gradient(180deg, #78909C, #546E7A);
+  color: white;
+}
+
+.control-btn.sound {
+  background: linear-gradient(180deg, #66BB6A, #43A047);
+  color: white;
+}
+
+.control-btn.help {
+  background: linear-gradient(180deg, #42A5F5, #1E88E5);
+  color: white;
+}
+
+.control-btn.menu {
+  background: linear-gradient(180deg, #FFB74D, #FF9800);
+  color: white;
+}
+
+/* Player Panel */
+.player-panel {
+  background: linear-gradient(180deg, #FFB74D, #FF9800);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  margin-bottom: 5px;
+  background: rgba(255,255,255,0.15);
+  transition: all 0.2s;
+}
+
+.player-item:last-child {
+  margin-bottom: 0;
+}
+
+.player-item.active {
+  background: linear-gradient(to bottom, #9ae61a 0%, #3a9603 100%);
+  border: 2px solid #2e7a02;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 2px 0 rgba(0,0,0,0.3);
+}
+
+.player-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.7);
+  overflow: hidden; /* Ensure image stays in circle */
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-name {
+  font-family: 'Junegull', sans-serif;
+  font-size: 22px;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+
+.player-money {
+  font-family: 'Junegull', sans-serif;
+  font-size: 22px;
+  color: #faff00;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+
+/* History Panel */
+.history-panel {
+  flex: 1;
+  background: linear-gradient(180deg, #1565C0, #0D47A1);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.history-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Cpath d='M0,150 Q100,100 200,150 T400,150 L400,300 L0,300 Z' fill='%230D47A1' opacity='0.3'/%3E%3C/svg%3E");
+  background-size: cover;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.history-header {
+  position: relative;
+  z-index: 1;
+  padding: 12px;
+  text-align: center;
+}
+
+.history-header h2 {
+  font-family: 'Junegull', sans-serif;
+  font-size: 24px;
+  color: #FFD54F;
+  letter-spacing: 3px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.history-content {
+  position: relative;
+  z-index: 1;
+  padding: 10px 15px;
+  color: white;
+  font-size: 13px;
+}
+
+.history-item {
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+/* ==================== BUYING MODAL ==================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.buy-modal {
+  width: 400px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid white;
+  box-shadow: 0 15px 60px #000000;
+  animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Closing Animations */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes scaleOut {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.8); opacity: 0; }
+}
+
+.modal-overlay.closing {
+  animation: fadeOut 0.3s ease-in forwards;
+}
+
+.modal-overlay.closing .buy-modal {
+  animation: scaleOut 0.3s ease-in forwards;
+}
+
+/* Modal Header - Pink/Magenta Gradient */
+.modal-heading {
+  position: relative;
+  padding: 12px 0;
+  text-align: center;
+  border-bottom: 1px solid rgba(128, 0, 128, 0.3);
+  background: linear-gradient(to bottom, #ff5cf2 0%, #d91be0 50%, #9400bd 100%);
+  margin: 0;
+}
+
+.modal-heading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  top: 0;
+  height: 50%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+  pointer-events: none;
+}
+
+.modal-heading-text {
+  color: white;
+  font-family: 'Varela Round', 'Nunito', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 2px rgba(0,0,0,0.5);
+  position: relative;
+  z-index: 1;
+}
+
+/* Modal Body - Yellow/Orange Gradient */
+.modal-body {
+  position: relative;
+  padding: 24px 24px 32px;
+  background: linear-gradient(to bottom, #ffe66b 0%, #ffc324 50%, #ff8800 100%);
+}
+
+/* Glossy Overlay */
+.modal-body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 48%, transparent 48.1%);
+}
+
+.modal-city-name {
+  position: relative;
+  z-index: 1;
+  font-family: 'Varela Round', 'Fredoka One', cursive;
+  font-size: 26px;
+  font-weight: 700;
+  color: #4a2c18;
+  text-align: center;
+  margin-bottom: 12px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.modal-divider {
+  height: 2px;
+  width: 80%;
+  margin: 0 auto 24px;
+  background: #7a5230;
+  opacity: 0.5;
+  border-radius: 9999px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.modal-details {
+  position: relative;
+  z-index: 1;
+  width: 75%;
+  margin: 0 auto 32px;
+}
+
+.modal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-family: 'Varela Round', 'Nunito', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #54321b;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.modal-row:first-child {
+  border-bottom: none;
+}
+
+.modal-value {
+  font-family: 'Varela Round', 'Junegull', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #54321b;
+}
+
+.modal-buttons {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 8px;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 14px 0;
+  font-family: 'Varela Round', 'Junegull', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: white;
+  text-shadow: 0 2px 2px rgba(0,0,0,0.6);
+  transition: transform 0.1s ease;
+}
+
+.modal-btn:active {
+  transform: translateY(3px);
+}
+
+.modal-btn.cancel {
+  background: linear-gradient(to bottom, #ff5252 0%, #d40000 50%, #8a0000 100%);
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.4),
+    0 5px 5px rgba(0,0,0,0.4);
+}
+
+.modal-btn.cancel:active {
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.4);
+}
+
+.modal-btn.buy {
+  background: linear-gradient(to bottom, #9df72a 0%, #5dbd00 50%, #2a6600 100%);
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.5),
+    0 5px 5px rgba(0,0,0,0.4);
+}
+
+.modal-btn.buy:active {
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.5);
+}
+
+/* ==================== FLOATING PRICE ANIMATION ==================== */
+.floating-price {
+  position: absolute;
+  font-family: 'Junegull', sans-serif;
+  font-size: 17px;
+  font-weight: 500;
+  color: #ff3333;
+  text-shadow: 
+    -1px -1px 0 #8a0000,
+     1px -1px 0 #8a0000,
+    -1px  1px 0 #8a0000,
+     1px  1px 0 #8a0000,
+     0 3px 6px rgba(0,0,0,0.5);
+  pointer-events: none;
+  z-index: 100;
+  transform: translateX(-50%);
+  animation: floatUp 3s linear forwards;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  /* Stay visible until 2.5s (83% of 3s) */
+  83% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-50px);
+  }
+  /* Fade out from 2.5s to 3s */
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-60px);
+  }
+}
+
+/* Negative (red) - for payments/purchases */
+.floating-price.negative {
+  color: #ff3333;
+  text-shadow: 
+    -1px -1px 0 #8a0000,
+     1px -1px 0 #8a0000,
+    -1px  1px 0 #8a0000,
+     1px  1px 0 #8a0000,
+     0 3px 6px rgba(0,0,0,0.5);
+}
+
+/* Positive (green) - for income, offset above */
+.floating-price.positive {
+  color: #33ff33;
+  transform: translateX(-50%) translateY(-25px); /* Start above */
+  text-shadow: 
+    -1px -1px 0 #006600,
+     1px -1px 0 #006600,
+    -1px  1px 0 #006600,
+     1px  1px 0 #006600,
+     0 3px 6px rgba(0,0,0,0.5);
+  animation: floatUpPositive 3s linear forwards;
+}
+
+@keyframes floatUpPositive {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-25px);
+  }
+  83% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-75px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-85px);
+  }
+}

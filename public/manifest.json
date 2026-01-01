@@ -11,9 +11,9 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/vite.svg",
+      "src": "/favicon.jpg",
       "sizes": "any",
-      "type": "image/svg+xml",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ]

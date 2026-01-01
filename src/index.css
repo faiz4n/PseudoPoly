@@ -647,7 +647,7 @@ body {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
   width: 360px;
   height: 100vh;
   padding: 10px 0;
@@ -679,32 +679,32 @@ body {
   transform: scale(1.05);
 }
 
-.control-btn.settings {
-  background: linear-gradient(180deg, #78909C, #546E7A);
-  color: white;
-}
-
-.control-btn.sound {
-  background: linear-gradient(180deg, #66BB6A, #43A047);
-  color: white;
-}
-
-.control-btn.help {
-  background: linear-gradient(180deg, #42A5F5, #1E88E5);
-  color: white;
-}
-
+.control-btn.settings,
+.control-btn.sound,
+.control-btn.help,
 .control-btn.menu {
-  background: linear-gradient(180deg, #FFB74D, #FF9800);
+  background: linear-gradient(180deg, #1565C0, #0D47A1);
   color: white;
 }
 
 /* Player Panel */
-.player-panel {
+/* Unified Top Section (Orange) */
+.sidebar-top-section {
   background: linear-gradient(180deg, #FFB74D, #FF9800);
   border-radius: 12px;
-  padding: 10px;
+  padding: 8px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Player Panel (Blue) */
+.player-panel {
+  background: linear-gradient(180deg, #1565C0, #0D47A1);
+  border-radius: 12px;
+  padding: 10px;
+  /* box-shadow removed as it's inside another container */
 }
 
 .player-item {
@@ -854,6 +854,10 @@ body {
 @keyframes scaleIn {
   from { transform: scale(0.8); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+.war-modal {
+  min-width: 400px;
 }
 
 /* Closing Animations */
@@ -1247,39 +1251,58 @@ body {
     font-size: 11px;
   }
 
-  /* Player Panel - compact with circular avatars */
+  /* Player Panel - very compact */
   .player-panel {
-    padding: 4px;
+    padding: 2px;
+    flex: 0 0 auto;
   }
 
   .player-item {
-    padding: 3px 5px;
-    gap: 6px;
+    padding: 2px 4px;
+    gap: 4px;
+    min-height: 0;
   }
 
   .player-avatar {
-    width: 26px;
-    height: 26px;
-    min-width: 26px;
-    min-height: 26px;
-    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
   }
 
   .player-name, .player-money {
-    font-size: 11px;
+    font-size: 9px;
   }
 
-  /* History Panel - more height */
+  /* Cash Stack - Compact overrides */
+  .cash-stack-panel {
+    padding: 4px !important;
+    margin-bottom: 4px !important;
+    border-radius: 6px !important;
+  }
+
+  .cash-stack-panel > div:first-child {
+    font-size: 9px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .cash-stack-panel > div:last-child {
+    font-size: 14px !important;
+  }
+
+  /* History Panel - maximize height */
   .history-panel {
-    flex: 1.5;
+    flex: 2;
   }
 
   .history-header h2 {
-    font-size: 14px;
+    font-size: 12px;
+    padding: 4px;
   }
 
   .history-content {
-    font-size: 10px;
+    font-size: 9px;
+    padding: 4px;
   }
 
   /* Pawn - remove white border */
@@ -1323,7 +1346,7 @@ body {
   }
 
   .modal-details {
-    width: 92%;
+    width: 75%;
     margin: 0 auto 8px;
   }
 
@@ -1338,9 +1361,133 @@ body {
   }
 
   .modal-btn {
-    padding: 6px 0;
-    font-size: 9px;
-    border-radius: 8px;
+    padding: 12px 0;
+    font-size: 12px;
+    border-radius: 16px;
+  }
+
+  /* War Modal - Mobile Optimized */
+  .war-modal {
+    min-width: 0 !important;
+    width: 90% !important;
+    max-width: 450px !important;
+    max-height: 95vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .war-modal .modal-body {
+    padding: 8px !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Result Phase Flex Layout */
+  .war-result-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    text-align: center;
+  }
+
+  .war-winner-section {
+    flex-shrink: 0;
+    margin-bottom: 10px;
+  }
+
+  .war-winner-section > div:first-child {
+    font-size: 32px !important; /* Trophy */
+    margin-bottom: 5px !important;
+  }
+
+  .war-winner-section .modal-city-name {
+    font-size: 18px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .war-winner-section > div:last-child {
+    font-size: 14px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .war-roll-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    margin-bottom: 10px;
+    padding-right: 4px; /* Space for scrollbar */
+  }
+
+  .war-roll-list > div {
+    padding: 8px 10px !important;
+    margin-bottom: 4px !important;
+    font-size: 12px !important;
+  }
+
+  .modal-buttons {
+    flex-shrink: 0;
+    margin-top: auto !important;
+  }
+
+  /* Join, Rolling, and Result Grid Layout */
+  .war-join-list,
+  .war-rolling-list,
+  .war-roll-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px !important;
+  }
+
+  .war-join-list > div,
+  .war-rolling-list > div,
+  .war-roll-list > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    text-align: center;
+    padding: 6px !important;
+    margin-bottom: 0 !important;
+    border-radius: 15px !important;
+    font-size: 16px !important;
+  }
+
+  /* Avatar Styling */
+  .war-join-list img,
+  .war-rolling-list img,
+  .war-roll-list img {
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+    margin-right: 4px !important;
+    display: inline-block !important;
+  }
+
+  /* Flex row for name + avatar inside grid item */
+  .war-join-list > div > div:first-child,
+  .war-rolling-list > div > div:first-child,
+  .war-roll-list > div > div:first-child {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 4px !important;
+  }
+
+  .war-join-list > div > span,
+  .war-rolling-list > div span,
+  .war-roll-list > div span {
+    font-size: 16px !important;
+  }
+
+  .war-join-list > div > div:last-child {
+    justify-content: center;
+  }
+
+  .war-join-list button {
+    padding: 10px !important;
+    border-radius: 10px !important;
   }
 }
 
@@ -1353,7 +1500,7 @@ body {
 
   /* Tile fonts - smaller */
   .tile .tile-name {
-    font-size: 8px;
+    font-size: 7px;
   }
 
   .tile .tile-price {
@@ -1433,7 +1580,7 @@ body {
   }
 
   .modal-heading-text {
-    font-size: 12px;
+    font-size: 16px;
   }
 
   .modal-city-name {
@@ -1445,105 +1592,40 @@ body {
   }
 
   .modal-btn {
-    padding: 7px 0;
+    padding: 10px 0;
     font-size: 10px;
   }
+
+
+
+  }
+
+
+/* Cash Stack Floating Price Animation */
+.floating-price-stack {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Junegull', sans-serif;
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  pointer-events: none;
+  z-index: 10;
+  animation: floatUpStack 3s ease-out forwards;
 }
 
-/* Medium Mobile Landscape */
-@media screen and (orientation: landscape) and (min-height: 500px) and (max-height: 700px) {
-  /* Keep board at full height */
-  .sidebar {
-    width: 280px;
+@keyframes floatUpStack {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
-
-  .buy-modal {
-    width: 340px;
+  20% {
+    transform: translate(-50%, -120%) scale(1.2);
   }
-}
-
-/* Small Screen Modal Fix - Optimized Single Column */
-@media (max-height: 600px) {
-  .buy-modal {
-    transform: scale(0.85);
-    transform-origin: center;
-    max-height: 98vh;
-    width: 250px !important;
-    overflow: hidden !important;
-    display: flex;
-    flex-direction: column;
-    animation: scaleInSmall 0.3s ease-out !important; /* Use specific animation */
-  }
-  
-  @keyframes scaleInSmall {
-    from { transform: scale(0.7); opacity: 0; }
-    to { transform: scale(0.85); opacity: 1; }
-  }
-  
-  .modal-body {
-    padding: 8px 12px !important;
-    overflow: hidden !important;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-  }
-
-  .modal-city-name {
-    font-size: 16px !important;
-    margin-bottom: 4px !important;
-    flex-shrink: 0;
-  }
-
-  .modal-divider {
-    margin: 0 auto 6px !important;
-    flex-shrink: 0;
-  }
-
-  .modal-details {
-    display: block !important;
-    width: 100% !important;
-    margin-bottom: 8px !important;
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  /* Rent Level Rows (inside the first div of details) */
-  .modal-details > div:first-child > div {
-    font-size: 9px !important; /* Tiny font for rent levels */
-    padding: 1px 4px !important;
-  }
-  
-  /* Rent Level Header */
-  .modal-details > div:first-child > div:first-child {
-    font-size: 10px !important;
-    margin-bottom: 2px !important;
-    padding-bottom: 2px !important;
-  }
-
-  /* Cost Rows (Cost per House, Hotel) - Keep slightly larger */
-  .modal-row {
-    font-size: 11px !important;
-    padding: 2px 0 !important;
-    margin-top: 2px !important;
-    border-bottom: none !important;
-  }
-  
-  .modal-row span {
-    font-size: 11px !important;
-  }
-
-  .modal-value {
-    font-size: 11px !important;
-  }
-  
-  .modal-buttons {
-    margin-top: auto !important;
-    padding-top: 4px !important;
-    flex-shrink: 0;
-  }
-  
-  .modal-btn {
-    padding: 6px 0 !important;
-    font-size: 12px !important;
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -200%) scale(1);
   }
 }

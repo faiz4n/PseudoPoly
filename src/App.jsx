@@ -144,7 +144,21 @@ function App() {
   // Clear floating prices on mount to remove any stale state with duplicate keys
   useEffect(() => {
     setFloatingPrices([]);
+    setCashStackFloatingPrices([]);
   }, []);
+
+  // Cash Stack Floating Prices State
+  const [cashStackFloatingPrices, setCashStackFloatingPrices] = useState([]);
+
+  const showCashStackFloatingPrice = (amount) => {
+    const key = `cs_fp_${Date.now()}_${Math.random()}`;
+    setCashStackFloatingPrices(prev => [...prev, { key, amount }]);
+
+    // Remove after animation
+    setTimeout(() => {
+      setCashStackFloatingPrices(prev => prev.filter(item => item.key !== key));
+    }, 3000);
+  };
 
   // Helper to get property info by tile index
   const getPropertyByTileIndex = (tileIndex) => {
@@ -716,7 +730,11 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showBuyModal, showParkingModal, isRolling, isProcessingTurn, skippedTurns, currentPlayer, buyingProperty, showWarModal, warPhase, warParticipants, warIsRolling, warMode, playerMoney]);
+  }, [
+    showBuyModal, showParkingModal, isRolling, isProcessingTurn, skippedTurns, currentPlayer, buyingProperty, 
+    showWarModal, warPhase, warParticipants, warIsRolling, warMode, playerMoney,
+    showRobBankModal, robStatus, showChanceModal, showChestModal, showPropertyModal, currentChanceCard, currentChestCard
+  ]);
 
   // Helper to handle turn end (switch or stay for doubles)
   const endTurn = (movingPlayer, isDoubles) => {
@@ -898,6 +916,7 @@ function App() {
         
         setHistory(prev => [`💰 ${players[playerIndex].name} won the Cash Stack: $${cashStack}!`, ...prev.slice(0, 9)]);
         playCollectMoneySound(); // Play money sound for Cash Stack
+        showCashStackFloatingPrice(-cashStack); // Animate removal
         setCashStack(0); // Reset pot
       } else {
         setHistory(prev => [`${players[playerIndex].name} landed on Cash Stack, but it's empty!`, ...prev.slice(0, 9)]);
@@ -1535,6 +1554,7 @@ function App() {
     // Add fee to appropriate pot
     if (warMode === 'A') {
       setCashStack(prev => prev + fee);
+      showCashStackFloatingPrice(fee); // Animate addition
     } else {
       setBattlePot(prev => prev + fee);
     }
@@ -1561,6 +1581,7 @@ function App() {
     // Remove from pot
     if (warMode === 'A') {
       setCashStack(prev => prev - fee);
+      showCashStackFloatingPrice(-fee); // Animate removal
     } else {
       setBattlePot(prev => prev - fee);
     }
@@ -2404,43 +2425,58 @@ function App() {
 
       {/* Sidebar */}
       <div className="sidebar">
-        {/* Top Controls */}
-        <div className="top-controls">
-          <button className="control-btn settings">⚙️</button>
-          <button className="control-btn sound">🔊</button>
-          <button className="control-btn help">❓</button>
-          <button className="control-btn menu">☰</button>
-        </div>
+        {/* Unified Top Section (Orange) */}
+        <div className="sidebar-top-section">
+          {/* Top Controls (Blue Icons) */}
+          <div className="top-controls">
+            <button className="control-btn settings">⚙️</button>
+            <button className="control-btn sound">🔊</button>
+            <button className="control-btn help">❓</button>
+            <button className="control-btn menu">☰</button>
+          </div>
 
-        {/* Player Panel */}
-        <div className="player-panel">
-          {players.map((player, index) => (
-            <div 
-              key={player.id}
-              className={`player-item ${index === currentPlayer ? 'active' : ''}`}
-            >
-              <div className="player-avatar">
-                <img src={player.avatar} alt={player.name} className="avatar-img" />
+          {/* Player Panel (Blue) */}
+          <div className="player-panel">
+            {players.map((player, index) => (
+              <div 
+                key={player.id}
+                className={`player-item ${index === currentPlayer ? 'active' : ''}`}
+              >
+                <div className="player-avatar">
+                  <img src={player.avatar} alt={player.name} className="avatar-img" />
+                </div>
+                <div className="player-info">
+                  <div className="player-name">{player.name}</div>
+                </div>
+                <div className="player-money">${playerMoney[index].toLocaleString()}</div>
               </div>
-              <div className="player-info">
-                <div className="player-name">{player.name}</div>
-              </div>
-              <div className="player-money">${playerMoney[index].toLocaleString()}</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Cash Stack (The Pot) */}
         <div className="cash-stack-panel" style={{
           background: 'linear-gradient(135deg, #1a5c1a 0%, #0d3d0d 100%)',
           borderRadius: '10px',
-          padding: '12px',
-          marginBottom: '10px',
+          padding: '8px',
+          marginBottom: '4px',
           textAlign: 'center',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          position: 'relative' // For floating price positioning
         }}>
-          <div style={{ fontSize: '14px', color: '#90EE90', marginBottom: '4px' }}>💵 CASH STACK</div>
+          <div style={{ fontSize: '14px', color: '#90EE90', marginBottom: '2px' }}>💵 CASH STACK</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#00FF00' }}>${cashStack.toLocaleString()}</div>
+          
+          {/* Floating Prices for Cash Stack */}
+          {cashStackFloatingPrices.map(fp => (
+            <div 
+              key={fp.key} 
+              className="floating-price-stack"
+              style={{ color: fp.amount >= 0 ? '#00FF00' : '#FF5252' }}
+            >
+              {fp.amount >= 0 ? '+' : ''}{fp.amount.toLocaleString()}
+            </div>
+          ))}
         </div>
 
         {/* History Panel */}
@@ -2689,7 +2725,7 @@ function App() {
       {/* Property War Modal */}
       {showWarModal && (
         <div className="modal-overlay">
-          <div className="buy-modal" style={{ minWidth: '400px' }}>
+          <div className="buy-modal war-modal">
             {/* Header */}
             <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #E91E63 0%, #C2185B 100%)' }}>
               <span className="modal-heading-text">⚔️ PROPERTY WAR ⚔️</span>
@@ -2710,7 +2746,7 @@ function App() {
                   </div>
                   
                   {/* Player Join Buttons */}
-                  <div style={{ marginBottom: '15px' }}>
+                  <div className="war-join-list" style={{ marginBottom: '15px' }}>
                     {players.map((player, idx) => (
                       <div key={idx} style={{ 
                         display: 'flex', 
@@ -2722,7 +2758,10 @@ function App() {
                         borderRadius: '6px',
                         border: warParticipants.includes(idx) ? '2px solid #4CAF50' : '1px solid #ddd'
                       }}>
-                        <span style={{ fontWeight: 'bold' }}>{player.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img src={player.avatar} alt={player.name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                          <span style={{ fontWeight: 'bold' }}>{player.name}</span>
+                        </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           {!warParticipants.includes(idx) ? (
                             <button 
@@ -2841,7 +2880,7 @@ function App() {
                   
                   {/* Previous Rolls */}
                   {Object.keys(warRolls).length > 0 && (
-                    <div style={{ marginBottom: '15px' }}>
+                    <div className="war-rolling-list" style={{ marginBottom: '15px' }}>
                       {Object.entries(warRolls).map(([idx, roll]) => (
                         <div key={idx} style={{ 
                           padding: '8px 12px', 
@@ -2853,7 +2892,10 @@ function App() {
                           fontWeight: 'bold',
                           fontSize: '16px'
                         }}>
-                          <span>{players[parseInt(idx)].name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <img src={players[parseInt(idx)].avatar} alt={players[parseInt(idx)].name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                            <span>{players[parseInt(idx)].name}</span>
+                          </div>
                           <span>🎲 {roll}</span>
                         </div>
                       ))}
@@ -2875,12 +2917,12 @@ function App() {
               
               {/* Result Phase */}
               {warPhase === 'result' && (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div className="war-result-container">
                   {/* Winner Announcement */}
                   {Object.keys(warRolls).length > 0 && (() => {
                     const winnerIdx = parseInt(Object.entries(warRolls).reduce((a, b) => b[1] > a[1] ? b : a)[0]);
                     return (
-                      <>
+                      <div className="war-winner-section">
                         <div style={{ fontSize: '48px', marginBottom: '10px' }}>🏆</div>
                         <div className="modal-city-name" style={{ fontSize: '24px', color: '#E91E63', marginBottom: '5px' }}>
                           {players[winnerIdx].name} WINS!
@@ -2890,12 +2932,12 @@ function App() {
                             ? `Won "${warProperty.name}"` 
                             : `Won $${battlePot.toLocaleString()}`}
                         </div>
-                      </>
+                      </div>
                     );
                   })()}
                   
                   {/* Show all rolls */}
-                  <div style={{ marginBottom: '15px' }}>
+                  <div className="war-roll-list">
                     {Object.entries(warRolls).map(([playerIdx, roll]) => {
                       const isWinner = roll === Math.max(...Object.values(warRolls));
                       return (
@@ -2912,9 +2954,12 @@ function App() {
                           fontWeight: 'bold',
                           boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                         }}>
-                          <span style={{ fontSize: '16px' }}>
-                            {players[parseInt(playerIdx)].name}{isWinner && ' 👑'}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <img src={players[parseInt(playerIdx)].avatar} alt={players[parseInt(playerIdx)].name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                            <span style={{ fontSize: '16px' }}>
+                              {players[parseInt(playerIdx)].name}{isWinner && ' 👑'}
+                            </span>
+                          </div>
                           <span style={{ fontSize: '16px' }}>
                             🎲 {roll}
                           </span>

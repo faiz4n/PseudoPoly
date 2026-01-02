@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import { 
   bottomRow, 
   leftColumn, 
@@ -13,6 +14,7 @@ import startIcon from './assets/start.png';
 import parkingIcon from './assets/parking.png';
 import robBankIcon from './assets/robbank.png';
 import jailIcon from './assets/jail.png';
+import startupBg from './assets/startup_bg.png';
 import './pawn.css';
 import './safe_animation.css';
 import './upgrades.css';
@@ -31,6 +33,32 @@ function App() {
   const [history, setHistory] = useState(['Player 3 starts turn']);
   const [playerPositions, setPlayerPositions] = useState([0, 0, 0, 0]);
   const [hoppingPlayer, setHoppingPlayer] = useState(null);
+  
+  // Game Players State (Dynamic)
+  const [gamePlayers, setGamePlayers] = useState(players); // Initialize with default
+  
+  // Player money state (mutable copy of initial data)
+  const [playerMoney, setPlayerMoney] = useState(gamePlayers.map(p => p.money));
+  
+  // Identity State
+  const [myIdentity, setMyIdentity] = useState({
+    name: 'Player',
+    avatar: players[0].avatar, // Default
+    peerId: ''
+  });
+  const [myPlayerIndex, setMyPlayerIndex] = useState(null); // 0-3 if playing, null if spectator/lobby
+  
+  // Game Stage State: 'menu', 'mode_select', 'playing', 'lobby'
+  const [gameStage, setGameStage] = useState('menu');
+  
+  // Networking State
+  const [networkMode, setNetworkMode] = useState('offline'); // 'offline', 'online'
+  const [roomCode, setRoomCode] = useState(''); // The 4-letter code
+  const [connectedPlayers, setConnectedPlayers] = useState([]); // List of players in room
+  const socketRef = useRef(null);
+  
+  // Input state for joining
+  const [joinCode, setJoinCode] = useState('');
   
   // Property ownership: { tileIndex: playerIndex } - null means unowned
   const [propertyOwnership, setPropertyOwnership] = useState({});
@@ -67,7 +95,49 @@ function App() {
   
   // Active Effects State (Discounts, etc.)
   // Structure: { playerIndex: { discount_50: false } }
+  // Active Effects State (Discounts, etc.)
+  // Structure: { playerIndex: { discount_50: false } }
   const [activeEffects, setActiveEffects] = useState({});
+  
+  // Game State Ref (for accessing latest state in event listeners)
+  const gameStateRef = useRef({
+    gamePlayers,
+    connectedPlayers,
+    networkMode,
+    gameStage,
+    currentPlayer,
+    diceValues,
+    isRolling,
+    playerPositions,
+    playerMoney,
+    propertyOwnership,
+    propertyLevels,
+    history,
+    hoppingPlayer,
+    myPlayerIndex
+  });
+  
+  // Update Ref whenever state changes
+  useEffect(() => {
+    gameStateRef.current = {
+      gamePlayers,
+      connectedPlayers,
+      networkMode,
+      gameStage,
+      currentPlayer,
+      diceValues,
+      isRolling,
+      playerPositions,
+      playerMoney,
+      propertyOwnership,
+      propertyLevels,
+      history,
+      hoppingPlayer,
+      myPlayerIndex
+    };
+  }, [gamePlayers, connectedPlayers, networkMode, gameStage, currentPlayer, diceValues, isRolling, playerPositions, playerMoney, propertyOwnership, propertyLevels, history, hoppingPlayer, myPlayerIndex]);
+  
+  // Cash Stack (The Pot) - Collects all fines/fees
   
   // Cash Stack (The Pot) - Collects all fines/fees
   const [cashStack, setCashStack] = useState(0);
@@ -88,7 +158,7 @@ function App() {
   useEffect(() => {
     const initialInventory = {};
     const initialEffects = {};
-    players.forEach((_, idx) => {
+    gamePlayers.forEach((_, idx) => {
       initialInventory[idx] = { jail_card: 0, robbery_immunity: 0, tax_immunity: 0 };
       initialEffects[idx] = { discount_50: false };
     });
@@ -141,8 +211,198 @@ function App() {
     return `fp_${Date.now()}_${floatingKeyCounter.current}`;
   };
   
-  // Player money state (mutable copy of initial data)
-  const [playerMoney, setPlayerMoney] = useState(players.map(p => p.money));
+
+
+  // --- SOCKET.IO NETWORKING ---
+
+  const SOCKET_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+
+  // Connect to Socket.IO server and set up event handlers
+  const connectSocket = () => {
+    if (socketRef.current) return socketRef.current;
+    
+    const socket = io(SOCKET_URL);
+    socketRef.current = socket;
+    
+    socket.on('connect', () => {
+      console.log('Connected to server:', socket.id);
+    });
+    
+    socket.on('room_created', ({ roomCode: code, playerIndex, gameState, players }) => {
+      console.log('Room created:', code);
+      setRoomCode(code);
+      setMyPlayerIndex(playerIndex);
+      setConnectedPlayers(players);
+      setGameStage('lobby');
+    });
+    
+    socket.on('joined_room', ({ roomCode: code, playerIndex, gameState, players }) => {
+      console.log('Joined room:', code, 'as player', playerIndex);
+      setRoomCode(code);
+      setMyPlayerIndex(playerIndex);
+      setConnectedPlayers(players);
+      applyGameState(gameState);
+      setGameStage('lobby');
+    });
+    
+    socket.on('players_updated', ({ players }) => {
+      console.log('Players updated:', players);
+      setConnectedPlayers(players);
+      // Update gamePlayers with actual player info
+      setGamePlayers(prev => {
+        const updated = [...prev];
+        players.forEach((p, i) => {
+          if (i < updated.length) {
+            updated[i] = { ...updated[i], name: p.name, avatar: p.avatar, isBot: false };
+          }
+        });
+        return updated;
+      });
+    });
+    
+    socket.on('game_started', ({ gameState, players }) => {
+      console.log('Game started!');
+      applyGameState(gameState);
+      setConnectedPlayers(players);
+      setGameStage('playing');
+    });
+    
+    socket.on('state_update', ({ gameState, players }) => {
+      console.log('State update received:', gameState.currentPlayer, gameState.playerPositions);
+      console.log('Calling applyGameState now...');
+      applyGameState(gameState);
+      console.log('applyGameState returned');
+      if (players) setConnectedPlayers(players);
+    });
+    
+    socket.on('room_closed', ({ message }) => {
+      alert(message);
+      setGameStage('mode_select');
+      setNetworkMode('offline');
+      socketRef.current = null;
+    });
+    
+    socket.on('error', ({ message }) => {
+      alert(message);
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+    });
+    
+    return socket;
+  };
+  // Track last known positions for animation (independent of ref which can be stale)
+  const lastKnownPositionsRef = useRef([0, 0, 0, 0]);
+  
+  // Apply game state from server - handles all state sync and animations
+  const applyGameState = async (state) => {
+    const currentRef = gameStateRef.current;
+    const myIdx = currentRef.myPlayerIndex;
+    const isOnline = currentRef.networkMode === 'online';
+    
+    // Determine if position changed for the current player
+    const currentPlayerIdx = state.currentPlayer ?? currentRef.currentPlayer;
+    const oldPosition = lastKnownPositionsRef.current[currentPlayerIdx];
+    const newPosition = state.playerPositions?.[currentPlayerIdx];
+    const positionChanged = newPosition !== undefined && oldPosition !== newPosition;
+    
+    console.log('[applyGameState]', {
+      currentPlayerIdx, oldPosition, newPosition, positionChanged, myIdx, isOnline
+    });
+    
+    // ===== SYNC ALL UI STATE TO ALL CLIENTS =====
+    if (state.currentPlayer !== undefined) setCurrentPlayer(state.currentPlayer);
+    if (state.diceValues) setDiceValues(state.diceValues);
+    if (state.isRolling !== undefined) setIsRolling(state.isRolling);
+    if (state.playerMoney) setPlayerMoney(state.playerMoney);
+    if (state.propertyOwnership) setPropertyOwnership(state.propertyOwnership);
+    if (state.propertyLevels) setPropertyLevels(state.propertyLevels);
+    if (state.history) setHistory(state.history);
+    if (state.turnFinished !== undefined) setTurnFinished(state.turnFinished);
+    if (state.isProcessingTurn !== undefined) setIsProcessingTurn(state.isProcessingTurn);
+    if (state.cashStack !== undefined) setCashStack(state.cashStack);
+    if (state.battlePot !== undefined) setBattlePot(state.battlePot);
+    
+    // ===== HANDLE POSITION CHANGES WITH ANIMATION =====
+    if (positionChanged && isOnline) {
+      console.log('[applyGameState] Position changed, animating hop from', oldPosition, 'to', newPosition);
+      
+      // Calculate move amount (handle wrap around board)
+      let moveAmount = newPosition - oldPosition;
+      if (moveAmount < 0) moveAmount += 36;
+      
+      // Update our tracking ref BEFORE animation so subsequent calls see correct position
+      lastKnownPositionsRef.current[currentPlayerIdx] = newPosition;
+      
+      // Run hop animation
+      setHoppingPlayer(currentPlayerIdx);
+      await movePlayerToken(currentPlayerIdx, moveAmount, 300, oldPosition);
+      setHoppingPlayer(null);
+      
+      // Only show modals for the player whose turn it is (on their screen)
+      if (myIdx === currentPlayerIdx) {
+        console.log('[applyGameState] My turn - triggering tile arrival logic');
+        handleTileArrival(currentPlayerIdx, newPosition, false);
+      }
+    } else {
+      // No position change OR initial sync - just update positions directly
+      if (state.playerPositions) {
+        setPlayerPositions(state.playerPositions);
+        // Keep our tracking ref in sync
+        lastKnownPositionsRef.current = [...state.playerPositions];
+      }
+      if (state.hoppingPlayer !== undefined) setHoppingPlayer(state.hoppingPlayer);
+    }
+  };
+
+  // Create a new room (Host)
+  const createRoom = () => {
+    const socket = connectSocket();
+    setNetworkMode('online');
+    
+    socket.emit('create_room', {
+      name: myIdentity.name,
+      avatar: myIdentity.avatar
+    });
+  };
+
+  // Join an existing room
+  const joinRoom = () => {
+    if (!joinCode || joinCode.length !== 4) {
+      alert('Please enter a valid 4-character code.');
+      return;
+    }
+    
+    const socket = connectSocket();
+    setNetworkMode('online');
+    
+    socket.emit('join_room', {
+      roomCode: joinCode.toUpperCase(),
+      name: myIdentity.name,
+      avatar: myIdentity.avatar
+    });
+  };
+
+  // Start the game (Host only)
+  const startGame = () => {
+    if (socketRef.current) {
+      socketRef.current.emit('start_game');
+    }
+  };
+
+  // Send a game action to the server
+  const sendGameAction = (action, payload = {}) => {
+    if (socketRef.current && networkMode === 'online') {
+      socketRef.current.emit('game_action', { action, payload });
+    }
+  };
+  
+  // Legacy function names for compatibility
+  const initializeHost = createRoom;
+  const joinGame = joinRoom;
+  const sendAction = (action, params = {}) => sendGameAction(action.toLowerCase(), params);
+  const broadcastState = () => {}; // No longer needed - server handles state
 
   // Clear floating prices on mount to remove any stale state with duplicate keys
   useEffect(() => {
@@ -196,8 +456,8 @@ function App() {
   // Returns { bgColor, textColor } for owned properties
   const getOwnerStyle = (tileIndex) => {
     const ownerIndex = propertyOwnership[tileIndex];
-    if (ownerIndex !== undefined && players[ownerIndex]) {
-      const bgColor = players[ownerIndex].color;
+    if (ownerIndex !== undefined && gamePlayers[ownerIndex]) {
+      const bgColor = gamePlayers[ownerIndex].color;
       // Use dark text for light backgrounds (white player)
       const isLightBg = bgColor === '#E0E0E0' || bgColor === '#FFFFFF';
       return { 
@@ -532,8 +792,8 @@ function App() {
   };
 
   // Async function to move pawn step-by-step
-  const movePlayerToken = async (playerIdx, steps, delay = 300) => {
-    const startPos = playerPositions[playerIdx];
+  const movePlayerToken = async (playerIdx, steps, delay = 300, startPosOverride = null) => {
+    const startPos = startPosOverride ?? playerPositions[playerIdx];
     const direction = steps > 0 ? 1 : -1;
     const count = Math.abs(steps);
     
@@ -556,7 +816,7 @@ function App() {
              });
              playCollectMoneySound(); // Play money sound for GO
              setFloatingPrices(fpPrev => [...fpPrev, { price: 1000, tileIndex: 0, key: Date.now(), isPositive: true }]);
-             setHistory(histPrev => [`${players[playerIdx].name} passed GO! Collect $1000`, ...histPrev.slice(0, 9)]);
+             setHistory(histPrev => [`${gamePlayers[playerIdx].name} passed GO! Collect $1000`, ...histPrev.slice(0, 9)]);
         }
         
         return newPositions;
@@ -578,22 +838,22 @@ function App() {
   // Better to use a helper to find the next valid player.
   
   const getNextValidPlayer = (currentIdx) => {
-    let nextIdx = (currentIdx + 1) % players.length;
+    let nextIdx = (currentIdx + 1) % gamePlayers.length;
     let attempts = 0;
-    while (skippedTurns[nextIdx] && attempts < players.length) {
+    while (skippedTurns[nextIdx] && attempts < gamePlayers.length) {
       // Decrement skipped turn counter if we had one, or just toggle flag
       // Here we just have a boolean.
       // We should probably clear the flag when they are skipped.
       // But we can't easily update state in a sync loop without side effects.
       // So we will just skip them and let a useEffect clear it? 
       // Or better: Update skippedTurns state when we determine who plays next.
-      nextIdx = (nextIdx + 1) % players.length;
+      nextIdx = (nextIdx + 1) % gamePlayers.length;
       attempts++;
     }
     return nextIdx;
   };
   
-  // We need to clear the skip flag for the players we skipped over.
+  // We need to clear the skip flag for the gamePlayers we skipped over.
   // This is tricky in a pure function.
   // Let's do it when we set the current player.
 
@@ -743,7 +1003,7 @@ function App() {
   const endTurn = (movingPlayer, isDoubles) => {
     if (isDoubles) {
       setHistory(historyPrev => [
-        `🎲 ${players[movingPlayer].name} rolled doubles! Extra turn!`,
+        `🎲 ${gamePlayers[movingPlayer].name} rolled doubles! Extra turn!`,
         ...historyPrev.slice(0, 9)
       ]);
       // Unlock turn for next roll
@@ -757,19 +1017,22 @@ function App() {
 
   // Handle Manual Turn End (Done Button Click)
   const handleEndTurn = () => {
-    // Find next player who isn't skipped
-    let nextIdx = (currentPlayer + 1) % players.length;
+    // Online Mode: Send end_turn action to server
+    if (networkMode === 'online') {
+      sendGameAction('end_turn');
+      return;
+    }
+    
+    // Offline Mode: Handle locally
+    let nextIdx = (currentPlayer + 1) % gamePlayers.length;
     let skippedPlayers = [];
     
-    // Loop to find next valid player
     while (skippedTurns[nextIdx]) {
        skippedPlayers.push(nextIdx);
-       nextIdx = (nextIdx + 1) % players.length;
-       // Safety break
+       nextIdx = (nextIdx + 1) % gamePlayers.length;
        if (nextIdx === currentPlayer) break; 
     }
     
-    // Clear skipped flags for those we skipped
     if (skippedPlayers.length > 0) {
       setSkippedTurns(prev => {
         const updated = { ...prev };
@@ -777,14 +1040,14 @@ function App() {
         return updated;
       });
       setHistory(prev => [
-        `🚫 Skipped: ${skippedPlayers.map(idx => players[idx].name).join(', ')}`, 
+        `🚫 Skipped: ${skippedPlayers.map(idx => gamePlayers[idx].name).join(', ')}`, 
         ...prev.slice(0, 9)
       ]);
     }
     
     setCurrentPlayer(nextIdx);
     setTurnFinished(false);
-    setBuyingProperty(null); // Ensure cleanup
+    setBuyingProperty(null);
   };
 
   // Smart Chance Card Selection
@@ -879,7 +1142,7 @@ function App() {
       setBattlePot(0);
       setShowWarModal(true);
       
-      setHistory(prev => [`⚔️ ${players[playerIndex].name} triggered PROPERTY WAR!`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`⚔️ ${gamePlayers[playerIndex].name} triggered PROPERTY WAR!`, ...prev.slice(0, 9)]);
       return;
     }
       
@@ -908,6 +1171,12 @@ function App() {
         setPlayerMoney(prev => {
           const updated = [...prev];
           updated[playerIndex] += cashStack;
+          
+          // Online Sync
+          if (networkMode === 'online') {
+            sendGameAction('update_state', { playerMoney: updated, cashStack: 0 });
+          }
+          
           return updated;
         });
         
@@ -917,12 +1186,12 @@ function App() {
           setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
         }, 3000);
         
-        setHistory(prev => [`💰 ${players[playerIndex].name} won the Cash Stack: $${cashStack}!`, ...prev.slice(0, 9)]);
+        setHistory(prev => [`💰 ${gamePlayers[playerIndex].name} won the Cash Stack: $${cashStack}!`, ...prev.slice(0, 9)]);
         playCollectMoneySound(); // Play money sound for Cash Stack
         showCashStackFloatingPrice(-cashStack); // Animate removal
         setCashStack(0); // Reset pot
       } else {
-        setHistory(prev => [`${players[playerIndex].name} landed on Cash Stack, but it's empty!`, ...prev.slice(0, 9)]);
+        setHistory(prev => [`${gamePlayers[playerIndex].name} landed on Cash Stack, but it's empty!`, ...prev.slice(0, 9)]);
       }
       endTurn(playerIndex, isDoubles);
       return;
@@ -949,6 +1218,12 @@ function App() {
         const updated = [...prev];
         updated[playerIndex] -= rent;
         updated[ownerIndex] += rent;
+        
+        // Online Sync
+        if (networkMode === 'online') {
+          sendGameAction('update_state', { playerMoney: updated });
+        }
+        
         return updated;
       });
       playPayRentSound(); // Play sad rent payment sound
@@ -967,7 +1242,7 @@ function App() {
       
       // Add to history
       setHistory(historyPrev => [
-        `${players[playerIndex].name} paid $${rent} rent to ${players[ownerIndex].name}`,
+        `${gamePlayers[playerIndex].name} paid $${rent} rent to ${gamePlayers[ownerIndex].name}`,
         ...historyPrev.slice(0, 9)
       ]);
       
@@ -982,7 +1257,7 @@ function App() {
         // Count owned trains
         const ownedTrains = TRAIN_TILES.filter(t => propertyOwnership[t] === playerIndex).length;
         if (ownedTrains > 1) {
-          setHistory(prev => [`🚂 ${players[playerIndex].name} arrived at ${property.name}. Travel available?`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`🚂 ${gamePlayers[playerIndex].name} arrived at ${property.name}. Travel available?`, ...prev.slice(0, 9)]);
           // Offer Travel: Set state to show Travel button
           // We reuse buyingProperty with a flag to indicate this is a travel offer, not a buy offer
           setBuyingProperty({ ...property, isTravelOffer: true });
@@ -992,7 +1267,7 @@ function App() {
         }
       }
 
-      setHistory(prev => [`${players[playerIndex].name} arrived at their own ${property.name}. Welcome back!`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`${gamePlayers[playerIndex].name} arrived at their own ${property.name}. Welcome back!`, ...prev.slice(0, 9)]);
       endTurn(playerIndex, isDoubles);
     } else {
       // No action needed (e.g. non-action tile)
@@ -1047,6 +1322,12 @@ function App() {
       setPlayerMoney(prev => {
         const updated = [...prev];
         updated[playerIndex] += robResult.amount;
+        
+        // Online Sync
+        if (networkMode === 'online') {
+          sendGameAction('update_state', { playerMoney: updated });
+        }
+        
         return updated;
       });
       
@@ -1060,7 +1341,7 @@ function App() {
         setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
       }, 3000);
       
-      setHistory(prev => [`💰 ${players[playerIndex].name} robbed the bank for $${robResult.amount}!`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`💰 ${gamePlayers[playerIndex].name} robbed the bank for $${robResult.amount}!`, ...prev.slice(0, 9)]);
       
       closeAllModals(() => {
         endTurn(playerIndex, false); // No doubles on rob bank? Or preserve? Usually turn ends.
@@ -1068,7 +1349,7 @@ function App() {
       
     } else if (robStatus === 'caught') {
       // Go to Jail
-      setHistory(prev => [`👮 ${players[playerIndex].name} was caught robbing the bank!`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`👮 ${gamePlayers[playerIndex].name} was caught robbing the bank!`, ...prev.slice(0, 9)]);
       
       closeAllModals(async () => {
         // Move to Jail (Tile 28)
@@ -1112,6 +1393,12 @@ function App() {
             console.log(`[DEBUG] Adding $${card.amount} to Player ${playerIndex}. Old: ${updated[playerIndex]}`);
             updated[playerIndex] += card.amount;
             console.log(`[DEBUG] New: ${updated[playerIndex]}`);
+            
+            // Online Sync
+            if (networkMode === 'online') {
+              sendGameAction('update_state', { playerMoney: updated });
+            }
+            
             return updated;
           });
           // Floating Price
@@ -1123,13 +1410,19 @@ function App() {
           setTimeout(() => {
             setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyAdd));
           }, 3000);
-          setHistory(prev => [`${players[playerIndex].name} gained $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} gained $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
         case 'MONEY_SUBTRACT':
           setPlayerMoney(prev => {
             const updated = [...prev];
             updated[playerIndex] -= card.amount;
+            
+            // Online Sync
+            if (networkMode === 'online') {
+              sendGameAction('update_state', { playerMoney: updated });
+            }
+            
             return updated;
           });
           // Floating Price
@@ -1141,7 +1434,7 @@ function App() {
           setTimeout(() => {
             setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeySub));
           }, 3000);
-          setHistory(prev => [`${players[playerIndex].name} lost $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} lost $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
         case 'MOVE_TO':
@@ -1174,10 +1467,10 @@ function App() {
              setTimeout(() => {
                setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyStart));
              }, 3000);
-             setHistory(prev => [`${players[playerIndex].name} collected $200 for passing Start`, ...prev.slice(0, 9)]);
+             setHistory(prev => [`${gamePlayers[playerIndex].name} collected $200 for passing Start`, ...prev.slice(0, 9)]);
           }
           
-          setHistory(prev => [`${players[playerIndex].name} moved to ${getTileName(targetPos)}`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} moved to ${getTileName(targetPos)}`, ...prev.slice(0, 9)]);
           
           // Process arrival at new tile
           handleTileArrival(playerIndex, targetPos, false); // Assume no doubles for chance movement
@@ -1186,7 +1479,7 @@ function App() {
         case 'MOVE_STEPS':
           await movePlayerToken(playerIndex, card.steps);
           const newPosSteps2 = (currentPos + card.steps + 36) % 36;
-          setHistory(prev => [`${players[playerIndex].name} moved ${card.steps} steps`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} moved ${card.steps} steps`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosSteps2, false);
           return;
 
@@ -1194,7 +1487,7 @@ function App() {
           // Use pre-calculated steps from card
           await movePlayerToken(playerIndex, card.steps);
           const newPosFwd = (currentPos + card.steps + 36) % 36;
-          setHistory(prev => [`${players[playerIndex].name} moved forward ${card.steps} spaces`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} moved forward ${card.steps} spaces`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosFwd, false);
           return;
 
@@ -1202,7 +1495,7 @@ function App() {
           // Use pre-calculated steps from card (already negative)
           await movePlayerToken(playerIndex, card.steps);
           const newPosBack = (currentPos + card.steps + 36) % 36;
-          setHistory(prev => [`${players[playerIndex].name} moved back ${Math.abs(card.steps)} spaces`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} moved back ${Math.abs(card.steps)} spaces`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosBack, false);
           return;
 
@@ -1211,7 +1504,7 @@ function App() {
           const stepsToRandom = (card.targetIndex - currentPos + 36) % 36;
           await movePlayerToken(playerIndex, stepsToRandom);
           
-          setHistory(prev => [`${players[playerIndex].name} teleported to ${getTileName(card.targetIndex)}`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} teleported to ${getTileName(card.targetIndex)}`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, card.targetIndex, false);
           return;
           
@@ -1227,7 +1520,7 @@ function App() {
             await movePlayerToken(playerIndex, stepsToJail, 50); // Very fast
           }
           
-          setHistory(prev => [`${players[playerIndex].name} went to Jail!`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} went to Jail!`, ...prev.slice(0, 9)]);
           break;
           
         case 'REPAIRS':
@@ -1248,6 +1541,12 @@ function App() {
             setPlayerMoney(prev => {
               const updated = [...prev];
               updated[playerIndex] -= totalCost;
+              
+              // Online Sync
+              if (networkMode === 'online') {
+                sendGameAction('update_state', { playerMoney: updated });
+              }
+              
               return updated;
             });
             const animKeyRepairs = getUniqueKey();
@@ -1258,25 +1557,31 @@ function App() {
             setTimeout(() => {
               setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyRepairs));
             }, 3000);
-            setHistory(prev => [`${players[playerIndex].name} paid $${totalCost} for repairs`, ...prev.slice(0, 9)]);
+            setHistory(prev => [`${gamePlayers[playerIndex].name} paid $${totalCost} for repairs`, ...prev.slice(0, 9)]);
           } else {
-             setHistory(prev => [`${players[playerIndex].name} has no buildings to repair`, ...prev.slice(0, 9)]);
+             setHistory(prev => [`${gamePlayers[playerIndex].name} has no buildings to repair`, ...prev.slice(0, 9)]);
           }
           break;
           
         case 'PAY_ALL_PLAYERS':
           const amount = card.amount;
-          const numOtherPlayers = players.length - 1;
+          const numOtherPlayers = gamePlayers.length - 1;
           const totalDeduction = amount * numOtherPlayers;
           
           setPlayerMoney(prev => {
             const updated = [...prev];
             updated[playerIndex] -= totalDeduction;
-            players.forEach((_, idx) => {
+            gamePlayers.forEach((_, idx) => {
               if (idx !== playerIndex) {
                 updated[idx] += amount;
               }
             });
+            
+            // Online Sync
+            if (networkMode === 'online') {
+              sendGameAction('update_state', { playerMoney: updated });
+            }
+            
             return updated;
           });
           const animKeyPayAll = getUniqueKey();
@@ -1287,13 +1592,13 @@ function App() {
           setTimeout(() => {
             setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyPayAll));
           }, 3000);
-          setHistory(prev => [`${players[playerIndex].name} paid $${amount} to each player`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} paid $${amount} to each player`, ...prev.slice(0, 9)]);
           break;
           
         case 'MOVE_STEPS':
           await movePlayerToken(playerIndex, card.steps);
           const newPosSteps = (currentPos + card.steps + 36) % 36;
-          setHistory(prev => [`${players[playerIndex].name} moved ${card.steps} steps`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} moved ${card.steps} steps`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosSteps, false);
           // Note: handleTileArrival calls endTurn, so we don't need to call it here if we return
           return;
@@ -1324,7 +1629,7 @@ function App() {
               [card.type]: (prev[playerIndex]?.[card.type] || 0) + 1
             }
           }));
-          setHistory(prev => [`${players[playerIndex].name} got ${card.text}`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} got ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
         case 'ADD_EFFECT':
@@ -1335,7 +1640,7 @@ function App() {
               [card.type]: true
             }
           }));
-          setHistory(prev => [`${players[playerIndex].name} activated: ${card.text}`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} activated: ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
         case 'CLEAR_DEBT':
@@ -1343,16 +1648,16 @@ function App() {
             const updated = [...prev];
             if (updated[playerIndex] < 0) {
               updated[playerIndex] = 0;
-              setHistory(prev => [`${players[playerIndex].name}'s debt was cleared!`, ...prev.slice(0, 9)]);
+              setHistory(prev => [`${gamePlayers[playerIndex].name}'s debt was cleared!`, ...prev.slice(0, 9)]);
             } else {
-               setHistory(prev => [`${players[playerIndex].name} has no debt to clear`, ...prev.slice(0, 9)]);
+               setHistory(prev => [`${gamePlayers[playerIndex].name} has no debt to clear`, ...prev.slice(0, 9)]);
             }
             return updated;
           });
           break;
           
         case 'EXTEND_DEBT':
-           setHistory(prev => [`${players[playerIndex].name} got Debt Extension (Not Implemented)`, ...prev.slice(0, 9)]);
+           setHistory(prev => [`${gamePlayers[playerIndex].name} got Debt Extension (Not Implemented)`, ...prev.slice(0, 9)]);
            break;
 
         default:
@@ -1381,13 +1686,16 @@ function App() {
 
   // Handle dice roll
   const rollDice = async (overrideValue = null) => {
-    if (isRolling || isProcessingTurn || skippedTurns[currentPlayer]) return; // Prevent rolling if skipped or busy
+    if (isRolling || isProcessingTurn || skippedTurns[currentPlayer]) return;
+    
+    // Online mode: Only allow if it's my turn
+    if (networkMode === 'online' && myPlayerIndex !== currentPlayer) return;
     
     setIsRolling(true);
-    setIsProcessingTurn(true); // Lock turn start
-    playDiceRollSound(); // Play dice rattle sound
+    setIsProcessingTurn(true);
+    playDiceRollSound();
 
-    // 1. Roll Animation (1s)
+    // Run dice animation locally (both offline and online)
     const rollDuration = 1000;
     const intervalTime = 80;
     
@@ -1398,52 +1706,83 @@ function App() {
       ]);
     }, intervalTime);
 
-    // Wait for roll to finish
     await wait(rollDuration);
     clearInterval(rollInterval);
 
-    // 2. Determine Result
+    // Online Mode: Send action to server, server calculates result
+    if (networkMode === 'online') {
+      sendGameAction('roll_dice');
+      // Server will respond with state_update containing new positions
+      // The applyGameState function will update state
+      // We need to wait for server response and then run hop animation
+      setIsRolling(false);
+      return;
+    }
+
+    // Offline Mode: Calculate result locally
     let die1, die2;
     
     if (overrideValue) {
-      // Force specific roll
       die1 = Math.floor(overrideValue / 2);
       die2 = overrideValue - die1;
     } else {
-      // Random roll
       die1 = Math.floor(Math.random() * 6) + 1;
       die2 = Math.floor(Math.random() * 6) + 1;
     }
 
     const moveAmount = die1 + die2;
-
     setDiceValues([die1, die2]);
     
-    // 3. Start Movement Animation
     const movingPlayer = currentPlayer;
-    
     await movePlayerToken(movingPlayer, moveAmount);
 
-    // 4. Finish Turn
     const finalPos = (playerPositions[movingPlayer] + moveAmount) % 36;
     const tileName = getTileName(finalPos);
     
     setHistory(historyPrev => [
-      `${players[movingPlayer].name} rolled ${moveAmount} → ${tileName}`, 
+      `${gamePlayers[movingPlayer].name} rolled ${moveAmount} → ${tileName}`, 
       ...historyPrev.slice(0, 9)
     ]);
 
     setIsRolling(false);
     
-    // Check for doubles (same dice = extra turn)
     const isDoubles = die1 === die2;
-    
-    // 5. Process Tile Arrival
     handleTileArrival(movingPlayer, finalPos, isDoubles);
   };
 
   // Handle buying a property
   const handleBuyProperty = () => {
+    // Network Check
+    if (networkMode === 'online') {
+      if (!buyingProperty) return;
+      const { tileIndex, price } = buyingProperty;
+      
+      // Check for 50% Discount (apply locally first? No, server needs to know)
+      // For now, let's just send the basic buy action. 
+      // If we want to support discounts, we need to send that in payload.
+      // But wait, the server handles logic. 
+      // If I have a discount, I should probably tell the server or the server should know.
+      // The server doesn't track activeEffects yet. 
+      // For now, let's just send the price we see (client authoritative for price?)
+      // Or better: send the intent to buy, and let server handle money.
+      // But server doesn't know about discounts.
+      // Let's send the price we calculated locally.
+      
+      let finalPrice = price;
+      if (activeEffects[myPlayerIndex]?.discount_50) {
+        finalPrice = Math.floor(price / 2);
+        // We also need to consume the discount locally? 
+        // Or just send the action and let server broadcast the result.
+        // The server will update money.
+      }
+      
+      sendGameAction('buy_property', { tileIndex, price: finalPrice });
+      
+      // Close modal locally
+      closeAllModals();
+      return;
+    }
+    
     if (!buyingProperty) return;
     
     const { tileIndex, price, buyerIndex } = buyingProperty;
@@ -1454,7 +1793,7 @@ function App() {
     // Check for 50% Discount
     if (activeEffects[buyerIndex]?.discount_50) {
       finalPrice = Math.floor(price / 2);
-      setHistory(prev => [`🏷️ ${players[buyerIndex].name} used 50% Discount!`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`🏷️ ${gamePlayers[buyerIndex].name} used 50% Discount!`, ...prev.slice(0, 9)]);
       
       // Consume discount
       setActiveEffects(prev => ({
@@ -1487,7 +1826,7 @@ function App() {
       
       // Add to history
       setHistory(historyPrev => [
-        `${players[buyerIndex].name} bought ${buyingProperty.name} for $${finalPrice}`,
+        `${gamePlayers[buyerIndex].name} bought ${buyingProperty.name} for $${finalPrice}`,
         ...historyPrev.slice(0, 9)
       ]);
     }
@@ -1501,7 +1840,7 @@ function App() {
     closeAllModals(() => {
       if (isDoubles) {
         setHistory(historyPrev => [
-          `🎲 ${players[buyerIndex].name} rolled doubles! Extra turn!`,
+          `🎲 ${gamePlayers[buyerIndex].name} rolled doubles! Extra turn!`,
           ...historyPrev.slice(0, 9)
         ]);
         // Unlock turn for next roll
@@ -1524,7 +1863,7 @@ function App() {
     closeAllModals(() => {
       if (isDoubles && buyerIndex !== undefined) {
         setHistory(historyPrev => [
-          `🎲 ${players[buyerIndex].name} rolled doubles! Extra turn!`,
+          `🎲 ${gamePlayers[buyerIndex].name} rolled doubles! Extra turn!`,
           ...historyPrev.slice(0, 9)
         ]);
         // Unlock turn
@@ -1561,24 +1900,58 @@ function App() {
     setPlayerMoney(prev => {
       const updated = [...prev];
       updated[playerIdx] -= fee;
+      
+      if (networkMode === 'online') {
+        sendGameAction('update_state', { playerMoney: updated });
+      }
+      
       return updated;
     });
     
     // Add fee to appropriate pot
     if (warMode === 'A') {
-      setCashStack(prev => prev + fee);
+      setCashStack(prev => {
+        const newVal = prev + fee;
+        // Online Sync
+        if (networkMode === 'online') {
+           // We need to sync BOTH money and pot.
+           // Since setPlayerMoney is called separately, we should probably sync there or here?
+           // setPlayerMoney is async.
+           // Let's sync here with the calculated money?
+           // Actually, setPlayerMoney above updates money.
+           // We can send ONE update with both.
+           // But we don't have the new money array here easily without access to prev state of money.
+           // Let's just send separate updates or rely on the last one?
+           // If we send multiple update_state, they might race.
+           // Better: Calculate everything and set/send once.
+           // But the code is split.
+           
+           // Let's just send the pot update here. Money update was done in setPlayerMoney?
+           // Wait, I didn't add sync to setPlayerMoney call in handleWarJoin.
+           // I should do that.
+           
+           sendGameAction('update_state', { cashStack: newVal });
+        }
+        return newVal;
+      });
       showCashStackFloatingPrice(fee); // Animate addition
     } else {
-      setBattlePot(prev => prev + fee);
+      setBattlePot(prev => {
+        const newVal = prev + fee;
+        if (networkMode === 'online') {
+           sendGameAction('update_state', { battlePot: newVal });
+        }
+        return newVal;
+      });
     }
     
     // Add to participants
     setWarParticipants(prev => [...prev, playerIdx]);
-    setHistory(prev => [`${players[playerIdx].name} joined the war! (-$${fee})`, ...prev.slice(0, 9)]);
+    setHistory(prev => [`${gamePlayers[playerIdx].name} joined the war! (-$${fee})`, ...prev.slice(0, 9)]);
   };
   
   const handleWarRetreat = (playerIdx) => {
-    setHistory(prev => [`${players[playerIdx].name} retreated from the war.`, ...prev.slice(0, 9)]);
+    setHistory(prev => [`${gamePlayers[playerIdx].name} retreated from the war.`, ...prev.slice(0, 9)]);
   };
   
   const handleWarWithdraw = (playerIdx) => {
@@ -1588,20 +1961,35 @@ function App() {
     setPlayerMoney(prev => {
       const updated = [...prev];
       updated[playerIdx] += fee;
+      if (networkMode === 'online') {
+        sendGameAction('update_state', { playerMoney: updated });
+      }
       return updated;
     });
     
     // Remove from pot
     if (warMode === 'A') {
-      setCashStack(prev => prev - fee);
+      setCashStack(prev => {
+        const newVal = prev - fee;
+        if (networkMode === 'online') {
+           sendGameAction('update_state', { cashStack: newVal });
+        }
+        return newVal;
+      });
       showCashStackFloatingPrice(-fee); // Animate removal
     } else {
-      setBattlePot(prev => prev - fee);
+      setBattlePot(prev => {
+        const newVal = prev - fee;
+        if (networkMode === 'online') {
+           sendGameAction('update_state', { battlePot: newVal });
+        }
+        return newVal;
+      });
     }
     
     // Remove from participants
     setWarParticipants(prev => prev.filter(p => p !== playerIdx));
-    setHistory(prev => [`${players[playerIdx].name} withdrew from the war. (+$${fee} refund)`, ...prev.slice(0, 9)]);
+    setHistory(prev => [`${gamePlayers[playerIdx].name} withdrew from the war. (+$${fee} refund)`, ...prev.slice(0, 9)]);
   };
   
   const handleWarStartProgress = () => {
@@ -1684,7 +2072,7 @@ function App() {
       // Build complete rolls object (include this roll)
       const updatedRolls = { ...warRolls, [playerIdx]: total };
       setWarRolls(updatedRolls);
-      setHistory(prev => [`🎲 ${players[playerIdx].name} rolled ${total}!`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`🎲 ${gamePlayers[playerIdx].name} rolled ${total}!`, ...prev.slice(0, 9)]);
       
       // Move to next roller or show results
       if (warCurrentRoller + 1 < warParticipants.length) {
@@ -1702,15 +2090,15 @@ function App() {
   const handleWarShowResults = (rolls) => {
     const maxRoll = Math.max(...Object.values(rolls));
     
-    // Find all players with max roll (for tie-breaking)
+    // Find all gamePlayers with max roll (for tie-breaking)
     const winners = Object.entries(rolls).filter(([_, roll]) => roll === maxRoll);
     
     if (winners.length > 1) {
-      // TIE! Need to re-roll between tied players
+      // TIE! Need to re-roll between tied gamePlayers
       const tiedPlayers = winners.map(([idx]) => parseInt(idx));
-      setHistory(prev => [`⚔️ TIE! ${tiedPlayers.map(idx => players[idx].name).join(' vs ')} will re-roll!`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`⚔️ TIE! ${tiedPlayers.map(idx => gamePlayers[idx].name).join(' vs ')} will re-roll!`, ...prev.slice(0, 9)]);
       
-      // Reset for re-roll with only tied players
+      // Reset for re-roll with only tied gamePlayers
       setWarParticipants(tiedPlayers);
       setWarRolls({});
       setWarCurrentRoller(0);
@@ -1724,20 +2112,26 @@ function App() {
     if (warMode === 'A' && warProperty) {
       // Winner gets property for free
       const tileIdx = Number(warProperty.tileIndex);
-      setPropertyOwnership(prev => ({
-        ...prev,
-        [tileIdx]: winnerIdx
-      }));
-      setHistory(prev => [`🏆 ${players[winnerIdx].name} won "${warProperty.name}" in the Property War!`, ...prev.slice(0, 9)]);
+      setPropertyOwnership(prev => {
+        const updated = { ...prev, [tileIdx]: winnerIdx };
+        if (networkMode === 'online') {
+          sendGameAction('update_state', { propertyOwnership: updated });
+        }
+        return updated;
+      });
+      setHistory(prev => [`🏆 ${gamePlayers[winnerIdx].name} won "${warProperty.name}" in the Property War!`, ...prev.slice(0, 9)]);
       playWinSound(); // Play victory fanfare
     } else {
       // Mode B: Winner gets battlePot
       setPlayerMoney(prev => {
         const updated = [...prev];
         updated[winnerIdx] += battlePot;
+        if (networkMode === 'online') {
+          sendGameAction('update_state', { playerMoney: updated, battlePot: 0 });
+        }
         return updated;
       });
-      setHistory(prev => [`🏆 ${players[winnerIdx].name} won the Cash Battle! (+$${battlePot})`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`🏆 ${gamePlayers[winnerIdx].name} won the Cash Battle! (+$${battlePot})`, ...prev.slice(0, 9)]);
       playWinSound(); // Play victory fanfare
     }
     
@@ -1776,7 +2170,7 @@ function App() {
     setFloatingPrices(prev => [...prev, { price: cost, tileIndex: playerPositions[currentPlayer], key: animKey, isPositive: false }]);
     setTimeout(() => setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey)), 3000);
     
-    setHistory(prev => [`${players[currentPlayer].name} traveled to ${getTileName(targetIndex)} for $${cost}`, ...prev.slice(0, 9)]);
+    setHistory(prev => [`${gamePlayers[currentPlayer].name} traveled to ${getTileName(targetIndex)} for $${cost}`, ...prev.slice(0, 9)]);
     
     // Move player
     await movePlayerToken(currentPlayer, 0); // Reset? No, move from current.
@@ -1853,6 +2247,29 @@ function App() {
     const { tileIndex, upgradeCost } = selectedProperty;
     const ownerIndex = propertyOwnership[tileIndex];
     
+    // Online Mode Check
+    if (networkMode === 'online') {
+      // Basic validation locally
+      if (ownerIndex === undefined || ownerIndex !== myPlayerIndex) return;
+      
+      // Calculate cost (including discount logic if we want to be precise, but server handles money)
+      // For now, let's just send the action.
+      // Server doesn't know about discounts yet, so we should calculate price here.
+      
+      let currentLevel = propertyLevels[tileIndex] || 0;
+      if (currentLevel >= 5) return;
+      
+      let currentUpgradeCost = currentLevel === 4 ? upgradeCost * 2 : upgradeCost;
+      
+      if (activeEffects[myPlayerIndex]?.discount_50) {
+        currentUpgradeCost = Math.floor(currentUpgradeCost / 2);
+      }
+      
+      sendGameAction('upgrade_property', { tileIndex, price: currentUpgradeCost });
+      closeAllModals();
+      return;
+    }
+    
     // Safety checks
     if (ownerIndex === undefined) return; // Not owned
     if (playerMoney[ownerIndex] < upgradeCost) return; // Not enough money
@@ -1866,7 +2283,7 @@ function App() {
     // Check for 50% Discount
     if (activeEffects[currentPlayer]?.discount_50) {
       currentUpgradeCost = Math.floor(currentUpgradeCost / 2);
-      setHistory(prev => [`🏷️ ${players[currentPlayer].name} used 50% Discount on Upgrade!`, ...prev.slice(0, 9)]);
+      setHistory(prev => [`🏷️ ${gamePlayers[currentPlayer].name} used 50% Discount on Upgrade!`, ...prev.slice(0, 9)]);
       
       // Consume discount
       setActiveEffects(prev => ({
@@ -1898,7 +2315,7 @@ function App() {
     }));
     
     setHistory(historyPrev => [
-      `🔨 ${players[ownerIndex].name} upgraded ${selectedProperty.name} to Level ${currentLevel + 1} for $${currentUpgradeCost}`,
+      `🔨 ${gamePlayers[ownerIndex].name} upgraded ${selectedProperty.name} to Level ${currentLevel + 1} for $${currentUpgradeCost}`,
       ...historyPrev.slice(0, 9)
     ]);
   };
@@ -2007,14 +2424,14 @@ function App() {
     const leftVal_RightCol = 87;  // Inner (left) side of right column tiles
     
     // --- Dynamic Group Centering ---
-    // Find all players on the same tile
-    const playersOnThisTile = playerPositions.reduce((acc, pos, idx) => {
+    // Find all gamePlayers on the same tile
+    const gamePlayersOnThisTile = playerPositions.reduce((acc, pos, idx) => {
       if (pos === tileIndex) acc.push(idx);
       return acc;
     }, []);
     
-    const numOnTile = playersOnThisTile.length;
-    const myIndexInGroup = playersOnThisTile.indexOf(playerIndex);
+    const numOnTile = gamePlayersOnThisTile.length;
+    const myIndexInGroup = gamePlayersOnThisTile.indexOf(playerIndex);
     
     // Combined group width: First pawn is full width, subsequent pawns add (pawnSize - overlap)
     const effectiveAdd = pawnSize - overlapAmount; // 3vh per additional pawn
@@ -2202,7 +2619,146 @@ function App() {
         <div className="rotate-subtext">Or rotate your device manually</div>
       </div>
 
-      <div className="game-container">
+      {/* Startup Screen */}
+      {gameStage !== 'playing' && (
+        <div className="startup-screen" style={{ backgroundImage: `url(${startupBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+          <div className="startup-content">
+            {/* Title and Subtitle Removed as per request */}
+            
+            {gameStage === 'menu' && (
+              <button className="startup-btn play-btn" onClick={() => setGameStage('mode_select')}>
+                PLAY
+              </button>
+            )}
+            
+            {gameStage === 'mode_select' && (
+              <div className="mode-select-container">
+                <button className="startup-btn mode-btn" onClick={() => {
+                  setNetworkMode('offline');
+                  setGameStage('playing');
+                }}>
+                  <span className="mode-icon">👥</span>
+                  <span className="mode-text">Pass n Play</span>
+                </button>
+                <button className="startup-btn mode-btn" onClick={() => setGameStage('online_menu')}>
+                  <span className="mode-icon">🌐</span>
+                  <span className="mode-text">Online</span>
+                </button>
+                <button className="startup-btn back-btn" onClick={() => setGameStage('menu')}>
+                  Back
+                </button>
+              </div>
+            )}
+            
+            {gameStage === 'online_menu' && (
+              <div className="mode-select-container">
+                <div className="identity-setup" style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '10px' }}>
+                  <h3 style={{ color: 'white', marginBottom: '10px' }}>Your Identity</h3>
+                  <input 
+                    type="text" 
+                    placeholder="Your Name" 
+                    value={myIdentity.name} 
+                    onChange={(e) => setMyIdentity(prev => ({ ...prev, name: e.target.value }))}
+                    className="join-input"
+                    style={{ width: '200px', marginBottom: '10px' }}
+                  />
+                  <div className="avatar-select" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                    {gamePlayers.map((p, i) => (
+                      <img 
+                        key={i} 
+                        src={p.avatar} 
+                        alt="avatar" 
+                        style={{ 
+                          width: '40px', 
+                          height: '40px', 
+                          border: myIdentity.avatar === p.avatar ? '3px solid #4CAF50' : '2px solid transparent',
+                          borderRadius: '50%',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setMyIdentity(prev => ({ ...prev, avatar: p.avatar }))}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <button className="startup-btn mode-btn" onClick={initializeHost}>
+                  <span className="mode-icon">🏠</span>
+                  <span className="mode-text">Host Game</span>
+                </button>
+                <div className="join-container">
+                  <input 
+                    type="text" 
+                    className="join-input"
+                    placeholder="CODE"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    maxLength={4}
+                  />
+                  <button className="startup-btn mode-btn" onClick={joinGame}>
+                    <span className="mode-icon">🔗</span>
+                    <span className="mode-text">Join</span>
+                  </button>
+                </div>
+                <button className="startup-btn back-btn" onClick={() => setGameStage('mode_select')}>
+                  Back
+                </button>
+              </div>
+            )}
+            
+            {gameStage === 'lobby' && (
+              <div className="lobby-container">
+                <h2 className="lobby-title">Lobby</h2>
+                {myPlayerIndex === 0 && roomCode && (
+                  <div className="host-code-display">
+                    <span>Code: </span>
+                    <span className="code-value">{roomCode}</span>
+                  </div>
+                )}
+                <div className="lobby-gamePlayers">
+                  <h3>Players Joined:</h3>
+                  <ul>
+                    {connectedPlayers.map((p, i) => (
+                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <img 
+                          src={p.avatar || gamePlayers[i]?.avatar} 
+                          alt="av" 
+                          style={{ width: '30px', height: '30px', borderRadius: '50%' }} 
+                        />
+                        <span>{p.name || `Player ${i+1}`} {i === 0 ? '(Host)' : ''}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {myPlayerIndex === 0 ? (
+                  <button 
+                    className="startup-btn play-btn" 
+                    onClick={startGame}
+                    disabled={connectedPlayers.length < 2}
+                    style={{ opacity: connectedPlayers.length < 2 ? 0.5 : 1, cursor: connectedPlayers.length < 2 ? 'not-allowed' : 'pointer' }}
+                  >
+                    START GAME
+                  </button>
+                ) : (
+                  <div className="waiting-text">Waiting for host to start...</div>
+                )}
+                <button className="startup-btn back-btn" onClick={() => {
+                   // Cleanup socket
+                   if (socketRef.current) socketRef.current.disconnect();
+                   socketRef.current = null;
+                   setGameStage('mode_select');
+                   setNetworkMode('offline');
+                }}>
+                  Leave
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Game Board */}
+      {gameStage === 'playing' && (
+        <div className="game-container">
         {/* Game Board */}
       <div className="board">
         {/* Corner Spaces */}
@@ -2347,33 +2903,37 @@ function App() {
               </div>
             </div>
             <div className="button-group">
+              {/* Only show buttons if offline OR it's this player's turn */}
+              {(networkMode === 'offline' || myPlayerIndex === currentPlayer) && (
+                <>
+                  {buyingProperty && !showBuyModal && !buyingProperty.isTravelOffer && (
+                    <button 
+                      className="buy-button" 
+                      onClick={() => setShowBuyModal(true)}
+                    >
+                      BUY
+                    </button>
+                  )}
 
-              {buyingProperty && !showBuyModal && !buyingProperty.isTravelOffer && (
-                <button 
-                  className="buy-button" 
-                  onClick={() => setShowBuyModal(true)}
-                >
-                  BUY
-                </button>
+                  {buyingProperty && buyingProperty.isTravelOffer && (
+                    <button 
+                      className="buy-button" 
+                      onClick={handleTravelStart}
+                      style={{ background: 'linear-gradient(to bottom, #2196F3, #1976D2)' }}
+                    >
+                      TRAVEL
+                    </button>
+                  )}
+                  <button 
+                    className={`roll-button ${turnFinished ? 'done' : ''}`} 
+                    onClick={turnFinished ? handleEndTurn : () => rollDice()} 
+                    tabIndex="-1" 
+                    disabled={!turnFinished && (isRolling || isProcessingTurn || skippedTurns[currentPlayer])}
+                  >
+                    {turnFinished ? 'DONE' : 'ROLL'}
+                  </button>
+                </>
               )}
-
-              {buyingProperty && buyingProperty.isTravelOffer && (
-                <button 
-                  className="buy-button" 
-                  onClick={handleTravelStart}
-                  style={{ background: 'linear-gradient(to bottom, #2196F3, #1976D2)' }}
-                >
-                  TRAVEL
-                </button>
-              )}
-              <button 
-                className={`roll-button ${turnFinished ? 'done' : ''}`} 
-                onClick={turnFinished ? handleEndTurn : () => rollDice()} 
-                tabIndex="-1" 
-                disabled={!turnFinished && (isRolling || isProcessingTurn || skippedTurns[currentPlayer])}
-              >
-                {turnFinished ? 'DONE' : 'ROLL'}
-              </button>
             </div>
           </div>
 
@@ -2413,7 +2973,7 @@ function App() {
 
         {/* Player Pawns */}
         <div className="pawns-container">
-          {players.map((player, index) => (
+          {gamePlayers.map((player, index) => (
             <div 
               key={player.id} 
               className={`player-pawn ${hoppingPlayer === index ? 'pawn-hopping' : ''}`}
@@ -2453,7 +3013,7 @@ function App() {
 
           {/* Player Panel (Blue) */}
           <div className="player-panel">
-            {players.map((player, index) => (
+            {gamePlayers.map((player, index) => (
               <div 
                 key={player.id}
                 className={`player-item ${index === currentPlayer ? 'active' : ''}`}
@@ -2763,7 +3323,7 @@ function App() {
                   
                   {/* Player Join Buttons */}
                   <div className="war-join-list" style={{ marginBottom: '15px' }}>
-                    {players.map((player, idx) => (
+                    {gamePlayers.map((player, idx) => (
                       <div key={idx} style={{ 
                         display: 'flex', 
                         justifyContent: 'space-between', 
@@ -2881,7 +3441,7 @@ function App() {
               {warPhase === 'rolling' && warCurrentRoller !== null && (
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <div className="modal-city-name" style={{ fontSize: '18px', marginBottom: '15px' }}>
-                    {players[warParticipants[warCurrentRoller]]?.name}'s Turn
+                    {gamePlayers[warParticipants[warCurrentRoller]]?.name}'s Turn
                   </div>
                   
                   {/* Dice Display */}
@@ -2909,8 +3469,8 @@ function App() {
                           fontSize: '16px'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <img src={players[parseInt(idx)].avatar} alt={players[parseInt(idx)].name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                            <span>{players[parseInt(idx)].name}</span>
+                            <img src={gamePlayers[parseInt(idx)].avatar} alt={gamePlayers[parseInt(idx)].name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                            <span>{gamePlayers[parseInt(idx)].name}</span>
                           </div>
                           <span>🎲 {roll}</span>
                         </div>
@@ -2941,7 +3501,7 @@ function App() {
                       <div className="war-winner-section">
                         <div style={{ fontSize: '48px', marginBottom: '10px' }}>🏆</div>
                         <div className="modal-city-name" style={{ fontSize: '24px', color: '#E91E63', marginBottom: '5px' }}>
-                          {players[winnerIdx].name} WINS!
+                          {gamePlayers[winnerIdx].name} WINS!
                         </div>
                         <div style={{ fontSize: '16px', color: '#5D4037', fontWeight: 'bold', marginBottom: '20px' }}>
                           {warMode === 'A' && warProperty 
@@ -2971,9 +3531,9 @@ function App() {
                           boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <img src={players[parseInt(playerIdx)].avatar} alt={players[parseInt(playerIdx)].name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                            <img src={gamePlayers[parseInt(playerIdx)].avatar} alt={gamePlayers[parseInt(playerIdx)].name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
                             <span style={{ fontSize: '16px' }}>
-                              {players[parseInt(playerIdx)].name}{isWinner && ' 👑'}
+                              {gamePlayers[parseInt(playerIdx)].name}{isWinner && ' 👑'}
                             </span>
                           </div>
                           <span style={{ fontSize: '16px' }}>
@@ -3156,6 +3716,7 @@ function App() {
         </button>
       </div>
     </div>
+      )}
     </>
   );
 }

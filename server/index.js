@@ -628,34 +628,40 @@ function handleWarStart(room) {
     room.gameState.warState.phase = 'progress';
     broadcastState(room);
     
-    // Simulate progress then reveal
+    // After 3 seconds, transition to reveal phase
     setTimeout(() => {
-      // Select random unowned property (simplified: random ID 1-39 that is property)
-      // In real game, we need to know which are unowned.
-      // Server doesn't track ownership perfectly yet? 
-      // Actually it does: room.gameState.propertyOwnership
-      // We need a list of all properties.
-      // Let's assume client sends available properties or we just pick random and check?
-      // For simplicity, let's pick a random property ID from a hardcoded list of valid property indices
-      // or just pick one and if owned, pick another.
-      // Since we don't have the full board data on server, let's just pick a random number 
-      // and let the client render the name. 
-      // Wait, client needs the name. 
-      // Let's rely on client to send the property list? No, server authoritative.
-      // Let's just pick a number 1, 3, 6, 8, 9, 11... (Property indices)
-      // This is getting complex to duplicate board data.
-      // ALTERNATIVE: Client sends 'war_reveal' with the chosen property?
-      // Yes, let the initiator client pick the property and tell the server.
-      // But that's less secure.
-      // Let's just use a dummy property for now or implement a simple picker if we have the data.
-      // We don't have RENT_DATA on server.
-      // Let's set phase to 'reveal' and let the client (Host) send the property details?
-      // Actually, let's just skip to 'roll' for now or let the client handle the "Progress -> Reveal" transition logic via actions.
-      
-      // Let's change this: handleWarStart just sets phase to 'progress'.
-      // The Client (Initiator) will wait 3s, then pick a property, and send 'war_reveal_property' action.
-      // That's easier.
-    }, 0);
+      if (room.gameState.warState && room.gameState.warState.phase === 'progress') {
+        // Get available unowned properties from propertyOwnership
+        const allProperties = [1, 2, 4, 5, 6, 8, 9, 11, 13, 14, 15, 16, 17, 19, 20, 22, 24, 25, 26, 27, 29, 30, 31, 32, 34, 35, 37, 38, 39];
+        const unownedProperties = allProperties.filter(idx => {
+          const owner = room.gameState.propertyOwnership[idx];
+          return owner === undefined || owner === null;
+        });
+
+        if (unownedProperties.length > 0) {
+          const randomProperty = unownedProperties[Math.floor(Math.random() * unownedProperties.length)];
+          room.gameState.warState.propertyIndex = randomProperty;
+          room.gameState.warState.phase = 'reveal';
+          console.log(`[SERVER] Property War transitioning to reveal. Property: ${randomProperty}`);
+          broadcastState(room);
+
+          // After 2 seconds, advance to roll phase
+          setTimeout(() => {
+            if (room.gameState.warState && room.gameState.warState.phase === 'reveal') {
+              room.gameState.warState.phase = 'roll';
+              room.gameState.warState.currentRoller = 0;
+              console.log(`[SERVER] Property War transitioning to roll phase`);
+              broadcastState(room);
+            }
+          }, 2000);
+        } else {
+          // No unowned properties, go to roll anyway
+          room.gameState.warState.phase = 'roll';
+          room.gameState.warState.currentRoller = 0;
+          broadcastState(room);
+        }
+      }
+    }, 3000);
   } else {
     room.gameState.warState.phase = 'roll';
     room.gameState.warState.currentRoller = 0;

@@ -3745,93 +3745,107 @@ function App() {
           </div>
 
           {/* Jail Arrest Modal (Placed in local center scope) */}
+          {/* Jail Arrest Modal (Placed in local center scope) */}
           {showArrestModal && (
-            <div className="buy-modal" style={{ 
-              border: '4px solid #D32F2F', 
-              maxWidth: '300px',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
+            <div style={{ 
+              position: 'absolute', 
+              inset: 0, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
               zIndex: 50,
-              boxShadow: '0 0 20px rgba(0,0,0,0.5)' 
+              pointerEvents: 'none' // Allow clicks to pass through wrapper
             }}>
-              <div className="modal-heading" style={{ background: '#D32F2F' }}>
-                 <span className="modal-heading-text">ARRESTED!</span>
-              </div>
-              <div className="modal-body">
-                 <div style={{ textAlign: 'center', margin: '15px 0' }}>
-                    <div style={{ fontSize: '16px', marginBottom: '10px' }}>
-                      You have been arrested for <span style={{ fontWeight: 'bold', color: '#D32F2F', fontSize: '18px' }}>{arrestDuration}</span> turns.
-                    </div>
-                    <div style={{ fontSize: '40px', margin: '10px 0' }}>👮‍♂️</div>
-                    <div style={{ fontSize: '13px', color: '#666', marginTop: '10px' }}>
-                       You won't collect rent until jailed time is served.
-                    </div>
-                 </div>
-                 
-                 <div className="modal-buttons">
-                    <button 
-                      className="modal-btn buy" 
-                      style={{ background: '#D32F2F', width: '100%' }}
-                      onClick={() => {
-                          setShowArrestModal(false);
-                          handleEndTurn();
-                      }}
-                    >
-                      I UNDERSTAND
-                    </button>
-                 </div>
-              </div>
+                <div className="buy-modal" style={{ 
+                  border: '4px solid #D32F2F', 
+                  maxWidth: '300px',
+                  boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+                  pointerEvents: 'auto', // Re-enable clicks
+                  position: 'relative'
+                }}>
+                  <div className="modal-heading" style={{ background: '#D32F2F' }}>
+                     <span className="modal-heading-text">ARRESTED!</span>
+                  </div>
+                  <div className="modal-body">
+                     <div style={{ textAlign: 'center', margin: '15px 0' }}>
+                        <div style={{ fontSize: '16px', marginBottom: '10px' }}>
+                          You have been arrested for <span style={{ fontWeight: 'bold', color: '#D32F2F', fontSize: '18px' }}>{arrestDuration}</span> turns.
+                        </div>
+                        <div style={{ fontSize: '40px', margin: '10px 0' }}>👮‍♂️</div>
+                        <div style={{ fontSize: '13px', color: '#666', marginTop: '10px' }}>
+                           You won't collect rent until jailed time is served.
+                        </div>
+                     </div>
+                     
+                     <div className="modal-buttons">
+                        <button 
+                          className="modal-btn buy" 
+                          style={{ background: '#D32F2F', width: '100%' }}
+                          onClick={() => {
+                              setShowArrestModal(false);
+                              handleEndTurn();
+                          }}
+                        >
+                          I UNDERSTAND
+                        </button>
+                     </div>
+                  </div>
+                </div>
             </div>
           )}
           
           {/* Jail Action Modal (Bail / Skip) */}
           {showJailActionModal && (
-            <div className="buy-modal" style={{ 
-              border: '4px solid #2196F3', 
-              maxWidth: '300px',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
+             <div style={{ 
+              position: 'absolute', 
+              inset: 0, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
               zIndex: 60,
-              boxShadow: '0 0 20px rgba(0,0,0,0.5)' 
+              pointerEvents: 'none'
             }}>
-
-              <div className="modal-heading" style={{ background: 'linear-gradient(180deg, #FFB74D, #FF9800)' }}>
-                 <span className="modal-heading-text">JAIL OPTIONS</span>
-              </div>
-              <div className="modal-body">
-                 <div style={{ textAlign: 'center', margin: '15px 0' }}>
-                    <div style={{ fontSize: '16px', marginBottom: '10px' }}>
-                      Turns in Jail: <span style={{ fontWeight: 'bold', fontSize: '18px' }}>{jailStatus[currentPlayer]}</span>
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666' }}>
-                       Pay bail to leave now, or skip turn to serve time.
-                    </div>
-                 </div>
-                 
-                 <div className="modal-buttons" style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                      className="modal-btn" 
-                      style={{ background: '#D32F2F', flex: 1, color: 'white' }}
-                      onClick={handleJailSkip}
-                    >
-                      SKIP TURN
-                    </button>
-                    <button 
-                      className="modal-btn" 
-                      style={{ background: '#4CAF50', flex: 1, color: 'white' }}
-                      onClick={handleJailPay}
-                    >
-                      GO OUT (${
-                        jailStatus[currentPlayer] === 3 ? 1000 : 
-                        jailStatus[currentPlayer] === 2 ? 500 : 200
-                      })
-                    </button>
-                 </div>
-              </div>
+                <div className="buy-modal" style={{ 
+                  border: '4px solid #2196F3', 
+                  maxWidth: '300px',
+                  boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+                  pointerEvents: 'auto',
+                  position: 'relative'
+                }}>
+                  <div className="modal-heading" style={{ background: 'linear-gradient(180deg, #FFB74D, #FF9800)' }}>
+                     <span className="modal-heading-text">JAIL OPTIONS</span>
+                  </div>
+                  <div className="modal-body">
+                     <div style={{ textAlign: 'center', margin: '15px 0' }}>
+                        <div style={{ fontSize: '16px', marginBottom: '10px' }}>
+                          Turns in Jail: <span style={{ fontWeight: 'bold', fontSize: '18px' }}>{jailStatus[currentPlayer]}</span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666' }}>
+                           Pay bail to leave now, or skip turn to serve time.
+                        </div>
+                     </div>
+                     
+                     <div className="modal-buttons" style={{ display: 'flex', gap: '10px' }}>
+                        <button 
+                          className="modal-btn" 
+                          style={{ background: '#D32F2F', flex: 1, color: 'white' }}
+                          onClick={handleJailSkip}
+                        >
+                          SKIP TURN
+                        </button>
+                        <button 
+                          className="modal-btn" 
+                          style={{ background: '#4CAF50', flex: 1, color: 'white' }}
+                          onClick={handleJailPay}
+                        >
+                          GO OUT (${
+                            jailStatus[currentPlayer] === 3 ? 1000 : 
+                            jailStatus[currentPlayer] === 2 ? 500 : 200
+                          })
+                        </button>
+                     </div>
+                  </div>
+                </div>
             </div>
           )}
 

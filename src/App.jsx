@@ -2682,7 +2682,7 @@ function App() {
   const handleTileClick = (tileIndex) => {
     // Forced Auction Selection
     if (isSelectingAuctionProperty) {
-      if (tileIndex === 21) return; // Ignore self
+      if (tileIndex === 23) return; // Ignore self (Forced Auction tile)
       
       const property = RENT_DATA[tileIndex];
       // Must be a valid property

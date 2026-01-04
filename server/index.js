@@ -238,21 +238,18 @@ io.on('connection', (socket) => {
         broadcastState(room);
         break;
       case 'war_join':
-        // Player joins the war
-        if (room.gameState.warState && room.gameState.warState.phase === 'join') {
-          if (!room.gameState.warState.participants.includes(playerIndex)) {
-            room.gameState.warState.participants.push(playerIndex);
-            console.log(`[SERVER] Player ${playerIndex} joined Property War`);
-          }
-          broadcastState(room);
-        }
+        handleWarJoin(room, playerIndex);
         break;
       case 'war_withdraw':
-        // Player withdraws from the war
-        if (room.gameState.warState && room.gameState.warState.phase === 'join') {
-          room.gameState.warState.participants = room.gameState.warState.participants.filter(p => p !== playerIndex);
-          console.log(`[SERVER] Player ${playerIndex} withdrew from Property War`);
-          broadcastState(room);
+        handleWarWithdraw(room, playerIndex);
+        break;
+      case 'update_state':
+        // Allow clients to update specific state fields (e.g. paying tax to cashStack)
+        if (payload) {
+             console.log(`[SERVER] Update State from P${playerIndex}:`, Object.keys(payload));
+             // Safety: Only allow updating existing keys? For now, Object.assign is standard for this project's trust model
+             Object.assign(room.gameState, payload);
+             broadcastState(room);
         }
         break;
       case 'war_start':

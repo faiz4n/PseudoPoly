@@ -25,6 +25,15 @@ export const RENT_DATA = {
     upgradeCost: 250,
     rentLevels: [50, 200, 750, 1750, 2150, 2500]
   },
+  4: { // Train (Bottom)
+    id: 4, 
+    name: "Train",
+    groupId: 10,
+    price: 1000,
+    baseRent: 125,
+    rentLevels: [125, 250, 500, 1000],
+    isTrain: true
+  },
   5: { // Service station
     id: 3,
     name: "Service station",
@@ -95,6 +104,15 @@ export const RENT_DATA = {
     upgradeCost: 600,
     rentLevels: [120, 480, 1800, 4200, 5160, 6000]
   },
+  13: { // Train (Left)
+    id: 13, 
+    name: "Train",
+    groupId: 10,
+    price: 1000,
+    baseRent: 125,
+    rentLevels: [125, 250, 500, 1000],
+    isTrain: true
+  },
 
   // Group 4: Dark Orange (3 Properties - including Harbor)
   15: { // Airport
@@ -144,6 +162,15 @@ export const RENT_DATA = {
     baseRent: 170,
     upgradeCost: 850,
     rentLevels: [170, 680, 2550, 5950, 7310, 8500]
+  },
+  21: { // Train (Top)
+    id: 21, 
+    name: "Train",
+    groupId: 10,
+    price: 1000,
+    baseRent: 125,
+    rentLevels: [125, 250, 500, 1000],
+    isTrain: true
   },
   22: { // Mobile op.
     id: 15,
@@ -204,6 +231,15 @@ export const RENT_DATA = {
     upgradeCost: 1150,
     rentLevels: [230, 920, 3450, 8050, 9890, 11500]
   },
+  32: { // Train (Right)
+    id: 32, 
+    name: "Train",
+    groupId: 10,
+    price: 1000,
+    baseRent: 125,
+    rentLevels: [125, 250, 500, 1000],
+    isTrain: true
+  },
 
   // Group 8: Lime Green (2 Properties)
   34: { // Hollywood
@@ -227,4 +263,4 @@ export const RENT_DATA = {
 };
 
 export const TRAIN_RENT = [125, 250, 500, 1000];
-export const TRAIN_TILES = [4, 13, 21, 32]; // Updated indices: 4, 13, 21, 32
+export const TRAIN_TILES = [4, 13, 21, 32]; // Central Station, Left Train, Top Train, Right Train

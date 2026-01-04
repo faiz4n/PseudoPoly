@@ -268,7 +268,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   z-index: 2;
-  background: transparent;
+  /* background: transparent; -- Removed to allow inline styles for owned properties */
   transition: all 0.3s ease;
 }
 
@@ -833,7 +833,7 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(5px);
+  /* backdrop-filter removed to prevent blur during selection */
   animation: fadeIn 0.3s ease-out;
 }
 

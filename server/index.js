@@ -43,7 +43,28 @@ function createInitialGameState() {
     turnFinished: false,
     isProcessingTurn: false,
     cashStack: 0,
-    battlePot: 0
+    battlePot: 0,
+    modalState: { type: 'NONE', status: 'IDLE', payload: {} },
+    warState: {
+      active: false,
+      phase: 'idle',
+      mode: 'A',
+      participants: [],
+      property: null,
+      rolls: {},
+      currentRoller: 0,
+      diceValues: [1, 1],
+      winner: null
+    },
+    auctionState: {
+      status: 'idle', // idle, thinking, announcing, active, processing
+      propertyIndex: null,
+      initiator: null,
+      bids: [],
+      currentBid: 0,
+      participants: [],
+      winner: null
+    }
   };
 }
 
@@ -55,6 +76,7 @@ io.on('connection', (socket) => {
     const roomCode = generateRoomCode();
     
     rooms[roomCode] = {
+      roomCode: roomCode, // Store roomCode for reliable broadcasts
       gameState: createInitialGameState(),
       players: [{
         id: 0,
@@ -166,13 +188,220 @@ io.on('connection', (socket) => {
     // Process the action and update game state
     switch (action) {
       case 'roll_dice':
-        handleRollDice(room, playerIndex);
+        handleRollDice(room, playerIndex, payload);
         break;
       case 'buy_property':
         handleBuyProperty(room, playerIndex, payload);
         break;
       case 'upgrade_property':
         handleUpgradeProperty(room, playerIndex, payload);
+        break;
+      case 'attempt_robbery':
+        handleAttemptRobbery(room, playerIndex);
+        break;
+      case 'close_modal':
+        room.gameState.modalState = { type: 'NONE', status: 'IDLE', payload: {} };
+        break;
+      // War Actions
+      case 'war_init':
+        handleWarInit(room, payload);
+        break;
+      case 'war_join':
+        handleWarJoin(room, playerIndex);
+        break;
+      case 'war_withdraw':
+        handleWarWithdraw(room, playerIndex);
+        break;
+      case 'war_start':
+        handleWarStart(room);
+        break;
+      case 'war_roll':
+        handleWarRoll(room);
+        break;
+      case 'war_close':
+        handleWarClose(room);
+        break;
+      // Auction Actions
+      case 'auction_start_selection':
+        room.gameState.auctionState.status = 'thinking';
+        room.gameState.auctionState.initiator = playerIndex;
+        // Reset auction state
+        room.gameState.auctionState.bids = [];
+        room.gameState.auctionState.currentBid = 0; // No bid yet
+        room.gameState.auctionState.participants = room.players.map((_, idx) => idx);
+        room.gameState.auctionState.winner = null;
+        room.gameState.auctionState.propertyIndex = null;
+        room.gameState.auctionState.currentBidder = null; // Will be set in 'active' phase
+        console.log(`[SERVER] Auction Selection Started by Player ${playerIndex}`);
+        broadcastState(room); // Broadcast 'thinking' to all players
+        break;
+      case 'war_init':
+        // Property War started - set server-side warState and broadcast
+        room.gameState.warState = {
+          active: true,
+          mode: payload.mode || 'A',
+          phase: 'join',
+          participants: [playerIndex], // Initiator auto-joins
+          rolls: {},
+          property: null,
+          currentRoller: null,
+          diceValues: [1, 1]
+        };
+        console.log(`[SERVER] Property War initiated by Player ${playerIndex}, mode: ${payload.mode}`);
+        broadcastState(room);
+        break;
+      case 'war_join':
+        // Player joins the war
+        if (room.gameState.warState && room.gameState.warState.phase === 'join') {
+          if (!room.gameState.warState.participants.includes(playerIndex)) {
+            room.gameState.warState.participants.push(playerIndex);
+            console.log(`[SERVER] Player ${playerIndex} joined Property War`);
+          }
+          broadcastState(room);
+        }
+        break;
+      case 'war_withdraw':
+        // Player withdraws from the war
+        if (room.gameState.warState && room.gameState.warState.phase === 'join') {
+          room.gameState.warState.participants = room.gameState.warState.participants.filter(p => p !== playerIndex);
+          console.log(`[SERVER] Player ${playerIndex} withdrew from Property War`);
+          broadcastState(room);
+        }
+        break;
+      case 'war_start':
+        // Start the war (host/initiator only)
+        if (room.gameState.warState && room.gameState.warState.phase === 'join') {
+          const warState = room.gameState.warState;
+          if (warState.participants.length >= 2) {
+            // Transition to progress phase (shows 'SELECTING PROPERTY...' animation)
+            warState.phase = 'progress';
+            console.log(`[SERVER] Property War starting progress phase. ${warState.participants.length} participants`);
+            broadcastState(room);
+            
+            // Available properties passed from client
+            const availableIndices = payload.availableIndices || [];
+            
+            // After 3 seconds, Select Property and Reveal
+            setTimeout(() => {
+              if (room.gameState.warState && room.gameState.warState.phase === 'progress') {
+                if (availableIndices.length > 0) {
+                     const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+                     room.gameState.warState.propertyIndex = randomIndex;
+                     room.gameState.warState.phase = 'reveal';
+                     console.log(`[SERVER] Property War transitioning to reveal phase. Property: ${randomIndex}`);
+                     broadcastState(room);
+                     
+                     // After 2 seconds, start rolling
+                     setTimeout(() => {
+                         if (room.gameState.warState && room.gameState.warState.phase === 'reveal') {
+                             room.gameState.warState.phase = 'roll';
+                             room.gameState.warState.currentRoller = 0;
+                             room.gameState.warState.rolls = {};
+                             console.log(`[SERVER] Property War transitioning to roll phase`);
+                             broadcastState(room);
+                         }
+                     }, 2000);
+                } else {
+                    // No properties available? Should not happen if client filters correctly.
+                    // Fallback to roll directly (Mode B style) or handle error
+                    room.gameState.warState.phase = 'roll';
+                    room.gameState.warState.currentRoller = 0;
+                    room.gameState.warState.rolls = {};
+                    console.log(`[SERVER] Property War transitioning to roll phase (No properties)`);
+                    broadcastState(room);
+                }
+              }
+            }, 3000);
+          }
+        }
+        break;
+      case 'war_roll':
+        // Player rolls their dice
+        if (room.gameState.warState && room.gameState.warState.phase === 'roll') {
+          const warState = room.gameState.warState;
+          const currentRollerIdx = warState.participants[warState.currentRoller];
+          
+          if (playerIndex === currentRollerIdx) {
+            // Generate random dice
+            const die1 = Math.floor(Math.random() * 6) + 1;
+            const die2 = Math.floor(Math.random() * 6) + 1;
+            const total = die1 + die2;
+            
+            warState.diceValues = [die1, die2];
+            warState.rolls[playerIndex] = total;
+            
+            console.log(`[SERVER] Player ${playerIndex} rolled ${die1}+${die2}=${total}`);
+            
+            // Move to next roller or end
+            if (warState.currentRoller < warState.participants.length - 1) {
+              warState.currentRoller++;
+              broadcastState(room);
+            } else {
+              // All players rolled - determine winner
+              let maxRoll = 0;
+              let winner = null;
+              for (const [pIdx, roll] of Object.entries(warState.rolls)) {
+                if (roll > maxRoll) {
+                  maxRoll = roll;
+                  winner = Number(pIdx);
+                }
+              }
+              warState.phase = 'result';
+              warState.winner = winner;
+              console.log(`[SERVER] Property War Winner: Player ${winner} with roll ${maxRoll}`);
+              broadcastState(room);
+            }
+          }
+        }
+        break;
+      case 'war_close':
+        // Close the war modal and reset state
+        room.gameState.warState = {
+          active: false,
+          mode: 'A',
+          phase: 'idle',
+          participants: [],
+          rolls: {},
+          property: null,
+          currentRoller: null,
+          diceValues: [1, 1]
+        };
+        console.log(`[SERVER] Property War closed`);
+        broadcastState(room);
+        break;
+      case 'auction_select_property':
+        handleAuctionSelect(room, playerIndex, payload);
+        break;
+      case 'auction_place_bid':
+        handleAuctionBid(room, playerIndex, payload);
+        break;
+      case 'auction_fold':
+        handleAuctionFold(room, playerIndex);
+        break;
+      case 'auction_complete':
+        handleAuctionComplete(room, payload);
+        break;
+      case 'floating_price':
+        // Broadcast floating price animation to all players
+        io.to(room.roomCode).emit('floating_price', payload);
+        break;
+      case 'audit_show':
+        console.log('[SERVER] Received audit_show. Broadcasting AUDIT modal.');
+        // Show audit modal to all players
+        room.gameState.modalState = {
+          type: 'AUDIT',
+          status: 'RESULT',
+          payload: {
+            diceValues: payload.diceValues,
+            taxAmount: payload.taxAmount
+          }
+        };
+        break;
+      case 'audit_complete':
+        // Clear audit modal and update money
+        room.gameState.modalState = { type: 'NONE' };
+        if (payload.playerMoney) room.gameState.playerMoney = payload.playerMoney;
+        if (payload.cashStack !== undefined) room.gameState.cashStack = payload.cashStack;
         break;
       case 'end_turn':
         handleEndTurn(room);
@@ -189,6 +418,7 @@ io.on('connection', (socket) => {
     }
     
     // Broadcast updated state to all players
+    console.log(`[SERVER] Broadcasting state to room ${socket.roomCode}. propertyOwnership:`, JSON.stringify(room.gameState.propertyOwnership));
     io.to(socket.roomCode).emit('state_update', { 
       gameState: room.gameState,
       players: room.players
@@ -221,16 +451,23 @@ io.on('connection', (socket) => {
 });
 
 // Game logic handlers
-function handleRollDice(room, playerIndex) {
+function handleRollDice(room, playerIndex, payload = {}) {
   if (room.gameState.isRolling || room.gameState.isProcessingTurn) return;
   
   room.gameState.isRolling = true;
   room.gameState.isProcessingTurn = true;
   
-  // Generate dice values
-  const die1 = Math.floor(Math.random() * 6) + 1;
-  const die2 = Math.floor(Math.random() * 6) + 1;
+  // Generate dice values (or use forced value for debug)
+  let die1, die2;
+  if (payload.forcedValue) {
+    die1 = Math.floor(payload.forcedValue / 2);
+    die2 = payload.forcedValue - die1;
+  } else {
+    die1 = Math.floor(Math.random() * 6) + 1;
+    die2 = Math.floor(Math.random() * 6) + 1;
+  }
   const moveAmount = die1 + die2;
+  const isDoubles = die1 === die2;
   
   room.gameState.diceValues = [die1, die2];
   
@@ -246,12 +483,13 @@ function handleRollDice(room, playerIndex) {
   }
   
   room.gameState.history.unshift(
-    `${room.players[playerIndex]?.name || 'Player'} rolled ${moveAmount}`
+    `${room.players[playerIndex]?.name || 'Player'} rolled ${moveAmount}${isDoubles ? ' (DOUBLES!)' : ''}`
   );
   
   room.gameState.hoppingPlayer = playerIndex;
   room.gameState.isRolling = false;
-  room.gameState.turnFinished = true;
+  // Only finish turn if NOT doubles
+  room.gameState.turnFinished = !isDoubles;
   
   // Broadcast intermediate state for animation
   io.to(Object.keys(io.sockets.adapter.rooms).find(r => rooms[r] === room) || '').emit('state_update', {
@@ -259,23 +497,39 @@ function handleRollDice(room, playerIndex) {
     players: room.players
   });
   
-  // Clear hopping after a delay
+  // Clear hopping after a delay and broadcast the update
   setTimeout(() => {
     room.gameState.hoppingPlayer = null;
     room.gameState.isProcessingTurn = false;
+    
+    // Broadcast the updated state so clients know processing is complete
+    broadcastState(room);
   }, 500);
 }
 
 function handleBuyProperty(room, playerIndex, payload) {
   const { tileIndex, price } = payload || {};
-  if (!tileIndex || !price) return;
+  console.log(`[SERVER] Buy Property Request: Player ${playerIndex}, Tile ${tileIndex}, Price ${price}`);
   
-  if (room.gameState.playerMoney[playerIndex] >= price) {
-    room.gameState.playerMoney[playerIndex] -= price;
-    room.gameState.propertyOwnership[tileIndex] = playerIndex;
+  if (tileIndex === undefined || price === undefined) {
+    console.log(`[SERVER] Buy failed: Missing tileIndex or price`);
+    return;
+  }
+  
+  const pIndex = Number(playerIndex);
+  const tIndex = Number(tileIndex);
+  const cost = Number(price);
+  
+  if (room.gameState.playerMoney[pIndex] >= cost) {
+    room.gameState.playerMoney[pIndex] -= cost;
+    room.gameState.propertyOwnership[tIndex] = pIndex; // Explicitly save as Number
+    console.log(`[SERVER] Ownership updated: Tile ${tIndex} -> Player ${pIndex}`);
+    
     room.gameState.history.unshift(
-      `${room.players[playerIndex]?.name || 'Player'} bought property for $${price}`
+      `${room.players[pIndex]?.name || 'Player'} bought property for $${cost}`
     );
+  } else {
+    console.log(`[SERVER] Buy failed: Insufficient funds`);
   }
 }
 
@@ -295,6 +549,246 @@ function handleUpgradeProperty(room, playerIndex, payload) {
   }
 }
 
+function handleWarInit(room, { mode }) {
+  room.gameState.warState = {
+    active: true,
+    phase: 'join',
+    mode: mode,
+    participants: [],
+    property: null,
+    rolls: {},
+    currentRoller: 0,
+    diceValues: [1, 1],
+    winner: null
+  };
+  broadcastState(room);
+}
+
+function handleWarJoin(room, playerIndex) {
+  const fee = room.gameState.warState.mode === 'A' ? 3000 : 2000;
+  
+  // Check if already joined
+  if (room.gameState.warState.participants.includes(playerIndex)) return;
+  
+  // Deduct fee
+  room.gameState.playerMoney[playerIndex] -= fee;
+  
+  // Add to pot
+  if (room.gameState.warState.mode === 'A') {
+    room.gameState.cashStack += fee;
+  } else {
+    room.gameState.battlePot += fee;
+  }
+  
+  // Add to participants
+  room.gameState.warState.participants.push(playerIndex);
+  room.gameState.warState.participants.sort((a, b) => a - b); // Keep sorted
+  
+  room.gameState.history.unshift(
+    `${room.players[playerIndex]?.name || 'Player'} joined the war! (-$${fee})`
+  );
+  broadcastState(room);
+}
+
+function handleWarWithdraw(room, playerIndex) {
+  const fee = room.gameState.warState.mode === 'A' ? 3000 : 2000;
+  
+  // Check if joined
+  if (!room.gameState.warState.participants.includes(playerIndex)) return;
+  
+  // Refund fee
+  room.gameState.playerMoney[playerIndex] += fee;
+  
+  // Remove from pot
+  if (room.gameState.warState.mode === 'A') {
+    room.gameState.cashStack -= fee;
+  } else {
+    room.gameState.battlePot -= fee;
+  }
+  
+  // Remove from participants
+  room.gameState.warState.participants = room.gameState.warState.participants.filter(p => p !== playerIndex);
+  
+  room.gameState.history.unshift(
+    `${room.players[playerIndex]?.name || 'Player'} withdrew from the war. (+$${fee})`
+  );
+  broadcastState(room);
+}
+
+function handleWarStart(room) {
+  if (room.gameState.warState.participants.length === 0) {
+    // No participants, end war
+    room.gameState.warState.phase = 'result';
+    room.gameState.history.unshift(`No one joined the war. It fizzles out.`);
+    broadcastState(room);
+    return;
+  }
+
+  if (room.gameState.warState.mode === 'A') {
+    room.gameState.warState.phase = 'progress';
+    broadcastState(room);
+    
+    // Simulate progress then reveal
+    setTimeout(() => {
+      // Select random unowned property (simplified: random ID 1-39 that is property)
+      // In real game, we need to know which are unowned.
+      // Server doesn't track ownership perfectly yet? 
+      // Actually it does: room.gameState.propertyOwnership
+      // We need a list of all properties.
+      // Let's assume client sends available properties or we just pick random and check?
+      // For simplicity, let's pick a random property ID from a hardcoded list of valid property indices
+      // or just pick one and if owned, pick another.
+      // Since we don't have the full board data on server, let's just pick a random number 
+      // and let the client render the name. 
+      // Wait, client needs the name. 
+      // Let's rely on client to send the property list? No, server authoritative.
+      // Let's just pick a number 1, 3, 6, 8, 9, 11... (Property indices)
+      // This is getting complex to duplicate board data.
+      // ALTERNATIVE: Client sends 'war_reveal' with the chosen property?
+      // Yes, let the initiator client pick the property and tell the server.
+      // But that's less secure.
+      // Let's just use a dummy property for now or implement a simple picker if we have the data.
+      // We don't have RENT_DATA on server.
+      // Let's set phase to 'reveal' and let the client (Host) send the property details?
+      // Actually, let's just skip to 'roll' for now or let the client handle the "Progress -> Reveal" transition logic via actions.
+      
+      // Let's change this: handleWarStart just sets phase to 'progress'.
+      // The Client (Initiator) will wait 3s, then pick a property, and send 'war_reveal_property' action.
+      // That's easier.
+    }, 0);
+  } else {
+    room.gameState.warState.phase = 'roll';
+    room.gameState.warState.currentRoller = 0;
+    broadcastState(room);
+  }
+}
+
+function handleWarRoll(room) {
+  const { participants, currentRoller } = room.gameState.warState;
+  const playerIndex = participants[currentRoller];
+  
+  // Roll dice
+  const die1 = Math.floor(Math.random() * 6) + 1;
+  const die2 = Math.floor(Math.random() * 6) + 1;
+  const total = die1 + die2;
+  
+  room.gameState.warState.diceValues = [die1, die2];
+  room.gameState.warState.rolls[playerIndex] = total;
+  
+  room.gameState.history.unshift(
+    `🎲 ${room.players[playerIndex]?.name || 'Player'} rolled ${total}!`
+  );
+  
+  // Next roller
+  if (currentRoller + 1 < participants.length) {
+    room.gameState.warState.currentRoller++;
+  } else {
+    // All rolled, determine winner
+    const rolls = room.gameState.warState.rolls;
+    const maxRoll = Math.max(...Object.values(rolls));
+    const winners = Object.entries(rolls)
+      .filter(([_, roll]) => roll === maxRoll)
+      .map(([idx]) => parseInt(idx));
+      
+    if (winners.length > 1) {
+      // Tie - Reset for re-roll
+      room.gameState.warState.participants = winners;
+      room.gameState.warState.rolls = {};
+      room.gameState.warState.currentRoller = 0;
+      room.gameState.history.unshift(`⚔️ TIE! Re-rolling...`);
+    } else {
+      // Winner
+      const winnerIdx = winners[0];
+      room.gameState.warState.winner = winnerIdx;
+      room.gameState.warState.phase = 'result';
+      
+      if (room.gameState.warState.mode === 'A') {
+        // Property win handled by client sending 'update_state'? 
+        // Or server awards it? Server doesn't know which property it is if client picked it.
+        // If we use the client-driven reveal, client knows.
+        // Let's let client handle the prize award for now to ensure data consistency with RENT_DATA.
+      } else {
+        // Cash win
+        room.gameState.playerMoney[winnerIdx] += room.gameState.battlePot;
+        room.gameState.battlePot = 0;
+      }
+      room.gameState.history.unshift(`🏆 ${room.players[winnerIdx]?.name || 'Player'} won the war!`);
+    }
+  }
+  broadcastState(room);
+}
+
+function handleWarClose(room) {
+  room.gameState.warState.active = false;
+  room.gameState.warState.phase = 'idle';
+  broadcastState(room);
+}
+
+function broadcastState(room) {
+  if (!room.roomCode) return;
+  io.to(room.roomCode).emit('state_update', {
+    gameState: room.gameState,
+    players: room.players
+  });
+}
+
+function handleAttemptRobbery(room, playerIndex) {
+  // 1. Start Processing
+  room.gameState.modalState = { type: 'ROB_BANK', status: 'PROCESSING', payload: {} };
+  console.log(`[SERVER] Rob Bank PROCESSING for player ${playerIndex}`);
+  
+  // Broadcast processing state
+  if (room.roomCode) {
+    io.to(room.roomCode).emit('state_update', {
+      gameState: room.gameState,
+      players: room.players
+    });
+  }
+  
+  // 2. Wait and Calculate Result
+  setTimeout(() => {
+    const successChance = 0.4; // 40% chance
+    const isSuccess = Math.random() < successChance;
+    
+    if (isSuccess) {
+      // Win $1k - $10k
+      const amount = (Math.floor(Math.random() * 10) + 1) * 1000;
+      room.gameState.modalState = { 
+        type: 'ROB_BANK', 
+        status: 'RESULT', 
+        payload: { result: 'success', amount } 
+      };
+      room.gameState.playerMoney[playerIndex] += amount;
+      room.gameState.history.unshift(
+        `${room.players[playerIndex]?.name || 'Player'} robbed the bank for $${amount}!`
+      );
+      console.log(`[SERVER] Rob Bank SUCCESS for player ${playerIndex}: $${amount}`);
+    } else {
+      // Go to Jail
+      room.gameState.modalState = { 
+        type: 'ROB_BANK', 
+        status: 'RESULT', 
+        payload: { result: 'caught' } 
+      };
+      room.gameState.history.unshift(
+        `${room.players[playerIndex]?.name || 'Player'} got caught robbing the bank!`
+      );
+      console.log(`[SERVER] Rob Bank CAUGHT for player ${playerIndex}`);
+    }
+    
+    // Broadcast result
+    if (room.roomCode) {
+      io.to(room.roomCode).emit('state_update', {
+        gameState: room.gameState,
+        players: room.players
+      });
+      console.log(`[SERVER] Rob Bank RESULT broadcast to room ${room.roomCode}`);
+    } else {
+      console.log(`[SERVER] ERROR: No roomCode for room, cannot broadcast RESULT`);
+    }
+  }, 3000); // 3 seconds processing
+}
+
 function handleEndTurn(room) {
   const numPlayers = room.players.length;
   room.gameState.currentPlayer = (room.gameState.currentPlayer + 1) % numPlayers;
@@ -303,6 +797,216 @@ function handleEndTurn(room) {
   room.gameState.history.unshift(
     `${room.players[room.gameState.currentPlayer]?.name || 'Player'}'s turn`
   );
+}
+
+// --- Auction Handlers ---
+
+function handleAuctionSelect(room, playerIndex, payload) {
+  const { propertyIndex } = payload;
+  if (!propertyIndex) return;
+
+  // Deduct fee from initiator
+  const fee = 1000;
+  if (room.gameState.playerMoney[playerIndex] >= fee) {
+    room.gameState.playerMoney[playerIndex] -= fee;
+    room.gameState.cashStack += fee;
+  }
+
+  // Store original owner for payout later
+  room.gameState.auctionState.originalOwner = room.gameState.propertyOwnership[propertyIndex];
+  room.gameState.auctionState.status = 'announcing';
+  room.gameState.auctionState.propertyIndex = propertyIndex;
+  
+  // Set initial participants (all player indices: 0, 1, 2, 3...)
+  room.gameState.auctionState.participants = room.players.map((_, idx) => idx);
+  room.gameState.auctionState.bids = [];
+  room.gameState.auctionState.currentBid = 0;
+  room.gameState.auctionState.winner = null;
+
+  console.log(`[SERVER] Auction Announced: Property ${propertyIndex}`);
+  broadcastState(room);
+
+  // Transition to active after 2 seconds
+  setTimeout(() => {
+    // Set currentBidder to initiator (they bid first)
+    room.gameState.auctionState.currentBidder = playerIndex;
+    room.gameState.auctionState.status = 'active';
+    // Auto-fold players who can't afford to bid $10
+    room.gameState.auctionState.participants = room.gameState.auctionState.participants.filter(pIdx => {
+      return room.gameState.playerMoney[pIdx] >= 10;
+    });
+    console.log(`[SERVER] Auction Active! First bidder: ${playerIndex}`);
+    broadcastState(room);
+  }, 2000);
+}
+
+function handleAuctionBid(room, playerIndex, payload) {
+  const { participants, currentBidder, currentBid } = room.gameState.auctionState;
+  
+  // Only current bidder can bid
+  if (playerIndex !== currentBidder) {
+    console.log(`[SERVER] Bid rejected: Not your turn (${playerIndex} != ${currentBidder})`);
+    return;
+  }
+  
+  // Get bid amount from payload (slider value) - must be at least currentBid + 10
+  const bidAmount = payload.bidAmount || (currentBid + 10);
+  const minBid = currentBid + 10;
+  
+  if (bidAmount < minBid) {
+    console.log(`[SERVER] Bid rejected: $${bidAmount} is below minimum $${minBid}`);
+    return;
+  }
+  
+  // Check if player can afford
+  if (room.gameState.playerMoney[playerIndex] < bidAmount) {
+    console.log(`[SERVER] Bid rejected: Insufficient funds`);
+    return;
+  }
+
+  // Record the bid
+  room.gameState.auctionState.currentBid = bidAmount;
+  room.gameState.auctionState.bids.unshift({ player: playerIndex, amount: bidAmount });
+  room.gameState.auctionState.winner = playerIndex; // Highest bidder so far
+  
+  console.log(`[SERVER] Bid placed: $${bidAmount} by Player ${playerIndex}`);
+  
+  // Auto-fold players who can't afford next bid (currentBid + 10)
+  const nextMinBid = bidAmount + 10;
+  room.gameState.auctionState.participants = participants.filter(pIdx => {
+    if (pIdx === playerIndex) return true; // Bidder stays
+    const canAfford = room.gameState.playerMoney[pIdx] >= nextMinBid;
+    if (!canAfford) {
+      console.log(`[SERVER] Player ${pIdx} auto-folded (can't afford $${nextMinBid})`);
+    }
+    return canAfford;
+  });
+  
+  // Check for winner (last man standing OR only 1 participant left)
+  const remainingParticipants = room.gameState.auctionState.participants;
+  if (remainingParticipants.length === 1) {
+    endAuction(room, remainingParticipants[0]);
+    return;
+  }
+  
+  // Move to next bidder
+  const currentIdx = remainingParticipants.indexOf(playerIndex);
+  const nextIdx = (currentIdx + 1) % remainingParticipants.length;
+  room.gameState.auctionState.currentBidder = remainingParticipants[nextIdx];
+  
+  console.log(`[SERVER] Next bidder: Player ${remainingParticipants[nextIdx]}`);
+  broadcastState(room);
+}
+
+function handleAuctionFold(room, playerIndex) {
+  const { participants, currentBidder } = room.gameState.auctionState;
+  
+  // Remove player from participants
+  const newParticipants = participants.filter(p => p !== playerIndex);
+  room.gameState.auctionState.participants = newParticipants;
+  
+  console.log(`[SERVER] Player ${playerIndex} Folded. Remaining: ${newParticipants.length}`);
+  
+  // Check for Winner
+  if (newParticipants.length === 1) {
+    endAuction(room, newParticipants[0]);
+    return;
+  } else if (newParticipants.length === 0) {
+    // No one left - should not happen, but reset auction
+    room.gameState.auctionState.status = 'idle';
+    broadcastState(room);
+    return;
+  }
+  
+  // If the folder was current bidder, move to next
+  if (playerIndex === currentBidder) {
+    const folderIdx = participants.indexOf(playerIndex);
+    const nextIdx = folderIdx % newParticipants.length;
+    room.gameState.auctionState.currentBidder = newParticipants[nextIdx];
+    console.log(`[SERVER] Folder was current bidder, moving to: ${newParticipants[nextIdx]}`);
+  }
+  
+  broadcastState(room);
+}
+
+function endAuction(room, winnerIndex) {
+  const { propertyIndex, currentBid, originalOwner } = room.gameState.auctionState;
+  const finalAmount = currentBid || 10; // Minimum $10 if no bids
+  
+  console.log(`[SERVER] Auction Won by Player ${winnerIndex} for $${finalAmount}`);
+  
+  // Deduct from winner
+  room.gameState.playerMoney[winnerIndex] -= finalAmount;
+  
+  if (winnerIndex === originalOwner) {
+    // Self-Defense: Winner keeps property, money goes to Cash Stack
+    room.gameState.cashStack = (room.gameState.cashStack || 0) + finalAmount;
+    room.gameState.history.unshift(`🏆 ${room.players[winnerIndex]?.name} defended their property for $${finalAmount}!`);
+  } else {
+    // Hostile Takeover: Original owner gets money, winner gets property
+    room.gameState.playerMoney[originalOwner] += finalAmount;
+    room.gameState.propertyOwnership[propertyIndex] = winnerIndex;
+    room.gameState.history.unshift(`🏆 ${room.players[winnerIndex]?.name} won the auction for $${finalAmount}!`);
+  }
+  
+  // Set status to 'complete' for client to show animations
+  room.gameState.auctionState.status = 'complete';
+  room.gameState.auctionState.winner = winnerIndex;
+  room.gameState.auctionState.finalAmount = finalAmount;
+  
+  broadcastState(room);
+  
+  // Reset auction after 3 seconds
+  setTimeout(() => {
+    room.gameState.auctionState = {
+      status: 'idle',
+      propertyIndex: null,
+      initiator: null,
+      bids: [],
+      currentBid: 0,
+      participants: [],
+      winner: null,
+      currentBidder: null,
+      originalOwner: null,
+      finalAmount: 0
+    };
+    broadcastState(room);
+  }, 3000);
+}
+
+function handleAuctionComplete(room, payload) {
+    const { winner, bidAmount, propertyIndex, originalOwner } = payload || {};
+    
+    if (winner !== undefined && bidAmount && propertyIndex) {
+        const wIdx = Number(winner);
+        const ownerIdx = Number(originalOwner);
+        const amount = Number(bidAmount);
+        
+        // Deduct from Winner
+        room.gameState.playerMoney[wIdx] -= amount;
+        
+        if (wIdx === ownerIdx) {
+            // Scenario A: Self-Defense
+            room.gameState.cashStack += amount;
+            room.gameState.history.unshift(`${room.players[wIdx].name} defended their property for $${amount}!`);
+        } else {
+            // Scenario B: Takeover
+            room.gameState.playerMoney[ownerIdx] += amount;
+            // Update ownership
+            room.gameState.propertyOwnership[propertyIndex] = wIdx;
+            room.gameState.history.unshift(`${room.players[wIdx].name} won the auction for $${amount}! Transferring property...`);
+        }
+    }
+
+    // Reset State
+    room.gameState.auctionState.status = 'idle';
+    room.gameState.auctionState.propertyIndex = null;
+    room.gameState.auctionState.winner = null;
+    room.gameState.auctionState.bids = [];
+    room.gameState.auctionState.currentBid = 0;
+    room.gameState.auctionState.participants = [];
+    
+    broadcastState(room);
 }
 
 const PORT = process.env.PORT || 3001;

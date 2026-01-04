@@ -202,25 +202,6 @@ io.on('connection', (socket) => {
       case 'close_modal':
         room.gameState.modalState = { type: 'NONE', status: 'IDLE', payload: {} };
         break;
-      // War Actions
-      case 'war_init':
-        handleWarInit(room, payload);
-        break;
-      case 'war_join':
-        handleWarJoin(room, playerIndex);
-        break;
-      case 'war_withdraw':
-        handleWarWithdraw(room, playerIndex);
-        break;
-      case 'war_start':
-        handleWarStart(room);
-        break;
-      case 'war_roll':
-        handleWarRoll(room);
-        break;
-      case 'war_close':
-        handleWarClose(room);
-        break;
       // Auction Actions
       case 'auction_start_selection':
         room.gameState.auctionState.status = 'thinking';
@@ -241,12 +222,18 @@ io.on('connection', (socket) => {
           active: true,
           mode: payload.mode || 'A',
           phase: 'join',
-          participants: [playerIndex], // Initiator auto-joins
+          participants: [], // Start with empty array (players join manually)
           rolls: {},
           property: null,
+          propertyIndex: null, // Initialize propertyIndex
           currentRoller: null,
-          diceValues: [1, 1]
+          diceValues: [1, 1],
+          isRolling: false // Initialize isRolling
         };
+        
+        // Add history entry on server side
+        room.gameState.history.unshift(`⚔️ ${room.players[playerIndex]?.name || 'Player'} triggered PROPERTY WAR!`);
+        
         console.log(`[SERVER] Property War initiated by Player ${playerIndex}, mode: ${payload.mode}`);
         broadcastState(room);
         break;
@@ -271,87 +258,17 @@ io.on('connection', (socket) => {
       case 'war_start':
         // Start the war (host/initiator only)
         if (room.gameState.warState && room.gameState.warState.phase === 'join') {
-          const warState = room.gameState.warState;
-          if (warState.participants.length >= 2) {
-            // Transition to progress phase (shows 'SELECTING PROPERTY...' animation)
-            warState.phase = 'progress';
-            console.log(`[SERVER] Property War starting progress phase. ${warState.participants.length} participants`);
-            broadcastState(room);
-            
-            // Available properties passed from client
-            const availableIndices = payload.availableIndices || [];
-            
-            // After 3 seconds, Select Property and Reveal
-            setTimeout(() => {
-              if (room.gameState.warState && room.gameState.warState.phase === 'progress') {
-                if (availableIndices.length > 0) {
-                     const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-                     room.gameState.warState.propertyIndex = randomIndex;
-                     room.gameState.warState.phase = 'reveal';
-                     console.log(`[SERVER] Property War transitioning to reveal phase. Property: ${randomIndex}`);
-                     broadcastState(room);
-                     
-                     // After 2 seconds, start rolling
-                     setTimeout(() => {
-                         if (room.gameState.warState && room.gameState.warState.phase === 'reveal') {
-                             room.gameState.warState.phase = 'roll';
-                             room.gameState.warState.currentRoller = 0;
-                             room.gameState.warState.rolls = {};
-                             console.log(`[SERVER] Property War transitioning to roll phase`);
-                             broadcastState(room);
-                         }
-                     }, 2000);
-                } else {
-                    // No properties available? Should not happen if client filters correctly.
-                    // Fallback to roll directly (Mode B style) or handle error
-                    room.gameState.warState.phase = 'roll';
-                    room.gameState.warState.currentRoller = 0;
-                    room.gameState.warState.rolls = {};
-                    console.log(`[SERVER] Property War transitioning to roll phase (No properties)`);
-                    broadcastState(room);
-                }
-              }
-            }, 3000);
-          }
+          handleWarStart(room, payload);
         }
         break;
       case 'war_roll':
         // Player rolls their dice
         if (room.gameState.warState && room.gameState.warState.phase === 'roll') {
-          const warState = room.gameState.warState;
-          const currentRollerIdx = warState.participants[warState.currentRoller];
-          
-          if (playerIndex === currentRollerIdx) {
-            // Generate random dice
-            const die1 = Math.floor(Math.random() * 6) + 1;
-            const die2 = Math.floor(Math.random() * 6) + 1;
-            const total = die1 + die2;
-            
-            warState.diceValues = [die1, die2];
-            warState.rolls[playerIndex] = total;
-            
-            console.log(`[SERVER] Player ${playerIndex} rolled ${die1}+${die2}=${total}`);
-            
-            // Move to next roller or end
-            if (warState.currentRoller < warState.participants.length - 1) {
-              warState.currentRoller++;
-              broadcastState(room);
-            } else {
-              // All players rolled - determine winner
-              let maxRoll = 0;
-              let winner = null;
-              for (const [pIdx, roll] of Object.entries(warState.rolls)) {
-                if (roll > maxRoll) {
-                  maxRoll = roll;
-                  winner = Number(pIdx);
-                }
-              }
-              warState.phase = 'result';
-              warState.winner = winner;
-              console.log(`[SERVER] Property War Winner: Player ${winner} with roll ${maxRoll}`);
-              broadcastState(room);
+            const warState = room.gameState.warState;
+            const currentRollerIdx = warState.participants[warState.currentRoller];
+            if (playerIndex === currentRollerIdx) {
+                 handleWarRoll(room);
             }
-          }
         }
         break;
       case 'war_close':
@@ -615,107 +532,151 @@ function handleWarWithdraw(room, playerIndex) {
   broadcastState(room);
 }
 
-function handleWarStart(room) {
-  if (room.gameState.warState.participants.length === 0) {
-    // No participants, end war
-    room.gameState.warState.phase = 'result';
-    room.gameState.history.unshift(`No one joined the war. It fizzles out.`);
-    broadcastState(room);
+function handleWarStart(room, payload = {}) {
+  // Validate participants
+  if (room.gameState.warState.participants.length < 2) {
+    console.log(`[SERVER] Cannot start war: Not enough participants (${room.gameState.warState.participants.length}/2)`);
     return;
   }
 
   if (room.gameState.warState.mode === 'A') {
+    // Transition to progress phase
     room.gameState.warState.phase = 'progress';
+    console.log(`[SERVER] Property War starting progress phase. ${room.gameState.warState.participants.length} participants`);
     broadcastState(room);
     
-    // Simulate progress then reveal
+    // Available properties passed from client payload
+    let availableIndices = payload.availableIndices || [];
+    console.log(`[SERVER] War Start Payload availableIndices: ${availableIndices.length}`);
+    
+    // Fallback if client sent nothing (safety net)
+    if (availableIndices.length === 0) {
+        console.log(`[SERVER] Warning: No availableIndices received. Using fallback (all properties).`);
+        // Simple fallback: 1, 3, 6, 8, 9, 11, 13, 14, 15... (Just a range 1-39)
+        availableIndices = Array.from({length: 40}, (_, i) => i).filter(i => ![0, 10, 20, 30].includes(i)); // Exclude corners
+    }
+
+    // After 3 seconds, Select Property and Reveal
     setTimeout(() => {
-      // Select random unowned property (simplified: random ID 1-39 that is property)
-      // In real game, we need to know which are unowned.
-      // Server doesn't track ownership perfectly yet? 
-      // Actually it does: room.gameState.propertyOwnership
-      // We need a list of all properties.
-      // Let's assume client sends available properties or we just pick random and check?
-      // For simplicity, let's pick a random property ID from a hardcoded list of valid property indices
-      // or just pick one and if owned, pick another.
-      // Since we don't have the full board data on server, let's just pick a random number 
-      // and let the client render the name. 
-      // Wait, client needs the name. 
-      // Let's rely on client to send the property list? No, server authoritative.
-      // Let's just pick a number 1, 3, 6, 8, 9, 11... (Property indices)
-      // This is getting complex to duplicate board data.
-      // ALTERNATIVE: Client sends 'war_reveal' with the chosen property?
-      // Yes, let the initiator client pick the property and tell the server.
-      // But that's less secure.
-      // Let's just use a dummy property for now or implement a simple picker if we have the data.
-      // We don't have RENT_DATA on server.
-      // Let's set phase to 'reveal' and let the client (Host) send the property details?
-      // Actually, let's just skip to 'roll' for now or let the client handle the "Progress -> Reveal" transition logic via actions.
-      
-      // Let's change this: handleWarStart just sets phase to 'progress'.
-      // The Client (Initiator) will wait 3s, then pick a property, and send 'war_reveal_property' action.
-      // That's easier.
-    }, 0);
+      // Validate still in progress phase
+      if (room.gameState.warState && room.gameState.warState.phase === 'progress') {
+        if (availableIndices.length > 0) {
+              const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+              room.gameState.warState.propertyIndex = randomIndex;
+              room.gameState.warState.phase = 'reveal';
+              console.log(`[SERVER] Property War transitioning to reveal phase. Property: ${randomIndex}`);
+              broadcastState(room);
+              
+              // After 4 seconds, start rolling
+              setTimeout(() => {
+                  if (room.gameState.warState && room.gameState.warState.phase === 'reveal') {
+                      room.gameState.warState.phase = 'roll';
+                      room.gameState.warState.currentRoller = 0;
+                      room.gameState.warState.rolls = {};
+                      console.log(`[SERVER] Property War transitioning to roll phase`);
+                      broadcastState(room);
+                  }
+              }, 4000);
+        } else {
+            // No valid properties? Fallback to roll directly
+            console.log(`[SERVER] No available properties for War! Skipping to roll.`);
+            room.gameState.warState.phase = 'roll';
+            room.gameState.warState.currentRoller = 0;
+            room.gameState.warState.rolls = {};
+            broadcastState(room);
+        }
+      }
+    }, 3000);
   } else {
+    // Mode B: Direct to roll
     room.gameState.warState.phase = 'roll';
     room.gameState.warState.currentRoller = 0;
+    room.gameState.warState.rolls = {};
     broadcastState(room);
   }
 }
 
 function handleWarRoll(room) {
   const { participants, currentRoller } = room.gameState.warState;
-  const playerIndex = participants[currentRoller];
   
-  // Roll dice
-  const die1 = Math.floor(Math.random() * 6) + 1;
-  const die2 = Math.floor(Math.random() * 6) + 1;
-  const total = die1 + die2;
-  
-  room.gameState.warState.diceValues = [die1, die2];
-  room.gameState.warState.rolls[playerIndex] = total;
-  
-  room.gameState.history.unshift(
-    `🎲 ${room.players[playerIndex]?.name || 'Player'} rolled ${total}!`
-  );
-  
-  // Next roller
-  if (currentRoller + 1 < participants.length) {
-    room.gameState.warState.currentRoller++;
-  } else {
-    // All rolled, determine winner
-    const rolls = room.gameState.warState.rolls;
-    const maxRoll = Math.max(...Object.values(rolls));
-    const winners = Object.entries(rolls)
-      .filter(([_, roll]) => roll === maxRoll)
-      .map(([idx]) => parseInt(idx));
-      
-    if (winners.length > 1) {
-      // Tie - Reset for re-roll
-      room.gameState.warState.participants = winners;
-      room.gameState.warState.rolls = {};
-      room.gameState.warState.currentRoller = 0;
-      room.gameState.history.unshift(`⚔️ TIE! Re-rolling...`);
-    } else {
-      // Winner
-      const winnerIdx = winners[0];
-      room.gameState.warState.winner = winnerIdx;
-      room.gameState.warState.phase = 'result';
-      
-      if (room.gameState.warState.mode === 'A') {
-        // Property win handled by client sending 'update_state'? 
-        // Or server awards it? Server doesn't know which property it is if client picked it.
-        // If we use the client-driven reveal, client knows.
-        // Let's let client handle the prize award for now to ensure data consistency with RENT_DATA.
-      } else {
-        // Cash win
-        room.gameState.playerMoney[winnerIdx] += room.gameState.battlePot;
-        room.gameState.battlePot = 0;
-      }
-      room.gameState.history.unshift(`🏆 ${room.players[winnerIdx]?.name || 'Player'} won the war!`);
-    }
-  }
+  // Set explicit rolling state for animation
+  room.gameState.warState.isRolling = true;
   broadcastState(room);
+  
+  // Wait 1 second for animation
+  setTimeout(() => {
+    const playerIndex = participants[currentRoller];
+    
+    // Roll dice
+    const die1 = Math.floor(Math.random() * 6) + 1;
+    const die2 = Math.floor(Math.random() * 6) + 1;
+    const total = die1 + die2;
+    
+    room.gameState.warState.isRolling = false;
+    room.gameState.warState.diceValues = [die1, die2];
+    room.gameState.warState.rolls[playerIndex] = total;
+    
+    room.gameState.history.unshift(
+      `🎲 ${room.players[playerIndex]?.name || 'Player'} rolled ${total}!`
+    );
+    
+    // Next roller
+    if (currentRoller + 1 < participants.length) {
+      room.gameState.warState.currentRoller++;
+    } else {
+      // All rolled, determine winner
+      const rolls = room.gameState.warState.rolls;
+      const maxRoll = Math.max(...Object.values(rolls));
+      const winners = Object.entries(rolls)
+        .filter(([_, roll]) => roll === maxRoll)
+        .map(([idx]) => parseInt(idx));
+        
+      if (winners.length > 1) {
+        // Tie logic: Show message, wait 2s, then reset
+        const names = winners.map(idx => room.players[idx]?.name || `Player ${idx+1}`).join(' and ');
+        
+        room.gameState.warState.phase = 'tie';
+        room.gameState.warState.tieMessage = `${names} had a tie, fight again`;
+        broadcastState(room); // Update clients to show tie screen
+        
+        setTimeout(() => {
+           // Reset for re-roll
+           if (room.gameState.warState && room.gameState.warState.active) {
+             room.gameState.warState.participants = winners;
+             room.gameState.warState.rolls = {};
+             room.gameState.warState.currentRoller = 0;
+             room.gameState.warState.phase = 'roll';
+             room.gameState.warState.tieMessage = null;
+             room.gameState.history.unshift(`⚔️ TIE! Re-rolling...`);
+             broadcastState(room);
+           }
+        }, 2000);
+      } else {
+        // Winner
+        const winnerIdx = winners[0];
+        room.gameState.warState.winner = winnerIdx;
+        room.gameState.warState.phase = 'result';
+        
+        if (room.gameState.warState.mode === 'A') {
+          // Mode A: Award Property to winner
+          const propIndex = room.gameState.warState.propertyIndex;
+          if (propIndex !== undefined && propIndex !== null) {
+            room.gameState.propertyOwnership[propIndex] = winnerIdx;
+            console.log(`[SERVER] War Result: Property ${propIndex} transferred to Player ${winnerIdx}`);
+            room.gameState.history.unshift(`🏆 ${room.players[winnerIdx]?.name || 'Player'} won the property!`);
+          } else {
+             console.log(`[SERVER] War Result Error: No propertyIndex found!`);
+          }
+        } else {
+          // Mode B: Cash win
+          room.gameState.playerMoney[winnerIdx] += room.gameState.battlePot;
+          room.gameState.battlePot = 0;
+        }
+        room.gameState.history.unshift(`🏆 ${room.players[winnerIdx]?.name || 'Player'} won the war!`);
+      }
+    }
+    broadcastState(room);
+  }, 1000);
 }
 
 function handleWarClose(room) {

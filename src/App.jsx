@@ -58,6 +58,11 @@ function App() {
   const [connectedPlayers, setConnectedPlayers] = useState([]); // List of players in room
   const socketRef = useRef(null);
   
+  // Jail State
+  const [jailStatus, setJailStatus] = useState({}); // { playerIndex: turnsRemaining }
+  const [showJailModal, setShowJailModal] = useState(false); // The Action Modal (Pay/Skip)
+  const [showJailNotification, setShowJailNotification] = useState(false); // The Info Modal (You went to jail)
+  
   // Input state for joining
   const [joinCode, setJoinCode] = useState('');
   
@@ -251,6 +256,37 @@ function App() {
   const SOCKET_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
   // Connect to Socket.IO server and set up event handlers
+  // Wake Lock Implementation (Prevent Sleep)
+  useEffect(() => {
+    let wakeLock = null;
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('Wake Lock active');
+        } catch (err) {
+          console.log('Wake Lock error:', err);
+        }
+      }
+    };
+    
+    // Request on mount
+    requestWakeLock();
+    
+    // Re-request on visibility change (if lost)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLock) wakeLock.release();
+    };
+  }, []);
+
+  // Connect to Socket.IO server and set up event handlers
   const connectSocket = () => {
     if (socketRef.current) return socketRef.current;
     
@@ -383,6 +419,25 @@ function App() {
     if (state.battlePot !== undefined) setBattlePot(state.battlePot);
     if (state.auctionState) setAuctionState(state.auctionState);
     
+    // Sync Property War State
+    if (state.warState) {
+        setShowWarModal(state.warState.active);
+        setWarPhase(state.warState.phase);
+        setWarParticipants(state.warState.participants || []);
+        setWarMode(state.warState.mode || 'A');
+        setWarRolls(state.warState.rolls || {});
+        setWarCurrentRoller(state.warState.currentRoller);
+        
+        // Handle warProperty sync (Server sends tileIndex or object?)
+        // Server warState.property is usually the object or null.
+        // If it's just an index, we might need to resolve it, but server index.js line 548 sets it to null.
+        // In handleWarReveal (server side?), it might set it.
+        // Let's safe check:
+        setWarProperty(state.warState.property); 
+        
+        // Dice values for war
+        if (state.warState.diceValues) setWarDiceValues(state.warState.diceValues);
+    }
     // Sync Modal State
     if (state.modalState) {
       if (state.modalState.type === 'ROB_BANK') {
@@ -610,6 +665,18 @@ function App() {
       
       if (gamePlayers[ownerIndex]) {
         const bgColor = gamePlayers[ownerIndex].color;
+        
+        // Custom Glassy Style for Orange Avatar (#FF9800)
+        if (bgColor === '#FF9800') {
+            return {
+                background: 'linear-gradient(135deg, #FF9800 0%, #FFCC80 100%)',
+                color: '#FFF',
+                border: '1px solid rgba(255,255,255,0.6)',
+                boxShadow: '0 2px 4px rgba(255, 152, 0, 0.3), inset 0 0 4px rgba(255,255,255,0.3)',
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+            };
+        }
+
         const isLightBg = bgColor === '#E0E0E0' || bgColor === '#FFFFFF';
         return { 
           background: bgColor,
@@ -621,9 +688,12 @@ function App() {
   };
 
   // Helper: Check for Monopoly
-  const hasMonopoly = (tileIndex, ownerIndex) => {
+  const hasMonopoly = (tileIndex, ownerIndex, ownershipOverride = null) => {
     const property = RENT_DATA[tileIndex];
     if (!property) return false;
+    
+    // Use override if provided, otherwise use current state
+    const currentOwnership = ownershipOverride || propertyOwnership;
     
     const groupId = property.groupId;
     
@@ -631,18 +701,20 @@ function App() {
     const groupTiles = Object.keys(RENT_DATA).filter(key => RENT_DATA[key].groupId === groupId);
     
     // Check if owner owns all of them
-    return groupTiles.every(tIndex => propertyOwnership[tIndex] === ownerIndex);
+    return groupTiles.every(tIndex => currentOwnership[tIndex] === ownerIndex);
   };
 
   // Helper: Calculate Rent
-  const calculateRent = (tileIndex) => {
+  const calculateRent = (tileIndex, ownershipOverride = null) => {
+    const currentOwnership = ownershipOverride || propertyOwnership;
+
     // 1. Check if it's a Train
     if (TRAIN_TILES.includes(tileIndex)) {
-      const ownerIndex = propertyOwnership[tileIndex];
+      const ownerIndex = currentOwnership[tileIndex];
       if (ownerIndex === undefined) return 0;
       
       // Count trains owned by this player
-      const ownedTrains = TRAIN_TILES.filter(t => propertyOwnership[t] === ownerIndex).length;
+      const ownedTrains = TRAIN_TILES.filter(t => currentOwnership[t] === ownerIndex).length;
       const rent = TRAIN_RENT[ownedTrains - 1] || 0;
       console.log(`[calculateRent] Train tile ${tileIndex}: owner=${ownerIndex}, ownedTrains=${ownedTrains}, rent=${rent}`);
       return rent;
@@ -653,10 +725,11 @@ function App() {
     if (!property) return 0; // Should not happen for valid properties
     
     const level = propertyLevels[tileIndex] || 0;
-    const ownerIndex = propertyOwnership[tileIndex];
+    const ownerIndex = currentOwnership[tileIndex];
     
     // Check Monopoly (only relevant if level is 0)
-    if (level === 0 && hasMonopoly(tileIndex, ownerIndex)) {
+    // Pass the ownershipOverride down to hasMonopoly
+    if (level === 0 && hasMonopoly(tileIndex, ownerIndex, currentOwnership)) {
       return property.rentLevels[0] * 2;
     }
     
@@ -1012,9 +1085,29 @@ function App() {
   // This is tricky in a pure function.
   // Let's do it when we set the current player.
 
+  // Check for Jail at start of turn
+  useEffect(() => {
+    // If it's my turn (or we are hosting offline)
+    // and I am in jail
+    const isOffline = networkMode === 'offline';
+    const isMyTurnOnline = networkMode === 'online' && currentPlayer === myPlayerIndex;
+    
+    // In offline logic, we might need a better trigger than just useEffect if it runs too often
+    // But since currentPlayer changes only once per turn, this is fine.
+    
+    if (jailStatus[currentPlayer] > 0) {
+        // Show Jail Modal Immediately
+        // Delay slightly for effect?
+        console.log(`Player ${currentPlayer} is in jail. Turns left: ${jailStatus[currentPlayer]}`);
+        setShowJailModal(true);
+    }
+  }, [currentPlayer]); // REMOVED jailStatus to prevent immediate popup on arrest
+
   // Keyboard controls
   useEffect(() => {
-    const handleKeyDown = (e) => {
+
+  // Handle Key Down
+  const handleKeyDown = (e) => {
       // Prevent default for common keys to avoid scrolling
       if (['Space', 'Enter', 'Escape'].includes(e.code)) {
         // We handle preventDefault inside specific blocks to avoid blocking unrelated interactions if needed,
@@ -1153,6 +1246,15 @@ function App() {
     showWarModal, warPhase, warParticipants, warIsRolling, warMode, playerMoney,
     showRobBankModal, robStatus, showChanceModal, showChestModal, showPropertyModal, currentChanceCard, currentChestCard
   ]);
+
+  // Check for Jail at start of turn
+  useEffect(() => {
+    // If it's my turn (or we are hosting offline) and I am in jail
+    if (jailStatus[currentPlayer] > 0) {
+        console.log(`Player ${currentPlayer} is in jail. Turns left: ${jailStatus[currentPlayer]}`);
+        setShowJailModal(true);
+    }
+  }, [currentPlayer, jailStatus]);
 
   // Auction Bid Auto-Update
   useEffect(() => {
@@ -1309,6 +1411,113 @@ function App() {
     return validCards[Math.floor(Math.random() * validCards.length)];
   };
 
+  // Helper: Send player to Jail
+  const sendToJail = (playerIndex) => {
+    const jailTileIndex = 28;
+    
+    // 1. Move token visually to Jail
+    setPlayerPositions(prev => {
+      const newPos = [...prev];
+      newPos[playerIndex] = jailTileIndex;
+      return newPos;
+    });
+
+    // 2. Set Jail Status (Start with 3 turns)
+    setJailStatus(prev => {
+        const newStatus = { ...prev, [playerIndex]: 3 };
+        
+        // Online Sync
+        if (networkMode === 'online') {
+            sendGameAction('update_state', { 
+                jailStatus: newStatus,
+                playerPositions: [...playerPositions, jailTileIndex] // Simplified, assumes array order
+            });
+        }
+        return newStatus;
+    });
+
+    // 3. Update History
+    setHistory(prev => [`👮 ${gamePlayers[playerIndex].name} went to JAIL!`, ...prev.slice(0, 9)]);
+
+    // 4. Show Notification instead of immediate end turn
+    setShowJailNotification(true);
+    
+    // If Online, sync the positional/status update, but let the user click "OK" to end turn locally?
+    // Actually, in online, if we don't end turn, other players wait.
+    // Ideally update state, show modal, and when they click OK, send 'end_turn'.
+    // However, for pure consistency, let's sync state now.
+    if (networkMode === 'online') {
+        const newPos = [...playerPositions];
+        newPos[playerIndex] = jailTileIndex;
+        sendGameAction('update_state', { 
+          jailStatus: { ...jailStatus, [playerIndex]: 3 },
+          playerPositions: newPos
+        });
+    }
+  };
+
+  // Helper: Handle Jail Modal Actions (Pay/Skip - Start of Turn)
+  const handleJailAction = (action) => {
+    const turnsLeft = jailStatus[currentPlayer];
+    
+    if (action === 'pay') {
+      const fine = turnsLeft === 3 ? 1000 : turnsLeft === 2 ? 500 : 200;
+
+      if (playerMoney[currentPlayer] < fine) {
+        alert("Not enough money!");
+        return;
+      }
+
+      // Pay Fine
+      setPlayerMoney(prev => {
+        const newMoney = [...prev];
+        newMoney[currentPlayer] -= fine;
+        // Online Sync
+        if (networkMode === 'online') sendGameAction('update_state', { playerMoney: newMoney });
+        return newMoney;
+      });
+
+      // Remove from Jail
+      setJailStatus(prev => {
+        const newStatus = { ...prev };
+        delete newStatus[currentPlayer];
+        // Online Sync
+        if (networkMode === 'online') sendGameAction('update_state', { jailStatus: newStatus });
+        return newStatus;
+      });
+
+      setHistory(prev => [`${gamePlayers[currentPlayer].name} paid $${fine} to leave Jail.`, ...prev.slice(0, 9)]);
+      setShowJailModal(false);
+      // Player can now roll normally (turn continues)
+      // We do NOT call endTurn here; they just get to roll now.
+      // But we need to ensure 'isRolling' isn't blocked? 
+      // Actually, if we intercepted roll, we just hide modal. The user can then click Roll.
+    } 
+    
+    else if (action === 'skip') {
+      // Decrease turns left
+      const newTurns = turnsLeft - 1;
+      
+      setJailStatus(prev => {
+        const newStatus = { ...prev };
+        if (newTurns <= 0) {
+           delete newStatus[currentPlayer]; // Free after serving time
+           setHistory(prev => [`${gamePlayers[currentPlayer].name} served their time and is free!`, ...prev.slice(0, 9)]);
+        } else {
+           newStatus[currentPlayer] = newTurns;
+           setHistory(prev => [`${gamePlayers[currentPlayer].name} stays in Jail (${newTurns} turns left).`, ...prev.slice(0, 9)]);
+        }
+        
+        // Online Sync
+        if (networkMode === 'online') sendGameAction('update_state', { jailStatus: newStatus });
+        return newStatus;
+      });
+      
+      setShowJailModal(false);
+      endTurn(currentPlayer, false); // Skip turn immediately
+    }
+  };
+
   // Helper to process tile arrival (Rent, Buy, Special Tiles)
   // ownershipOverride is used in online mode to pass fresh server ownership data
   // isOnlineOverride allows applyGameState to force online behavior even if closure state is stale
@@ -1339,6 +1548,15 @@ function App() {
     if (tileIndex === 23) {
       setShowAuctionLandingModal(true);
       return; 
+    }
+
+    // Go To Jail (Index 28 - Top Right Corner usually 30? Wait, corners are 0, 9, 18, 27 in 9x9?)
+    // In this board 0-35 (36 tiles). Corners: 0(Start), 9(Jail Visit), 18(Free Parking?), 27(Go To Jail).
+    // Let's verify boardData... logic says tileIndex 28 in code history? 
+    // User requested tileIndex 28. "sendToJail(playerIndex) from Tile 28".
+    if (tileIndex === 28) {
+      sendToJail(playerIndex);
+      return;
     }
 
     // The Audit (Index 7) - Tax based on dice rolled to reach tile
@@ -1409,6 +1627,15 @@ function App() {
     
     // Cash Stack (Index 3) - Player wins the jackpot!
     if (tileIndex === 3) {
+      // Online Mode: Send to server
+      if (effectiveIsOnline) {
+        console.log('[Cash Stack] Sending cash_stack_claim to server');
+        sendGameAction('cash_stack_claim');
+        // Server will broadcast the animation to all players (including us)
+        return;
+      }
+
+      // Offline Mode / Local Fallback
       const pot = cashStack;
       if (pot > 0) {
         // Award entire pot to player
@@ -1416,11 +1643,6 @@ function App() {
         updatedMoney[playerIndex] += pot;
         setPlayerMoney(updatedMoney);
         setCashStack(0); // Reset pot
-        
-        // Online Sync
-        if (networkMode === 'online') {
-          sendGameAction('update_state', { playerMoney: updatedMoney, cashStack: 0 });
-        }
         
         // Floating animation
         const animKey = getUniqueKey();
@@ -1450,7 +1672,17 @@ function App() {
       setShowBuyModal(true);
     } else if (property && ownerIndex !== undefined && Number(ownerIndex) !== playerIndex) {
       // Owned by another player - pay rent!
-      const rent = calculateRent(tileIndex);
+      // CHECK JAIL STATUS: If owner is in jail, skip rent
+      if (jailStatus[ownerIndex] > 0) {
+          console.log(`[Rent] Owner ${ownerIndex} is in Jail. Rent Skipped.`);
+          setHistory(prev => [`${gamePlayers[playerIndex].name} pays NO rent - Owner is in Jail!`, ...prev.slice(0, 9)]);
+          // End turn normally
+          endTurn(playerIndex, isDoubles);
+          return;
+      }
+
+      // FIXED: Pass effectiveOwnership via override to avoid stale closure state in online mode
+      const rent = calculateRent(tileIndex, effectiveOwnership);
       const ownerPosition = playerPositions[ownerIndex];
       
       // Deduct rent from current player
@@ -1633,27 +1865,11 @@ function App() {
          endTurn(playerIndex, false);
       } else {
         closeAllModals(async () => {
-        // Move to Jail (Tile 28)
-        // Simple teleport for now, or use movePlayerToken if we want animation
-        // Let's use handleTileArrival logic for Jail? Or just set position.
-        // Usually "Go to Jail" moves you directly.
-        
-        // We can use the same logic as "Go To Jail" chance card
-        const jailIndex = 28;
-        const currentPos = playerPositions[playerIndex];
-        let stepsToJail = (jailIndex - currentPos + 36) % 36;
-        if (stepsToJail === 0) stepsToJail = 0;
-        
-        if (stepsToJail > 0) {
-           await movePlayerToken(playerIndex, stepsToJail, 50);
-        }
-        
-        // Jail logic (if we had specific jail state, we'd set it here)
-        // For now, just end turn at Jail.
-        endTurn(playerIndex, false);
-      });
-    }
-  } else {
+             // Replaced logic with sendToJail helper
+             sendToJail(playerIndex);
+        });
+      }
+    } else {
     // Cancelled (shouldn't happen here if button is only for success/caught)
     closeAllModals(() => endTurn(playerIndex, false));
   }
@@ -2034,6 +2250,16 @@ function App() {
       const currentPos = playerPositions[playerIndex];
       
       switch (card.action) {
+        case 'MONEY_ADD':
+           setPlayerMoney(prev => {
+             const updated = [...prev];
+             updated[playerIndex] += card.amount;
+             if (networkMode === 'online') sendGameAction('update_state', { playerMoney: updated });
+             return updated;
+           });
+           setHistory(prev => [`${gamePlayers[playerIndex].name} received $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
+           break;
+
         case 'ADD_INVENTORY':
           setPlayerInventory(prev => ({
             ...prev,
@@ -2065,6 +2291,8 @@ function App() {
             } else {
                setHistory(prev => [`${gamePlayers[playerIndex].name} has no debt to clear`, ...prev.slice(0, 9)]);
             }
+            // Online Sync
+            if (networkMode === 'online') sendGameAction('update_state', { playerMoney: updated });
             return updated;
           });
           break;
@@ -2184,9 +2412,12 @@ function App() {
       let finalPrice = price;
       if (activeEffects[myPlayerIndex]?.discount_50) {
         finalPrice = Math.floor(price / 2);
-        // We also need to consume the discount locally? 
-        // Or just send the action and let server broadcast the result.
-        // The server will update money.
+        
+        // FIX: Consume the discount locally so it doesn't persist
+        setActiveEffects(prev => ({
+          ...prev,
+          [myPlayerIndex]: { ...prev[myPlayerIndex], discount_50: false }
+        }));
       }
       
       sendGameAction('buy_property', { tileIndex, price: finalPrice });
@@ -2702,7 +2933,9 @@ function App() {
       }
       
       // Valid selection
-      setPendingAuctionProperty({ ...property, tileIndex });
+      const uiProperty = getPropertyByTileIndex(tileIndex);
+      const color = uiProperty ? uiProperty.color : '#ccc';
+      setPendingAuctionProperty({ ...property, tileIndex, color });
       return;
     }
 
@@ -2771,15 +3004,27 @@ function App() {
     }
 
     // 2. Online Logic (Spectators & Announcement)
-    if (networkMode === 'online' && auctionState.active) {
+    if (networkMode === 'online') {
         // Spectator Waiting View (While someone else is selecting)
         if (auctionState.status === 'thinking') {
-            return { filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s' };
+             // If NOT the initiator, see grayscale
+             if (auctionState.initiator !== myPlayerIndex) {
+                 const owner = propertyOwnership[tileIndex];
+                 const initiator = auctionState.initiator;
+                 const isOwnedByOther = (owner !== undefined && owner !== null && owner !== initiator);
+                 
+                 // If it's a valid target (Owned by Other), keep color
+                 if (isOwnedByOther && !TRAIN_TILES.includes(tileIndex)) {
+                     return { transition: 'filter 0.3s' }; 
+                 } else {
+                     return { filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s' }; 
+                 }
+             }
         }
         
-        // Announcement Phase (The Reveal)
-        if (auctionState.status === 'announcing') {
-            if (auctionState.propertyIndex === tileIndex) {
+        // Selected Phase (The Reveal - 1 Second Glow)
+        if (auctionState.status === 'selected') {
+            if (Number(auctionState.propertyIndex) === Number(tileIndex)) {
                  // The Chosen One: Glow!
                  return { 
                      filter: 'brightness(1.2) drop-shadow(0 0 20px gold)', 
@@ -2787,17 +3032,12 @@ function App() {
                      transform: 'scale(1.15)',
                      boxShadow: '0 0 15px gold',
                      border: '2px solid gold',
-                     transition: 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' // Bounce effect
+                     transition: 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                  };
             } else {
-                 // Others: Darken
                  return { filter: 'grayscale(100%) brightness(0.4)', transition: 'filter 0.5s' };
             }
         }
-        
-        // Active Bidding Phase: Restore color? Or keep focused? 
-        // User didn't specify. Standard practice is restore or keep B&W.
-        // Let's restore for now as the modal covers the screen.
     }
 
     return {}; // Normal styling
@@ -4243,86 +4483,116 @@ function App() {
         </div>
       )}
 
-      {/* Forced Auction: Landing Choice Modal */}
+      {/* 1. Landing Choice Modal */}
       {showAuctionLandingModal && (
         <div className="modal-overlay">
           <div className="buy-modal">
-             <div className="modal-heading" style={{background: 'linear-gradient(to bottom, #FFD700 0%, #FFA500 100%)'}}>
-               <span className="modal-heading-text">FORCED AUCTION</span>
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #FFD700 0%, #FFA500 100%)' }}>
+              <span className="modal-heading-text">OPPORTUNITY</span>
+            </div>
+            <div className="modal-body">
+              <div style={{ textAlign: 'center', margin: '20px 0', fontSize: '18px' }}>
+                Opportunity Knocks! Force an opponent to sell a property? <br/> 
+                <span style={{ fontWeight: 'bold' }}>Cost: $1,000</span>
+              </div>
+              <div className="modal-buttons">
+                <button 
+                  className="modal-btn cancel" 
+                  onClick={() => setShowAuctionLandingModal(false)}
+                >
+                  PASS
+                </button>
+                <button 
+                  className="modal-btn buy" 
+                  style={{ background: '#4CAF50' }}
+                  onClick={() => {
+                    setShowAuctionLandingModal(false);
+                    if (networkMode === 'online') {
+                      sendGameAction('auction_start_selection');
+                    }
+                    setIsSelectingAuctionProperty(true);
+                    setShowAuctionInstructionModal(true);
+                  }}
+                >
+                  START
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Instruction Overlay */}
+      {showAuctionInstructionModal && !pendingAuctionProperty && (
+        <div className="modal-overlay" style={{ background: 'transparent', pointerEvents: 'none' }}>
+           <div className="buy-modal" style={{ pointerEvents: 'auto', marginTop: '10vh' }}>
+             <div className="modal-heading" style={{ background: 'linear-gradient(135deg, #FFC107 0%, #FF9800 100%)' }}>
+               <span className="modal-heading-text">INSTRUCTION</span>
              </div>
              <div className="modal-body">
-               <div style={{fontSize: '22px', fontWeight: 'bold', margin: '15px 0', textAlign: 'center'}}>
-                 🔨 You landed on Forced Auction!
-               </div>
-               <div style={{fontSize: '14px', color: '#666', textAlign: 'center', marginBottom: '20px'}}>
-                 Pay $1,000 to force an opponent's property into auction, or skip this tile.
+               <div style={{ textAlign: 'center', margin: '20px 0', fontSize: '16px' }}>
+                 Tap any opponent's property to auction it!
                </div>
                <div className="modal-buttons">
                  <button 
-                   className="modal-btn buy" 
-                   style={{background: 'linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%)'}}
+                   className="modal-btn cancel"
                    onClick={() => {
-                     setShowAuctionLandingModal(false);
-                     if (networkMode === 'online') {
-                       sendGameAction('auction_start_selection');
-                     }
-                     setIsSelectingAuctionProperty(true);
-                     setShowAuctionInstructionModal(true);
-                   }}
-                 >
-                   START AUCTION
-                 </button>
-                 <button 
-                   className="modal-btn cancel" 
-                   onClick={() => {
-                     setShowAuctionLandingModal(false);
+                     setIsSelectingAuctionProperty(false);
+                     setShowAuctionInstructionModal(false);
                    }}
                  >
                    CANCEL
                  </button>
                </div>
              </div>
-          </div>
+           </div>
         </div>
       )}
 
-      {/* Forced Auction: Instruction Modal - stays visible during selection */}
-      {showAuctionInstructionModal && !pendingAuctionProperty && (
-        <div className="modal-overlay" style={{background: 'transparent', pointerEvents: 'none'}}>
-          <div className="buy-modal" style={{pointerEvents: 'auto', marginTop: '10vh'}}>
-             <div className="modal-heading" style={{background: 'linear-gradient(to bottom, #FFD700 0%, #FFA500 100%)'}}>
-               <span className="modal-heading-text">FORCED AUCTION</span>
-             </div>
-             <div className="modal-body">
-               <div style={{fontSize: '20px', fontWeight: 'bold', margin: '15px 0', textAlign: 'center'}}>
-                 🔨 Tap a property to auction!
-               </div>
-               <div style={{fontSize: '14px', color: '#666', textAlign: 'center'}}>
-                 (Only properties owned by <b>other players</b> are selectable)
-               </div>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Forced Auction: Selection Confirmation Modal */}
+      {/* 3. Selection Confirmation Modal */}
       {pendingAuctionProperty && (
-        <div className="modal-overlay" style={{background: 'transparent'}}>
+        <div className="modal-overlay">
           <div className="buy-modal">
-            <div className="modal-heading" style={{background: '#D32F2F'}}>
-              <span className="modal-heading-text">START AUCTION?</span>
+            <div className="modal-heading" style={{ background: '#D32F2F' }}>
+              <span className="modal-heading-text">AUCTION?</span>
             </div>
             <div className="modal-body">
-              <div className="modal-city-name">{pendingAuctionProperty.name}</div>
-              <div style={{fontSize: '18px', margin: '20px 0', textAlign: 'center'}}>
-                Pay <span style={{color: '#D32F2F', fontWeight: 'bold'}}>$1,000</span> to force this property into auction?
+              <div className="modal-city-name" style={{ 
+                background: pendingAuctionProperty.color,
+                color: '#fff',
+                textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                width: '140px',
+                height: '60px',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                margin: '10px auto',
+                borderRadius: '8px',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                border: '3px solid white',
+                fontSize: '11px',
+                textAlign: 'center',
+                lineHeight: '1.2'
+              }}>
+                {pendingAuctionProperty.name}
+              </div>
+              <div style={{ textAlign: 'center', margin: '20px 0', fontSize: '18px' }}>
+                Force this property into auction? <br/>
+                <span style={{ fontWeight: 'bold', color: '#D32F2F' }}>Fee: $1,000</span>
               </div>
               <div className="modal-buttons">
-                <button className="modal-btn buy" style={{background: '#D32F2F'}} onClick={handleAuctionConfirm}>
-                  PAY $1,000
+                <button 
+                  className="modal-btn cancel" 
+                  onClick={() => setPendingAuctionProperty(null)}
+                >
+                  BACK
                 </button>
-                <button className="modal-btn cancel" onClick={() => setPendingAuctionProperty(null)}>
-                  CANCEL
+                <button 
+                  className="modal-btn buy" 
+                  style={{ background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)', fontSize: '11px' }}
+                  onClick={handleAuctionConfirm}
+                >
+                  PAY $1000
                 </button>
               </div>
             </div>
@@ -4330,142 +4600,176 @@ function App() {
         </div>
       )}
 
-      {/* Forced Auction Status Overlays */}
-      {/* 1. Thinking Toast (Spectators) */}
-      {auctionState.status === 'thinking' && auctionState.initiator !== null && auctionState.initiator !== myPlayerIndex && (
-        <div style={{position: 'absolute', top: '15%', left: '50%', transform: 'translateX(-50%)', zIndex: 300, background: 'rgba(0,0,0,0.8)', color: 'white', padding: '10px 20px', borderRadius: '30px', animation: 'fadeIn 0.5s'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-               <span style={{fontSize: '20px'}}>🤔</span>
-               <span>{gamePlayers[auctionState.initiator]?.name} is choosing a property to auction...</span>
-            </div>
-        </div>
-      )}
-
-      {/* 2. Announcement Overlay */}
+      {/* 3b. Announcement Modal (New Phase) */}
       {auctionState.status === 'announcing' && (
         <div className="modal-overlay">
-            <div className="modal" style={{background: '#D32F2F', color: 'white', border: 'none', animation: 'popIn 0.5s'}}>
-                 <div style={{textAlign: 'center', padding: '20px'}}>
-                     <h1 style={{margin: 0, textShadow: '2px 2px 0px #000'}}>FORCED AUCTION!</h1>
-                     <h3 style={{marginTop: '10px', fontWeight: 'normal'}}>
-                        {gamePlayers[auctionState.initiator]?.name} selected:
-                     </h3>
-                     <div className="modal-city-name" style={{fontSize: '32px', margin: '15px 0', color: '#FFD700', textShadow: '1px 1px 0px #000'}}>
+          <div className="buy-modal">
+             <div className="modal-heading" style={{ background: '#FF9800' }}>
+               <span className="modal-heading-text">AUCTION STARTING!</span>
+             </div>
+             <div className="modal-body">
+               <div style={{ textAlign: 'center', margin: '20px 0' }}>
+                  <div style={{ fontSize: '16px', marginBottom: '10px' }}>
+                     <span style={{ fontWeight: 'bold' }}>{gamePlayers[auctionState.initiator]?.name}</span> chose:
+                  </div>
+                     <div className="modal-city-name" style={{ 
+                        background: getPropertyByTileIndex(auctionState.propertyIndex)?.color || '#ccc',
+                        color: '#fff',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                        width: '140px',
+                        height: '60px',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        margin: '10px auto',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                        border: '3px solid white',
+                        fontSize: '11px',
+                        textAlign: 'center',
+                        lineHeight: '1.2'
+                     }}>
                         {getTileName(auctionState.propertyIndex)}
                      </div>
-                     <p>Bidding starts shortly...</p>
-                 </div>
-            </div>
+                  <div style={{ fontSize: '14px', color: '#666' }}>
+                     Owner: {gamePlayers[auctionState.originalOwner]?.name || gamePlayers[propertyOwnership[auctionState.propertyIndex]]?.name}
+                  </div>
+               </div>
+             </div>
+          </div>
         </div>
       )}
 
-      {/* 3. Active Auction Modal */}
+      {/* 4. Active Bidding Interface */}
       {auctionState.status === 'active' && (
-        <div className="modal-overlay" style={{background: 'rgba(0,0,0,0.85)'}}>
-           <div className="buy-modal auction-modal" style={{width: '90%', maxWidth: '500px'}}>
-               <div className="modal-heading" style={{background: '#D32F2F'}}>
-                  <span className="modal-heading-text">AUCTION: {getTileName(auctionState.propertyIndex)}</span>
-               </div>
-               <div className="modal-body">
-                   {/* Current Bid Display */}
-                   <div style={{background: '#eee', padding: '15px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center'}}>
-                       <div style={{fontSize: '14px', color: '#666', marginBottom: '5px'}}>CURRENT BID</div>
-                       <div style={{fontSize: '48px', fontWeight: 'bold', color: '#4CAF50'}}>
-                           ${auctionState.currentBid}
-                       </div>
-                       <div style={{fontSize: '16px', fontWeight: 'bold'}}>
-                           {auctionState.winner !== null ? `Highest: ${gamePlayers[auctionState.winner]?.name}` : 'No bids yet'}
-                       </div>
-                   </div>
-                   
-                   {/* Current Bidder Indicator */}
-                   <div style={{background: auctionState.currentBidder === myPlayerIndex ? '#E8F5E9' : '#FFF3E0', padding: '10px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center', border: auctionState.currentBidder === myPlayerIndex ? '2px solid #4CAF50' : '1px solid #FFB74D'}}>
-                       {auctionState.currentBidder === myPlayerIndex ? (
-                           <span style={{fontWeight: 'bold', color: '#2E7D32'}}>🎯 YOUR TURN TO BID!</span>
-                       ) : (
-                           <span style={{color: '#E65100'}}>⏳ Waiting for {gamePlayers[auctionState.currentBidder]?.name} to bid...</span>
-                       )}
-                   </div>
-                   
-                   {/* Bid Log (last 4 bids) */}
-                   {auctionState.bids && auctionState.bids.length > 0 && (
-                       <div style={{marginBottom: '15px', background: '#f5f5f5', padding: '10px', borderRadius: '8px', maxHeight: '100px', overflowY: 'auto'}}>
-                           <div style={{fontSize: '12px', color: '#666', marginBottom: '5px'}}>BID HISTORY</div>
-                           {auctionState.bids.slice(0, 4).map((bid, idx) => (
-                               <div key={idx} style={{display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: idx < 3 ? '1px solid #ddd' : 'none'}}>
-                                   <span>{gamePlayers[bid.player]?.name}</span>
-                                   <span style={{fontWeight: 'bold', color: '#4CAF50'}}>${bid.amount}</span>
-                               </div>
-                           ))}
-                       </div>
+        <div className="modal-overlay">
+          <div className="buy-modal auction-modal" style={{ maxHeight: '85vh', width: '90%', maxWidth: '350px', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-heading" style={{ background: '#FF9800', padding: '10px' }}>
+              <span className="modal-heading-text" style={{ fontSize: '18px' }}>AUCTION: {getTileName(auctionState.propertyIndex)}</span>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', padding: '10px', justifyContent: 'space-between' }}>
+              
+              {/* Current High Bid */}
+              <div style={{ textAlign: 'center', marginBottom: '5px' }}>
+                <div style={{ fontSize: '12px', color: '#666' }}>Current High Bid</div>
+                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#4CAF50', lineHeight: '1.2' }}>${auctionState.currentBid}</div>
+                
+                {/* Last Bidder Info */}
+                <div style={{ fontSize: '13px', fontWeight: 'bold', minHeight: '20px', color: '#333' }}>
+                   {auctionState.bids && auctionState.bids.length > 0 ? (
+                      <span>{gamePlayers[auctionState.bids[0].player]?.name} bid ${auctionState.bids[0].amount}</span>
+                   ) : (
+                      <span style={{ color: '#999', fontWeight: 'normal' }}>No Bids Yet</span>
                    )}
-                   
-                   {/* Bid Controls */}
-                   <div className="bid-controls">
-                       {!auctionState.participants?.includes(myPlayerIndex) ? (
-                           <div style={{textAlign: 'center', padding: '20px', background: '#ffebee', color: '#D32F2F', fontWeight: 'bold', borderRadius: '8px'}}>
-                               You have FOLDED (or insufficient funds)
-                           </div>
-                       ) : (
-                           <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
-                               {/* Bid Slider */}
-                               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                   <span>Your Bid:</span>
-                                   <span style={{fontWeight: 'bold', fontSize: '24px', color: '#4CAF50'}}>${auctionBidAmount}</span>
-                               </div>
-                               <input 
-                                  type="range" 
-                                  min={(auctionState.currentBid || 0) + 10} 
-                                  max={playerMoney[myPlayerIndex]} 
-                                  step={10}
-                                  value={auctionBidAmount} 
-                                  onChange={e => setAuctionBidAmount(Number(e.target.value))} 
-                                  style={{width: '100%', height: '8px', accentColor: '#4CAF50'}}
-                                  disabled={auctionState.currentBidder !== myPlayerIndex}
-                               />
-                               <div style={{display: 'flex', gap: '10px'}}>
-                                   <button 
-                                      className="modal-btn buy" 
-                                      onClick={handleAuctionBid} 
-                                      disabled={auctionState.currentBidder !== myPlayerIndex || playerMoney[myPlayerIndex] < auctionBidAmount}
-                                      style={{flex: 2, background: auctionState.currentBidder === myPlayerIndex ? '#4CAF50' : '#9E9E9E', opacity: auctionState.currentBidder === myPlayerIndex ? 1 : 0.7}}
-                                   >
-                                      BID ${auctionBidAmount}
-                                   </button>
-                                   <button 
-                                      className="modal-btn cancel" 
-                                      onClick={handleAuctionFold} 
-                                      style={{flex: 1}}
-                                   >
-                                      FOLD
-                                   </button>
-                               </div>
-                           </div>
-                       )}
-                   </div>
-               </div>
-           </div>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="modal-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                
+                {/* Status Label */}
+                <div style={{ textAlign: 'center', fontSize: '12px', color: '#555', fontStyle: 'italic' }}>
+                   {auctionState.currentBidder === myPlayerIndex 
+                      ? <span style={{ color: '#2E7D32', fontWeight: 'bold' }}>YOUR TURN!</span>
+                      : `${gamePlayers[auctionState.currentBidder]?.name} is bidding...`}
+                </div>
+
+                {/* Range Slider for Bid */}
+                {auctionState.participants?.includes(myPlayerIndex) && ( 
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span style={{ color: '#666' }}>Min: ${(auctionState.currentBid || 0) + 10}</span>
+                        <span style={{ fontWeight: 'bold', color: '#4CAF50', fontSize: '16px' }}>${auctionBidAmount}</span>
+                    </div>
+                    <input 
+                       type="range" 
+                       min={(auctionState.currentBid || 0) + 10} 
+                       max={playerMoney[myPlayerIndex]} 
+                       step={10}
+                       value={auctionBidAmount} 
+                       onChange={(e) => setAuctionBidAmount(Number(e.target.value))}
+                       disabled={auctionState.currentBidder !== myPlayerIndex}
+                       style={{ width: '100%', cursor: auctionState.currentBidder === myPlayerIndex ? 'pointer' : 'not-allowed', opacity: auctionState.currentBidder === myPlayerIndex ? 1 : 0.6 }}
+                    />
+                 </div>
+                )}
+                 
+                 <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      className="modal-btn cancel" 
+                      onClick={handleAuctionFold}
+                      disabled={auctionState.currentBidder !== myPlayerIndex} 
+                      style={{ opacity: auctionState.currentBidder !== myPlayerIndex ? 0.5 : 1, padding: '10px', fontSize: '14px' }}
+                    >
+                      FOLD
+                    </button>
+                    <button 
+                      className="modal-btn buy" 
+                      style={{ background: '#4CAF50', flex: 2, opacity: (auctionState.currentBidder !== myPlayerIndex || playerMoney[myPlayerIndex] < auctionBidAmount) ? 0.5 : 1, padding: '10px', fontSize: '14px' }}
+                      onClick={handleAuctionBid}
+                      disabled={auctionState.currentBidder !== myPlayerIndex || playerMoney[myPlayerIndex] < auctionBidAmount}
+                    >
+                      BID
+                    </button>
+                 </div>
+              </div>
+
+            </div>
+          </div>
         </div>
       )}
 
-      {/* 4. Auction Complete Modal */}
+      {/* 5. Result / Winner Modal */}
       {auctionState.status === 'complete' && (
-        <div className="modal-overlay" style={{background: 'rgba(0,0,0,0.85)'}}>
-           <div className="modal" style={{background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)', color: 'white', border: 'none', animation: 'popIn 0.5s'}}>
-                <div style={{textAlign: 'center', padding: '30px'}}>
-                    <div style={{fontSize: '48px', marginBottom: '10px'}}>🏆</div>
-                    <h1 style={{margin: 0, textShadow: '2px 2px 0px #000'}}>AUCTION WON!</h1>
-                    <h2 style={{marginTop: '15px', fontWeight: 'normal'}}>
-                       {gamePlayers[auctionState.winner]?.name}
-                    </h2>
-                    <div style={{fontSize: '36px', fontWeight: 'bold', margin: '10px 0', color: '#FFD700', textShadow: '1px 1px 0px #000'}}>
-                       wins {getTileName(auctionState.propertyIndex)}
-                    </div>
-                    <div style={{fontSize: '24px', marginTop: '10px'}}>
-                       for ${auctionState.finalAmount || auctionState.currentBid}
-                    </div>
-                </div>
-           </div>
+        <div className="modal-overlay">
+          <div className="buy-modal">
+             <div className="modal-heading" style={{ background: '#4CAF50' }}>
+               <span className="modal-heading-text">SOLD!</span>
+             </div>
+             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '10px' }}>
+               <div style={{ textAlign: 'center', margin: '10px 0' }}>
+                  <div style={{ fontSize: '18px', marginBottom: '5px', color: '#666' }}>Winner:</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2E7D32', marginBottom: '10px' }}>
+                     {gamePlayers[auctionState.winner]?.name}
+                  </div>
+                  
+                  {/* Property Won Display */}
+                  <div className="modal-city-name" style={{ 
+                        background: getPropertyByTileIndex(auctionState.propertyIndex)?.color || '#ccc',
+                        color: '#fff',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                        width: '140px',
+                        height: '60px',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        margin: '10px auto',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                        border: '3px solid white',
+                        fontSize: '16px',
+                        textAlign: 'center',
+                        lineHeight: '1.2'
+                     }}>
+                        {getTileName(auctionState.propertyIndex)}
+                   </div>
+                  <div style={{ fontSize: '16px', marginTop: '10px' }}>
+                     Final Price: <span style={{ fontWeight: 'bold' }}>${auctionState.finalAmount || auctionState.currentBid}</span>
+                  </div>
+               </div>
+               <div className="modal-buttons" style={{ marginTop: 'auto' }}>
+                  <button 
+                    className="modal-btn buy" 
+                    style={{ width: '100%' }}
+                    onClick={() => {
+                        setAuctionState(prev => ({ ...prev, status: 'idle' }));
+                    }}
+                  >
+                    CONTINUE
+                  </button>
+               </div>
+             </div>
+          </div>
         </div>
       )}
 
@@ -4526,9 +4830,9 @@ function App() {
               <div className="modal-buttons">
                 <button className="modal-btn cancel" onClick={() => closeAllModals()}>CLOSE</button>
                 
-                {/* Upgrade Button - Only if owned by current player (or any player? let's assume current player for now, or just owner) */}
-                {/* Actually, in local multiplayer, anyone can click. But logically only the owner should upgrade. */}
-                {propertyOwnership[selectedProperty.tileIndex] !== undefined && 
+                {/* Upgrade Button - DISABLED GLOBALLY AS PER REQUEST */}
+                {false && propertyOwnership[selectedProperty.tileIndex] !== undefined && 
+                 !TRAIN_TILES.includes(selectedProperty.tileIndex) &&
                  hasMonopoly(selectedProperty.tileIndex, propertyOwnership[selectedProperty.tileIndex]) && 
                  (
                    <button 
@@ -4667,7 +4971,82 @@ function App() {
           Force Roll
         </button>
       </div>
+
     </div>
+      )}
+      {/* Jail Notification Modal (Just Landed) */}
+      {showJailNotification && (
+        <div className="modal-overlay">
+          <div className="buy-modal" style={{ border: '4px solid #D32F2F', maxWidth: '240px', maxHeight: '240px', overflowY: 'auto' }}>
+            <div className="modal-heading" style={{ background: '#D32F2F', padding: '5px', minHeight: '30px' }}>
+               <span className="modal-heading-text" style={{ fontSize: '16px' }}>ARRESTED!</span>
+            </div>
+            <div className="modal-body" style={{ padding: '5px' }}>
+               <div style={{ textAlign: 'center', margin: '10px 0' }}>
+                  <div style={{ fontSize: '14px', marginBottom: '5px' }}>
+                    {gamePlayers[currentPlayer]?.name} is going to Jail!
+                  </div>
+                  <div style={{ fontSize: '30px', margin: '5px 0' }}>🚓</div>
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '5px', maxWidth: '90%', margin: '5px auto', lineHeight: '1.2' }}>
+                     You are locked up for 3 turns. You will not collect rent while in Jail.
+                  </div>
+               </div>
+               
+               <div className="modal-buttons">
+                  <button 
+                    className="modal-btn buy" 
+                    style={{ background: '#D32F2F', width: '100%' }}
+                    onClick={() => {
+                        setShowJailNotification(false);
+                        endTurn(currentPlayer, false);
+                    }}
+                  >
+                    I UNDERSTAND
+                  </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Jail Action Modal (Start of Turn) */}
+      {showJailModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal" style={{ border: '4px solid #333', maxWidth: '240px', maxHeight: '240px', overflowY: 'auto' }}>
+            <div className="modal-heading" style={{ background: '#333', padding: '5px', minHeight: '30px' }}>
+               <span className="modal-heading-text" style={{ fontSize: '16px' }}>IN JAIL!</span>
+            </div>
+            <div className="modal-body" style={{ padding: '5px' }}>
+               <div style={{ textAlign: 'center', margin: '10px 0' }}>
+                  <div style={{ fontSize: '14px', marginBottom: '5px' }}>
+                    {gamePlayers[currentPlayer]?.name} is locked up!
+                  </div>
+                  <div style={{ fontSize: '30px', margin: '5px 0' }}>👮‍♂️</div>
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                     Turns Remaining: <span style={{ fontWeight: 'bold' }}>{jailStatus[currentPlayer]}</span>
+                  </div>
+               </div>
+               
+               <div className="modal-buttons" style={{ flexDirection: 'column', gap: '10px' }}>
+                  <button 
+                    className="modal-btn buy" 
+                    style={{ background: '#4CAF50', width: '100%' }}
+                    onClick={() => handleJailAction('pay')}
+                    disabled={playerMoney[currentPlayer] < (jailStatus[currentPlayer] === 3 ? 1000 : jailStatus[currentPlayer] === 2 ? 500 : 200)}
+                  >
+                    PAY FINE ${jailStatus[currentPlayer] === 3 ? 1000 : jailStatus[currentPlayer] === 2 ? 500 : 200}
+                  </button>
+                  <button 
+                    className="modal-btn cancel" 
+                    style={{ width: '100%' }}
+                    onClick={() => handleJailAction('skip')}
+                  >
+                    WAIT / SKIP TURN
+                  </button>
+               </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

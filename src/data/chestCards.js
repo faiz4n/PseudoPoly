@@ -1,9 +1,9 @@
 export const CHEST_CARDS = [
   {
     id: 1,
-    text: "🛡️ Robber Immunity! You are safe from the next robbery.",
-    action: "ADD_INVENTORY",
-    type: "robbery_immunity"
+    text: "📈 Insider Trading! You receive $500 from the bank's secret profits.",
+    action: "MONEY_ADD",
+    amount: 500
   },
   {
     id: 2,
@@ -19,14 +19,14 @@ export const CHEST_CARDS = [
   },
   {
     id: 4,
-    text: "🚫 Tax Immunity! You do not have to pay Income Tax next time.",
+    text: "🛡️ Audit Immunity! You are safe from the next Audit.",
     action: "ADD_INVENTORY",
-    type: "tax_immunity"
+    type: "audit_immunity"
   },
   {
     id: 5,
     text: "⏳ Debt Extension! The Bank gives you extra time to pay.",
-    action: "EXTEND_DEBT" // Placeholder for debt system
+    action: "EXTEND_DEBT"
   },
   {
     id: 6,

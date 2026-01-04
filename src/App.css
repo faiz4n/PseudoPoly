@@ -1,1 +1,316 @@
 /* Additional App Styles */
+
+/* Property War Modal - Mobile Optimization */
+.war-modal {
+  max-height: 95vh; /* Constrain to viewport */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent outer scroll */
+}
+
+.war-modal .modal-heading {
+  flex-shrink: 0; /* Header never shrinks */
+}
+
+.war-modal .modal-body {
+  flex: 1;
+  overflow-y: auto; /* Allow internal scroll if absolutely needed */
+  display: flex;
+  flex-direction: column;
+  padding: 15px; /* Reduce from default 20-30px */
+  max-height: calc(95vh - 60px); /* Viewport minus header */
+}
+
+/* Join Phase - Compact player list */
+.war-join-list {
+  max-height: 40vh; /* Limit player list height */
+  overflow-y: auto;
+  margin-bottom: 10px !important;
+}
+
+.war-join-list > div {
+  padding: 6px 8px !important; /* Reduce padding */
+  margin-bottom: 4px !important;
+}
+
+.war-join-list img {
+  width: 20px !important; /* Smaller avatars */
+  height: 20px !important;
+}
+
+.war-join-list .modal-btn {
+  padding: 4px 8px !important; /* Compact buttons */
+  font-size: 8px !important;
+}
+
+/* Roll Phase - Constrain roll history */
+.war-rolling-list {
+  max-height: 30vh !important; /* Critical: Prevent overflow */
+  overflow-y: auto;
+  margin-bottom: 10px !important;
+  flex-shrink: 1; /* Allow shrinking if needed */
+}
+
+.war-rolling-list > div {
+  padding: 6px 10px !important; /* Reduce padding */
+  margin-bottom: 3px !important;
+  font-size: 14px !important;
+}
+
+.war-rolling-list img {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+/* Result Phase - Constrain roll list */
+.war-roll-list {
+  max-height: 35vh !important; /* Prevent overflow */
+  overflow-y: auto;
+  margin-bottom: 10px !important;
+  flex-shrink: 1;
+}
+
+.war-roll-list > div {
+  padding: 8px 10px !important;
+  margin-bottom: 4px !important;
+}
+
+/* Winner Section - Compact */
+.war-winner-section {
+  margin-bottom: 10px !important;
+  flex-shrink: 0; /* Never shrink winner announcement */
+}
+
+.war-winner-section > div:first-child {
+  font-size: 36px !important; /* Smaller trophy */
+  margin-bottom: 5px !important;
+}
+
+.war-winner-section .modal-city-name {
+  font-size: 20px !important; /* Smaller text */
+  margin-bottom: 3px !important;
+}
+
+/* Dice Container - Compact */
+.war-modal .dice-container {
+  margin-bottom: 10px !important;
+  gap: 10px !important;
+}
+
+.war-modal .dice {
+  width: 45px !important; /* Smaller dice */
+  height: 45px !important;
+}
+
+/* Modal Buttons - Ensure visibility */
+.war-modal .modal-buttons {
+  flex-shrink: 0; /* Never shrink buttons */
+  margin-top: 10px !important;
+  position: sticky; /* Stick to bottom */
+  bottom: 0;
+  /* background: white; */
+  padding-top: 10px;
+  /* border-top: 1px solid #eee; */
+}
+
+/* Mobile-specific adjustments */
+@media (max-height: 700px) {
+  .war-modal {
+    max-height: 98vh;
+  }
+  
+  .war-modal .modal-body {
+    padding: 10px;
+    font-size: 14px;
+  }
+  
+  .war-modal .modal-city-name {
+    font-size: 16px !important;
+    margin-bottom: 5px !important;
+  }
+  
+  .war-join-list {
+    max-height: 35vh;
+  }
+  
+  .war-rolling-list {
+    max-height: 25vh !important;
+  }
+  
+  .war-roll-list {
+    max-height: 30vh !important;
+  }
+  
+  .war-modal .dice {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
+
+/* Extra small screens */
+@media (max-height: 600px) {
+  .war-join-list {
+    max-height: 30vh;
+  }
+  
+  .war-rolling-list {
+    max-height: 20vh !important;
+  }
+  
+  .war-roll-list {
+    max-height: 25vh !important;
+  }
+  
+  .war-modal .modal-heading {
+    padding: 8px !important;
+    font-size: 16px !important;
+  }
+  
+  .war-winner-section > div:first-child {
+    font-size: 28px !important;
+  }
+}
+
+
+/* ========================================
+   GLOBAL MODAL FIXES
+   ======================================== */
+.buy-modal, .auction-modal, .modal {
+  border: none !important; /* Remove "high intensity borders" */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important; /* Soft shadow instead */
+}
+
+/* Mobile Modal Optimizations */
+@media (max-height: 700px) {
+  /* Compact Indicator */
+  .auction-bidder-indicator {
+    padding: 2px 4px !important;
+    margin-bottom: 2px !important;
+    font-size: 10px !important;
+  }
+
+  /* Compact Controls */
+  .auction-bid-controls {
+    gap: 2px !important;
+    margin-top: 2px !important;
+  }
+  
+  .auction-bid-controls .your-bid-amount {
+    font-size: 16px !important;
+  }
+  
+  .auction-bid-controls input[type="range"] {
+    margin: 4px 0 !important; /* Reduced margin */
+  }
+
+  .auction-bid-buttons .modal-btn {
+    min-height: 32px !important; /* Reduced height */
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+  }
+  
+  /* Specific override for super small screens */
+  @media (max-height: 400px) {
+      .auction-modal .modal-heading { 
+          display: flex !important; 
+          min-height: 20px !important;
+          padding: 2px !important;
+          font-size: 11px !important;
+      }
+      .auction-bid-history { display: none !important; }
+  }
+
+  .auction-bidder-indicator span { font-size: 11px !important; }
+  
+  /* Tiny History */
+  .auction-bid-history {
+    max-height: 45px !important; /* Only ~2 lines */
+    margin-bottom: 4px !important;
+    padding: 4px !important;
+  }
+  .auction-bid-history .history-label { font-size: 9px !important; margin-bottom: 2px !important; }
+  .auction-bid-history .bid-entry { padding: 2px 0 !important; font-size: 10px !important; }
+  
+  /* Compact Controls */
+  .auction-bid-controls { gap: 6px; }
+  .auction-bid-controls .your-bid-label { font-size: 11px !important; }
+  .auction-bid-controls .your-bid-amount { font-size: 16px !important; }
+  
+  .auction-bid-controls input[type="range"] {
+    height: 24px !important;
+    margin: 4px 0;
+  }
+  .auction-bid-controls input[type="range"]::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -6px;
+  }
+  
+  .auction-bid-buttons .modal-btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    min-height: 36px !important;
+  }
+  
+  /* PROPERTY DETAILS MODAL OPTIMIZATION */
+  /* This targets the 'Rent Data Modal' overflow issue */
+  .buy-modal .modal-city-name {
+    font-size: 18px !important; /* Smaller title */
+    margin-bottom: 10px !important;
+  }
+  
+  .buy-modal .modal-details {
+    padding: 0 4px !important;
+  }
+  
+  /* Rent Schedule Table */
+  .buy-modal .modal-details > div > div {
+    font-size: 12px !important; /* Smaller text */
+    padding: 2px 4px !important; /* Tighter padding */
+  }
+  
+  /* Cost rows */
+  .buy-modal .modal-row,
+  .buy-modal .modal-value {
+    font-size: 12px !important;
+  }
+  
+  /* Make dividers smaller */
+  .buy-modal .modal-divider {
+    margin: 8px 0 !important;
+  }
+  
+  /* Reduce buttons */
+  .buy-modal .modal-buttons .modal-btn {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Extra small screens - Even more aggressive */
+@media (max-height: 500px) {
+  .auction-current-bid-display .bid-amount { font-size: 20px !important; }
+  .auction-bid-history { display: none !important; } /* Hide history completely on very short screens */
+  .auction-modal .modal-heading { font-size: 12px !important; padding: 4px !important; }
+  .auction-bid-buttons .modal-btn { min-height: 32px !important; font-size: 11px !important; }
+  
+  /* Property Modal Extra Compression */
+  .buy-modal .modal-city-name { font-size: 16px !important; margin-bottom: 5px !important; }
+  .buy-modal .modal-details > div > div { font-size: 11px !important; padding: 1px 4px !important; }
+  .buy-modal .modal-heading { padding: 5px !important; min-height: 24px !important; font-size: 14px !important; }
+}
+
+/* Landscape Mode Optimization */
+@media (max-width: 900px) and (orientation: landscape) {
+  .auction-modal {
+    max-height: 98vh !important;
+  }
+  /* Property Modal Landscape Fixes */
+  .buy-modal {
+     max-height: 98vh !important;
+  }
+  .buy-modal .modal-body {
+     padding: 8px !important;
+     overflow-y: auto;
+  }
+}

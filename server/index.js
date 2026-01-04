@@ -83,7 +83,8 @@ io.on('connection', (socket) => {
         name,
         avatar,
         socketId: socket.id,
-        isHost: true
+        isHost: true,
+        connected: true // Initial connection status
       }]
     };
     
@@ -110,15 +111,59 @@ io.on('connection', (socket) => {
       return;
     }
     
-    if (room.players.length >= 4) {
-      socket.emit('error', { message: 'Room is full!' });
-      return;
+    // Check if duplicate identity (Reconnection vs Collision)
+    const existingPlayerIndex = room.players.findIndex(p => p.name === name || p.avatar === avatar);
+    
+    if (existingPlayerIndex !== -1) {
+      const existingPlayer = room.players[existingPlayerIndex];
+      
+      // allow precise match to reconnect if they were disconnected
+      if (existingPlayer.name === name && existingPlayer.avatar === avatar) {
+         if (!existingPlayer.connected) {
+           // --- RECONNECTION LOGIC ---
+           console.log(`[SERVER] Player ${name} reconnecting to ${roomCode}`);
+           
+           // Update socket ID and status
+           existingPlayer.socketId = socket.id;
+           existingPlayer.connected = true;
+           
+           socket.join(roomCode);
+           socket.roomCode = roomCode;
+           socket.playerIndex = existingPlayerIndex;
+           
+           // If Host Reconnected, cancel destruction timer
+           if (existingPlayer.isHost && room.hostDisconnectTimer) {
+             console.log(`[SERVER] Host reconnected! Cancelling destruction timer.`);
+             clearTimeout(room.hostDisconnectTimer);
+             room.hostDisconnectTimer = null;
+             io.to(roomCode).emit('message', { type: 'system', text: 'Host has reconnected!' });
+           }
+
+           // Send sync data to reconnecting player
+           socket.emit('joined_room', {
+             roomCode,
+             playerIndex: existingPlayerIndex,
+             gameState: room.gameState,
+             players: room.players
+           });
+           
+           // Notify others
+           io.to(roomCode).emit('players_updated', { players: room.players });
+           return;
+         } else {
+           // Player is already connected - collision
+           socket.emit('error', { message: 'Name or Avatar already active in this room!' });
+           return;
+         }
+      } else {
+        // Name or avatar taken by someone else
+        socket.emit('error', { message: 'Name or Avatar already taken!' });
+        return;
+      }
     }
     
-    // Check for duplicate name/avatar
-    const isDuplicate = room.players.some(p => p.name === name || p.avatar === avatar);
-    if (isDuplicate) {
-      socket.emit('error', { message: 'Name or Avatar already taken!' });
+    if (room.players.length >= 4) {
+      socket.emit('error', { message: 'Room is full!' });
       return;
     }
     
@@ -129,7 +174,8 @@ io.on('connection', (socket) => {
       name,
       avatar,
       socketId: socket.id,
-      isHost: false
+      isHost: false,
+      connected: true // Track connection status
     });
     
     socket.join(roomCode);
@@ -152,20 +198,14 @@ io.on('connection', (socket) => {
 
   // Start game (host only)
   socket.on('start_game', () => {
+    // ... (unchanged logic, omitted for brevity, logic remains valid)
     const room = rooms[socket.roomCode];
     if (!room) return;
-    
     const player = room.players.find(p => p.socketId === socket.id);
     if (!player || !player.isHost) return;
-    
     room.gameState.gameStage = 'playing';
-    
     console.log(`Game started in room ${socket.roomCode}`);
-    
-    io.to(socket.roomCode).emit('game_started', { 
-      gameState: room.gameState,
-      players: room.players
-    });
+    io.to(socket.roomCode).emit('game_started', { gameState: room.gameState, players: room.players });
   });
 
   // Game action (roll, buy, end turn, etc.)
@@ -247,10 +287,30 @@ io.on('connection', (socket) => {
         // Allow clients to update specific state fields (e.g. paying tax to cashStack)
         if (payload) {
              console.log(`[SERVER] Update State from P${playerIndex}:`, Object.keys(payload));
-             // Safety: Only allow updating existing keys? For now, Object.assign is standard for this project's trust model
              Object.assign(room.gameState, payload);
              broadcastState(room);
         }
+        break;
+      case 'cash_stack_claim':
+        // Handle claiming the pot
+        const pot = room.gameState.cashStack;
+        if (pot > 0) {
+            room.gameState.playerMoney[playerIndex] += pot;
+            room.gameState.cashStack = 0;
+            room.gameState.history.unshift(`💰 ${room.players[playerIndex]?.name || 'Player'} won the Cash Stack: $${pot}!`);
+            console.log(`[SERVER] Player ${playerIndex} claimed Cash Stack: $${pot}`);
+            
+            // Broadcast floating price animation to ALL players
+            io.to(room.roomCode).emit('floating_price', {
+              tileIndex: 3,           // Cash Stack tile
+              price: pot,             // Amount won
+              isPositive: true,       // Green (positive) animation
+              label: `+$${pot}`       // Optional: custom label
+            });
+        } else {
+            room.gameState.history.unshift(`${room.players[playerIndex]?.name || 'Player'} landed on Cash Stack, but it's empty!`);
+        }
+        broadcastState(room);
         break;
       case 'war_start':
         // Start the war (host/initiator only)
@@ -349,19 +409,35 @@ io.on('connection', (socket) => {
       const playerIndex = room.players.findIndex(p => p.socketId === socket.id);
       
       if (playerIndex !== -1) {
-        const wasHost = room.players[playerIndex].isHost;
-        room.players.splice(playerIndex, 1);
+        const player = room.players[playerIndex];
+        player.connected = false; // Mark as disconnected (don't remove yet)
         
-        // If host left, destroy room
-        if (wasHost) {
-          io.to(roomCode).emit('room_closed', { message: 'Host left the game' });
-          delete rooms[roomCode];
-        } else {
-          io.to(roomCode).emit('players_updated', { players: room.players });
+        console.log(`[SERVER] Player ${player.name} disconnected (Host: ${player.isHost})`);
+        
+        // Notify others of disconnect
+        io.to(roomCode).emit('players_updated', { players: room.players });
+        
+        // If HOST disconnected, start graceful shutdown timer
+        if (player.isHost) {
+          console.log(`[SERVER] Host disconnected! Starting 60s grace timer.`);
+          io.to(roomCode).emit('message', { type: 'system', text: 'Host disconnected! Waiting 60s for reconnect...' });
+          
+          // Clear existing timer if any
+          if (room.hostDisconnectTimer) clearTimeout(room.hostDisconnectTimer);
+          
+          room.hostDisconnectTimer = setTimeout(() => {
+             // Check if host is STILL disconnected
+             if (!player.connected) {
+               console.log(`[SERVER] Host timeout. Closing room ${roomCode}.`);
+               io.to(roomCode).emit('room_closed', { message: 'Host failed to reconnect. Game over.' });
+               delete rooms[roomCode];
+             }
+          }, 60000); // 60 seconds grace period
         }
       }
     }
   });
+
 });
 
 // Game logic handlers
@@ -771,8 +847,11 @@ function handleAuctionSelect(room, playerIndex, payload) {
   }
 
   // Store original owner for payout later
+  // Store original owner for payout later
   room.gameState.auctionState.originalOwner = room.gameState.propertyOwnership[propertyIndex];
-  room.gameState.auctionState.status = 'announcing';
+  
+  // ANNOUNCING PHASE
+  room.gameState.auctionState.status = 'announcing'; 
   room.gameState.auctionState.propertyIndex = propertyIndex;
   
   // Set initial participants (all player indices: 0, 1, 2, 3...)
@@ -784,7 +863,7 @@ function handleAuctionSelect(room, playerIndex, payload) {
   console.log(`[SERVER] Auction Announced: Property ${propertyIndex}`);
   broadcastState(room);
 
-  // Transition to active after 2 seconds
+  // Transition to active after 1.5 seconds (per user request)
   setTimeout(() => {
     // Set currentBidder to initiator (they bid first)
     room.gameState.auctionState.currentBidder = playerIndex;
@@ -795,7 +874,7 @@ function handleAuctionSelect(room, playerIndex, payload) {
     });
     console.log(`[SERVER] Auction Active! First bidder: ${playerIndex}`);
     broadcastState(room);
-  }, 2000);
+  }, 1500);
 }
 
 function handleAuctionBid(room, playerIndex, payload) {

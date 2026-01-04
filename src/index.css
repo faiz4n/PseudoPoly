@@ -950,7 +950,7 @@ body {
 
 .modal-divider {
   height: 2px;
-  width: 80%;
+  width: 100%;
   margin: 0 auto 24px;
   background: #7a5230;
   opacity: 0.5;

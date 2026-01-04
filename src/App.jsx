@@ -60,8 +60,9 @@ function App() {
   
   // Jail State
   const [jailStatus, setJailStatus] = useState({}); // { playerIndex: turnsRemaining }
-  const [showJailModal, setShowJailModal] = useState(false); // The Action Modal (Pay/Skip)
-  const [showJailNotification, setShowJailNotification] = useState(false); // The Info Modal (You went to jail)
+  const [showArrestModal, setShowArrestModal] = useState(false);
+  const [showJailActionModal, setShowJailActionModal] = useState(false); // Modal for paying bail or skipping
+  const [arrestDuration, setArrestDuration] = useState(0);
   
   // Input state for joining
   const [joinCode, setJoinCode] = useState('');
@@ -394,7 +395,14 @@ function App() {
     // Determine if position changed for the current player
     const currentPlayerIdx = state.currentPlayer ?? currentRef.currentPlayer;
     const oldPosition = lastKnownPositionsRef.current[currentPlayerIdx];
-    const newPosition = state.playerPositions?.[currentPlayerIdx];
+    let newPosition = state.playerPositions?.[currentPlayerIdx];
+    
+    // GUARD: Prevent bouncing back from Jail (28) to Rob Bank (18) due to stale server state
+    if (oldPosition === 28 && newPosition === 18 && currentPlayerIdx === myIdx) {
+        console.log('[applyGameState] Ignoring stale position update (28 -> 18) for self.');
+        newPosition = 28; // Force keep at Jail
+    }
+    
     const positionChanged = newPosition !== undefined && oldPosition !== newPosition;
     
     // Set animation lock IMMEDIATELY if position changed to prevent race conditions
@@ -468,6 +476,18 @@ function App() {
         if (taxAmount !== undefined) setAuditAmount(taxAmount);
         setAuditStatus('result');
         setShowAuditModal(true);
+      } else if (state.modalState.type === 'CHANCE') {
+        console.log('[applyGameState] Received CHANCE modal:', state.modalState.payload);
+        if (state.modalState.payload?.card) {
+             setCurrentChanceCard(state.modalState.payload.card);
+             setShowChanceModal(true);
+        }
+      } else if (state.modalState.type === 'CHEST') {
+        console.log('[applyGameState] Received CHEST modal:', state.modalState.payload);
+        if (state.modalState.payload?.card) {
+             setCurrentChestCard(state.modalState.payload.card);
+             setShowChestModal(true);
+        }
       } else if (state.modalState.type === 'NONE') {
         // Only log if we are hiding a modal that was showing
         if (showAuditModal) console.log('[applyGameState] Hiding AUDIT modal (type NONE)');
@@ -1085,23 +1105,6 @@ function App() {
   // This is tricky in a pure function.
   // Let's do it when we set the current player.
 
-  // Check for Jail at start of turn
-  useEffect(() => {
-    // If it's my turn (or we are hosting offline)
-    // and I am in jail
-    const isOffline = networkMode === 'offline';
-    const isMyTurnOnline = networkMode === 'online' && currentPlayer === myPlayerIndex;
-    
-    // In offline logic, we might need a better trigger than just useEffect if it runs too often
-    // But since currentPlayer changes only once per turn, this is fine.
-    
-    if (jailStatus[currentPlayer] > 0) {
-        // Show Jail Modal Immediately
-        // Delay slightly for effect?
-        console.log(`Player ${currentPlayer} is in jail. Turns left: ${jailStatus[currentPlayer]}`);
-        setShowJailModal(true);
-    }
-  }, [currentPlayer]); // REMOVED jailStatus to prevent immediate popup on arrest
 
   // Keyboard controls
   useEffect(() => {
@@ -1246,15 +1249,6 @@ function App() {
     showWarModal, warPhase, warParticipants, warIsRolling, warMode, playerMoney,
     showRobBankModal, robStatus, showChanceModal, showChestModal, showPropertyModal, currentChanceCard, currentChestCard
   ]);
-
-  // Check for Jail at start of turn
-  useEffect(() => {
-    // If it's my turn (or we are hosting offline) and I am in jail
-    if (jailStatus[currentPlayer] > 0) {
-        console.log(`Player ${currentPlayer} is in jail. Turns left: ${jailStatus[currentPlayer]}`);
-        setShowJailModal(true);
-    }
-  }, [currentPlayer, jailStatus]);
 
   // Auction Bid Auto-Update
   useEffect(() => {
@@ -1411,111 +1405,76 @@ function App() {
     return validCards[Math.floor(Math.random() * validCards.length)];
   };
 
-  // Helper: Send player to Jail
-  const sendToJail = (playerIndex) => {
-    const jailTileIndex = 28;
-    
-    // 1. Move token visually to Jail
-    setPlayerPositions(prev => {
-      const newPos = [...prev];
-      newPos[playerIndex] = jailTileIndex;
-      return newPos;
-    });
 
-    // 2. Set Jail Status (Start with 3 turns)
+
+  // --- JAIL ACTION HANDLERS ---
+  const handleJailPay = () => {
+    const turnsLeft = jailStatus[currentPlayer];
+    let bailAmount = 1000;
+    if (turnsLeft === 2) bailAmount = 500;
+    if (turnsLeft === 1) bailAmount = 200;
+    
+    if (playerMoney[currentPlayer] < bailAmount) {
+       alert("Not enough money to pay bail!");
+       return;
+    }
+    
+    setPlayerMoney(prev => {
+        const newMoney = [...prev];
+        newMoney[currentPlayer] -= bailAmount;
+        return newMoney;
+    });
+    
     setJailStatus(prev => {
-        const newStatus = { ...prev, [playerIndex]: 3 };
-        
-        // Online Sync
-        if (networkMode === 'online') {
-            sendGameAction('update_state', { 
-                jailStatus: newStatus,
-                playerPositions: [...playerPositions, jailTileIndex] // Simplified, assumes array order
-            });
-        }
+        const newStatus = { ...prev };
+        delete newStatus[currentPlayer];
         return newStatus;
     });
-
-    // 3. Update History
-    setHistory(prev => [`👮 ${gamePlayers[playerIndex].name} went to JAIL!`, ...prev.slice(0, 9)]);
-
-    // 4. Show Notification instead of immediate end turn
-    setShowJailNotification(true);
     
-    // If Online, sync the positional/status update, but let the user click "OK" to end turn locally?
-    // Actually, in online, if we don't end turn, other players wait.
-    // Ideally update state, show modal, and when they click OK, send 'end_turn'.
-    // However, for pure consistency, let's sync state now.
+    setShowJailActionModal(false);
+    
+    setHistory(prev => [`💰 ${gamePlayers[currentPlayer].name} paid $${bailAmount} bail and is free!`, ...prev.slice(0, 9)]);
+    
     if (networkMode === 'online') {
-        const newPos = [...playerPositions];
-        newPos[playerIndex] = jailTileIndex;
+        const newStatus = { ...jailStatus };
+        delete newStatus[currentPlayer];
+        const currentMoney = playerMoney[currentPlayer];
+        const updatedMoneyArray = [...playerMoney];
+        updatedMoneyArray[currentPlayer] = currentMoney - bailAmount;
+
         sendGameAction('update_state', { 
-          jailStatus: { ...jailStatus, [playerIndex]: 3 },
-          playerPositions: newPos
+            playerMoney: updatedMoneyArray,
+            jailStatus: newStatus
         });
     }
   };
 
-  // Helper: Handle Jail Modal Actions (Pay/Skip - Start of Turn)
-  const handleJailAction = (action) => {
-    const turnsLeft = jailStatus[currentPlayer];
-    
-    if (action === 'pay') {
-      const fine = turnsLeft === 3 ? 1000 : turnsLeft === 2 ? 500 : 200;
-
-      if (playerMoney[currentPlayer] < fine) {
-        alert("Not enough money!");
-        return;
-      }
-
-      // Pay Fine
-      setPlayerMoney(prev => {
-        const newMoney = [...prev];
-        newMoney[currentPlayer] -= fine;
-        // Online Sync
-        if (networkMode === 'online') sendGameAction('update_state', { playerMoney: newMoney });
-        return newMoney;
-      });
-
-      // Remove from Jail
-      setJailStatus(prev => {
-        const newStatus = { ...prev };
-        delete newStatus[currentPlayer];
-        // Online Sync
-        if (networkMode === 'online') sendGameAction('update_state', { jailStatus: newStatus });
-        return newStatus;
-      });
-
-      setHistory(prev => [`${gamePlayers[currentPlayer].name} paid $${fine} to leave Jail.`, ...prev.slice(0, 9)]);
-      setShowJailModal(false);
-      // Player can now roll normally (turn continues)
-      // We do NOT call endTurn here; they just get to roll now.
-      // But we need to ensure 'isRolling' isn't blocked? 
-      // Actually, if we intercepted roll, we just hide modal. The user can then click Roll.
-    } 
-    
-    else if (action === 'skip') {
-      // Decrease turns left
+  const handleJailSkip = () => {
+      const turnsLeft = jailStatus[currentPlayer];
       const newTurns = turnsLeft - 1;
+      let newStatusMap;
       
-      setJailStatus(prev => {
-        const newStatus = { ...prev };
-        if (newTurns <= 0) {
-           delete newStatus[currentPlayer]; // Free after serving time
-           setHistory(prev => [`${gamePlayers[currentPlayer].name} served their time and is free!`, ...prev.slice(0, 9)]);
-        } else {
-           newStatus[currentPlayer] = newTurns;
-           setHistory(prev => [`${gamePlayers[currentPlayer].name} stays in Jail (${newTurns} turns left).`, ...prev.slice(0, 9)]);
-        }
-        
-        // Online Sync
-        if (networkMode === 'online') sendGameAction('update_state', { jailStatus: newStatus });
-        return newStatus;
-      });
+      if (newTurns <= 0) {
+          setJailStatus(prev => {
+              const s = { ...prev };
+              delete s[currentPlayer];
+              return s;
+          });
+          newStatusMap = { ...jailStatus };
+          delete newStatusMap[currentPlayer];
+           setHistory(prev => [`${gamePlayers[currentPlayer].name} served their jail time and will be free next turn!`, ...prev.slice(0, 9)]);
+      } else {
+          setJailStatus(prev => ({ ...prev, [currentPlayer]: newTurns }));
+          newStatusMap = { ...jailStatus, [currentPlayer]: newTurns };
+           setHistory(prev => [`${gamePlayers[currentPlayer].name} stays in jail (${newTurns} turns left).`, ...prev.slice(0, 9)]);
+      }
       
-      setShowJailModal(false);
-      endTurn(currentPlayer, false); // Skip turn immediately
-    }
+      setShowJailActionModal(false);
+      handleEndTurn();
+      
+      if (networkMode === 'online') {
+          sendGameAction('update_state', { jailStatus: newStatusMap });
+      }
   };
 
   // Helper to process tile arrival (Rent, Buy, Special Tiles)
@@ -1529,8 +1488,8 @@ function App() {
     const effectiveIsOnline = isOnlineOverride !== null ? isOnlineOverride : (networkMode === 'online');
     
     // 1. Check Special Tiles
-    // Parking (Index 10)
-    if (tileIndex === 10) {
+    // Parking (Index 9 - bottom-left corner)
+    if (tileIndex === 9) {
       setShowParkingModal(true);
       return; 
     }
@@ -1550,12 +1509,28 @@ function App() {
       return; 
     }
 
-    // Go To Jail (Index 28 - Top Right Corner usually 30? Wait, corners are 0, 9, 18, 27 in 9x9?)
-    // In this board 0-35 (36 tiles). Corners: 0(Start), 9(Jail Visit), 18(Free Parking?), 27(Go To Jail).
-    // Let's verify boardData... logic says tileIndex 28 in code history? 
-    // User requested tileIndex 28. "sendToJail(playerIndex) from Tile 28".
+
+
+
+    // Go To Jail (Index 28)
     if (tileIndex === 28) {
-      sendToJail(playerIndex);
+      // 1. Calculate random duration (2 or 3 turns)
+      const duration = Math.floor(Math.random() * 2) + 2; 
+      
+      // 2. Set Jail Status
+      const newJailStatus = { ...jailStatus, [playerIndex]: duration };
+      setJailStatus(newJailStatus);
+      
+      // 3. Online Sync (Jail Status only)
+      if (networkMode === 'online') {
+         sendGameAction('update_state', { jailStatus: newJailStatus });
+      }
+      
+      // 4. Show Modal (Client Only)
+      setArrestDuration(duration);
+      setShowArrestModal(true);
+      
+      setHistory(prev => [`👮 ${gamePlayers[playerIndex].name} is arrested for ${duration} turns!`, ...prev.slice(0, 9)]);
       return;
     }
 
@@ -1611,7 +1586,14 @@ function App() {
 
     // Chance Tiles (31 = right column only, tile 3 is Cash Stack now)
     if (tileIndex === 31) {
+      if (effectiveIsOnline && playerIndex !== myPlayerIndex) return;
+
       const randomCard = getSmartChanceCard(playerIndex);
+      
+      if (effectiveIsOnline) {
+         sendGameAction('modal_open', { type: 'CHANCE', payload: { card: randomCard } });
+      }
+      
       setCurrentChanceCard(randomCard);
       setShowChanceModal(true);
       return;
@@ -1619,7 +1601,14 @@ function App() {
     
     // Community Chest (Index 33 - in rightColumn)
     if (tileIndex === 33) {
+      if (effectiveIsOnline && playerIndex !== myPlayerIndex) return;
+
       const randomCard = getSmartChestCard(playerIndex);
+      
+      if (effectiveIsOnline) {
+         sendGameAction('modal_open', { type: 'CHEST', payload: { card: randomCard } });
+      }
+
       setCurrentChestCard(randomCard);
       setShowChestModal(true);
       return;
@@ -1842,34 +1831,31 @@ function App() {
       }
       
     } else if (robStatus === 'caught') {
-      // Go to Jail
-      setHistory(prev => [`👮 ${gamePlayers[playerIndex].name} was caught robbing the bank!`, ...prev.slice(0, 9)]);
-      
-      if (networkMode === 'online') {
-         sendGameAction('close_modal');
-         // Move to Jail logic
-         const jailIndex = 28;
-         const currentPos = playerPositions[playerIndex];
-         let stepsToJail = (jailIndex - currentPos + 36) % 36;
-         if (stepsToJail === 0) stepsToJail = 0;
-         
-         if (stepsToJail > 0) {
-            await movePlayerToken(playerIndex, stepsToJail, 50);
-         }
-         
-         // Sync new position to server to prevent snap-back
-         const updatedPositions = [...playerPositions];
-         updatedPositions[playerIndex] = 28; // Jail Index
-         sendGameAction('update_state', { playerPositions: updatedPositions });
-         
-         endTurn(playerIndex, false);
-      } else {
-        closeAllModals(async () => {
-             // Replaced logic with sendToJail helper
-             sendToJail(playerIndex);
-        });
-      }
+    // Player was caught - move to jail tile (28) and end turn
+    const jailTileIndex = 28;
+    
+    // Update position
+    setPlayerPositions(prev => {
+      const newPos = [...prev];
+      newPos[playerIndex] = jailTileIndex;
+      return newPos;
+    });
+    lastKnownPositionsRef.current[playerIndex] = jailTileIndex;
+    
+    setHistory(prev => [`👮 ${gamePlayers[playerIndex].name} was caught and sent to jail!`, ...prev.slice(0, 9)]);
+    
+    if (networkMode === 'online') {
+       const newPositions = [...playerPositions];
+       newPositions[playerIndex] = jailTileIndex;
+       sendGameAction('close_modal');
+       sendGameAction('update_state', { playerPositions: newPositions });
+       endTurn(playerIndex, false);
     } else {
+      closeAllModals(() => {
+           endTurn(playerIndex, false);
+      });
+    }
+  } else {
     // Cancelled (shouldn't happen here if button is only for success/caught)
     closeAllModals(() => endTurn(playerIndex, false));
   }
@@ -3758,6 +3744,97 @@ function App() {
             <div className="yacht">🛥️</div>
           </div>
 
+          {/* Jail Arrest Modal (Placed in local center scope) */}
+          {showArrestModal && (
+            <div className="buy-modal" style={{ 
+              border: '4px solid #D32F2F', 
+              maxWidth: '300px',
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 50,
+              boxShadow: '0 0 20px rgba(0,0,0,0.5)' 
+            }}>
+              <div className="modal-heading" style={{ background: '#D32F2F' }}>
+                 <span className="modal-heading-text">ARRESTED!</span>
+              </div>
+              <div className="modal-body">
+                 <div style={{ textAlign: 'center', margin: '15px 0' }}>
+                    <div style={{ fontSize: '16px', marginBottom: '10px' }}>
+                      You have been arrested for <span style={{ fontWeight: 'bold', color: '#D32F2F', fontSize: '18px' }}>{arrestDuration}</span> turns.
+                    </div>
+                    <div style={{ fontSize: '40px', margin: '10px 0' }}>👮‍♂️</div>
+                    <div style={{ fontSize: '13px', color: '#666', marginTop: '10px' }}>
+                       You won't collect rent until jailed time is served.
+                    </div>
+                 </div>
+                 
+                 <div className="modal-buttons">
+                    <button 
+                      className="modal-btn buy" 
+                      style={{ background: '#D32F2F', width: '100%' }}
+                      onClick={() => {
+                          setShowArrestModal(false);
+                          handleEndTurn();
+                      }}
+                    >
+                      I UNDERSTAND
+                    </button>
+                 </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Jail Action Modal (Bail / Skip) */}
+          {showJailActionModal && (
+            <div className="buy-modal" style={{ 
+              border: '4px solid #2196F3', 
+              maxWidth: '300px',
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 60,
+              boxShadow: '0 0 20px rgba(0,0,0,0.5)' 
+            }}>
+
+              <div className="modal-heading" style={{ background: 'linear-gradient(180deg, #FFB74D, #FF9800)' }}>
+                 <span className="modal-heading-text">JAIL OPTIONS</span>
+              </div>
+              <div className="modal-body">
+                 <div style={{ textAlign: 'center', margin: '15px 0' }}>
+                    <div style={{ fontSize: '16px', marginBottom: '10px' }}>
+                      Turns in Jail: <span style={{ fontWeight: 'bold', fontSize: '18px' }}>{jailStatus[currentPlayer]}</span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#666' }}>
+                       Pay bail to leave now, or skip turn to serve time.
+                    </div>
+                 </div>
+                 
+                 <div className="modal-buttons" style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      className="modal-btn" 
+                      style={{ background: '#D32F2F', flex: 1, color: 'white' }}
+                      onClick={handleJailSkip}
+                    >
+                      SKIP TURN
+                    </button>
+                    <button 
+                      className="modal-btn" 
+                      style={{ background: '#4CAF50', flex: 1, color: 'white' }}
+                      onClick={handleJailPay}
+                    >
+                      GO OUT (${
+                        jailStatus[currentPlayer] === 3 ? 1000 : 
+                        jailStatus[currentPlayer] === 2 ? 500 : 200
+                      })
+                    </button>
+                 </div>
+              </div>
+            </div>
+          )}
+
           {/* Dice Area */}
           <div className="dice-area">
             <div className="dice-container">
@@ -3772,32 +3849,55 @@ function App() {
               {/* Only show buttons if offline OR it's this player's turn */}
               {(networkMode === 'offline' || myPlayerIndex === currentPlayer) && (
                 <>
-                  {buyingProperty && !showBuyModal && !buyingProperty.isTravelOffer && (
-                    <button 
-                      className="buy-button" 
-                      onClick={() => setShowBuyModal(true)}
-                    >
-                      BUY
-                    </button>
+                  {/* Jail Controls */}
+                  {jailStatus[currentPlayer] > 0 ? (
+                    <>
+                       <button 
+                        className="buy-button" 
+                        onClick={() => setShowJailActionModal(true)}
+                        style={{ background: '#2196F3', gridColumn: 1 }} 
+                      >
+                        GO OUT
+                      </button>
+                      <button 
+                        className="roll-button done" 
+                        onClick={handleJailSkip} 
+                        style={{ background: '#4CAF50', gridColumn: 2 }} 
+                      >
+                        DONE
+                      </button>
+                    </>
+                  ) : (
+                    /* Normal Controls */
+                    <>
+                      {buyingProperty && !showBuyModal && !buyingProperty.isTravelOffer && (
+                        <button 
+                          className="buy-button" 
+                          onClick={() => setShowBuyModal(true)}
+                        >
+                          BUY
+                        </button>
+                      )}
+    
+                      {buyingProperty && buyingProperty.isTravelOffer && (
+                        <button 
+                          className="buy-button" 
+                          onClick={handleTravelStart}
+                          style={{ background: 'linear-gradient(to bottom, #2196F3, #1976D2)' }}
+                        >
+                          TRAVEL
+                        </button>
+                      )}
+                      <button 
+                        className={`roll-button ${turnFinished ? 'done' : ''}`} 
+                        onClick={(turnFinished || skippedTurns[currentPlayer]) ? handleEndTurn : () => rollDice()} 
+                        tabIndex="-1" 
+                        disabled={isLocalMoving || (!turnFinished && !skippedTurns[currentPlayer] && (isRolling || isProcessingTurn))}
+                      >
+                        {isLocalMoving ? 'MOVING...' : skippedTurns[currentPlayer] ? 'SKIP TURN' : turnFinished ? 'DONE' : 'ROLL'}
+                      </button>
+                    </>
                   )}
-
-                  {buyingProperty && buyingProperty.isTravelOffer && (
-                    <button 
-                      className="buy-button" 
-                      onClick={handleTravelStart}
-                      style={{ background: 'linear-gradient(to bottom, #2196F3, #1976D2)' }}
-                    >
-                      TRAVEL
-                    </button>
-                  )}
-                  <button 
-                    className={`roll-button ${turnFinished ? 'done' : ''}`} 
-                    onClick={(turnFinished || skippedTurns[currentPlayer]) ? handleEndTurn : () => rollDice()} 
-                    tabIndex="-1" 
-                    disabled={isLocalMoving || (!turnFinished && !skippedTurns[currentPlayer] && (isRolling || isProcessingTurn))}
-                  >
-                    {isLocalMoving ? 'MOVING...' : skippedTurns[currentPlayer] ? 'SKIP TURN' : turnFinished ? 'DONE' : 'ROLL'}
-                  </button>
                 </>
               )}
             </div>
@@ -4972,82 +5072,14 @@ function App() {
         </button>
       </div>
 
+
+      
+
+
     </div>
       )}
-      {/* Jail Notification Modal (Just Landed) */}
-      {showJailNotification && (
-        <div className="modal-overlay">
-          <div className="buy-modal" style={{ border: '4px solid #D32F2F', maxWidth: '240px', maxHeight: '240px', overflowY: 'auto' }}>
-            <div className="modal-heading" style={{ background: '#D32F2F', padding: '5px', minHeight: '30px' }}>
-               <span className="modal-heading-text" style={{ fontSize: '16px' }}>ARRESTED!</span>
-            </div>
-            <div className="modal-body" style={{ padding: '5px' }}>
-               <div style={{ textAlign: 'center', margin: '10px 0' }}>
-                  <div style={{ fontSize: '14px', marginBottom: '5px' }}>
-                    {gamePlayers[currentPlayer]?.name} is going to Jail!
-                  </div>
-                  <div style={{ fontSize: '30px', margin: '5px 0' }}>🚓</div>
-                  <div style={{ fontSize: '12px', color: '#666', marginTop: '5px', maxWidth: '90%', margin: '5px auto', lineHeight: '1.2' }}>
-                     You are locked up for 3 turns. You will not collect rent while in Jail.
-                  </div>
-               </div>
-               
-               <div className="modal-buttons">
-                  <button 
-                    className="modal-btn buy" 
-                    style={{ background: '#D32F2F', width: '100%' }}
-                    onClick={() => {
-                        setShowJailNotification(false);
-                        endTurn(currentPlayer, false);
-                    }}
-                  >
-                    I UNDERSTAND
-                  </button>
-               </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Jail Action Modal (Start of Turn) */}
-      {showJailModal && (
-        <div className="modal-overlay">
-          <div className="buy-modal" style={{ border: '4px solid #333', maxWidth: '240px', maxHeight: '240px', overflowY: 'auto' }}>
-            <div className="modal-heading" style={{ background: '#333', padding: '5px', minHeight: '30px' }}>
-               <span className="modal-heading-text" style={{ fontSize: '16px' }}>IN JAIL!</span>
-            </div>
-            <div className="modal-body" style={{ padding: '5px' }}>
-               <div style={{ textAlign: 'center', margin: '10px 0' }}>
-                  <div style={{ fontSize: '14px', marginBottom: '5px' }}>
-                    {gamePlayers[currentPlayer]?.name} is locked up!
-                  </div>
-                  <div style={{ fontSize: '30px', margin: '5px 0' }}>👮‍♂️</div>
-                  <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                     Turns Remaining: <span style={{ fontWeight: 'bold' }}>{jailStatus[currentPlayer]}</span>
-                  </div>
-               </div>
-               
-               <div className="modal-buttons" style={{ flexDirection: 'column', gap: '10px' }}>
-                  <button 
-                    className="modal-btn buy" 
-                    style={{ background: '#4CAF50', width: '100%' }}
-                    onClick={() => handleJailAction('pay')}
-                    disabled={playerMoney[currentPlayer] < (jailStatus[currentPlayer] === 3 ? 1000 : jailStatus[currentPlayer] === 2 ? 500 : 200)}
-                  >
-                    PAY FINE ${jailStatus[currentPlayer] === 3 ? 1000 : jailStatus[currentPlayer] === 2 ? 500 : 200}
-                  </button>
-                  <button 
-                    className="modal-btn cancel" 
-                    style={{ width: '100%' }}
-                    onClick={() => handleJailAction('skip')}
-                  >
-                    WAIT / SKIP TURN
-                  </button>
-               </div>
-            </div>
-          </div>
-        </div>
-      )}
+
+
     </>
   );
 }

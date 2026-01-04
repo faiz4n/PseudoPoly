@@ -145,9 +145,10 @@ function App() {
   
   // Property War State
   const [showWarModal, setShowWarModal] = useState(false);
-  const [warPhase, setWarPhase] = useState('idle'); // 'idle', 'join', 'progress', 'reveal', 'roll', 'result'
+  const [warPhase, setWarPhase] = useState('idle'); // 'idle', 'join', 'progress', 'reveal', 'roll', 'result', 'tie'
+  const [warTieMessage, setWarTieMessage] = useState(null);
   const [warParticipants, setWarParticipants] = useState([]);
-  const [warProperty, setWarProperty] = useState(null);
+  const [warProperty, setWarProperty] = useState(null); // The property being fought over
   const [warRolls, setWarRolls] = useState({});
   const [battlePot, setBattlePot] = useState(0);
   const [warMode, setWarMode] = useState('A'); // 'A' = Standard War, 'B' = Cash Battle
@@ -428,17 +429,24 @@ function App() {
       setWarPhase(state.warState.phase);
       setWarMode(state.warState.mode);
       setWarParticipants(state.warState.participants);
+      setWarTieMessage(state.warState.tieMessage || null);
       if (state.warState.property) {
         setWarProperty(state.warState.property);
       } else if (state.warState.propertyIndex !== undefined && state.warState.propertyIndex !== null) {
         const propData = RENT_DATA[state.warState.propertyIndex];
+        console.log(`[App] Syncing War Property. Index: ${state.warState.propertyIndex}, Data Found:`, !!propData);
         if (propData) {
           setWarProperty({ ...propData, tileIndex: state.warState.propertyIndex });
+        } else {
+          console.error(`[App] RENT_DATA missing for index ${state.warState.propertyIndex}`);
         }
       }
       setWarRolls(state.warState.rolls);
       setWarCurrentRoller(state.warState.currentRoller);
       setWarDiceValues(state.warState.diceValues);
+      if (state.warState.isRolling !== undefined) {
+        setWarIsRolling(state.warState.isRolling);
+      }
       // Winner logic handled by phase 'result' and history/money updates
     }
     
@@ -467,7 +475,8 @@ function App() {
         if (myIdx === currentPlayerIdx) {
           console.log('[applyGameState] My turn - triggering tile arrival logic');
           // Pass server's propertyOwnership and diceValues directly to avoid stale React state
-          handleTileArrival(currentPlayerIdx, newPosition, false, state.propertyOwnership, state.diceValues);   /* LINE 415 CHANGE */
+          // Pass isOnlineOverride=true to force online mode logic (handling stale closure)
+          handleTileArrival(currentPlayerIdx, newPosition, false, state.propertyOwnership, state.diceValues, true);
       }
     } else {
       // No position change OR initial sync - just update positions directly
@@ -484,6 +493,12 @@ function App() {
       }
     }
   };
+
+  // Ref to track network mode (avoids stale closures in socket callbacks)
+  const networkModeRef = useRef(networkMode);
+  useEffect(() => {
+    networkModeRef.current = networkMode;
+  }, [networkMode]);
 
   // Create a new room (Host)
   const createRoom = () => {
@@ -522,8 +537,12 @@ function App() {
 
   // Send a game action to the server
   const sendGameAction = (action, payload = {}) => {
-    if (socketRef.current && networkMode === 'online') {
+    // Check Ref ensures we see current state even in stale closures (like applyGameState)
+    if (socketRef.current && networkModeRef.current === 'online') {
+      console.log(`[App] Sending action: ${action}`, payload);
       socketRef.current.emit('game_action', { action, payload });
+    } else {
+        console.warn(`[App] Failed to send ${action}: Socket=${!!socketRef.current}, Mode=${networkModeRef.current}`);
     }
   };
   
@@ -1291,13 +1310,14 @@ function App() {
   };
 
   // Helper to process tile arrival (Rent, Buy, Special Tiles)
-  // ownershipOverride is used in online mode to pass fresh server ownership data (avoids async state issue)
-  // diceValuesOverride is used in online mode to pass fresh server dice data
-  const handleTileArrival = (playerIndex, tileIndex, isDoubles = false, ownershipOverride = null, diceValuesOverride = null) => {
-    console.log(`[handleTileArrival] Player ${playerIndex} arrived at tile ${tileIndex}`);
+  // ownershipOverride is used in online mode to pass fresh server ownership data
+  // isOnlineOverride allows applyGameState to force online behavior even if closure state is stale
+  const handleTileArrival = (playerIndex, tileIndex, isDoubles = false, ownershipOverride = null, diceValuesOverride = null, isOnlineOverride = null) => {
+    console.log(`[handleTileArrival] Player ${playerIndex} arrived at tile ${tileIndex}. OnlineOverride: ${isOnlineOverride}`);
     // Use override if provided (online mode), otherwise use React state
     const effectiveOwnership = ownershipOverride || propertyOwnership;
     const effectiveDiceValues = diceValuesOverride || diceValues;
+    const effectiveIsOnline = isOnlineOverride !== null ? isOnlineOverride : (networkMode === 'online');
     
     // 1. Check Special Tiles
     // Parking (Index 10)
@@ -1317,7 +1337,6 @@ function App() {
 
     // Forced Auction (Index 23 - next to Mobile Op)
     if (tileIndex === 23) {
-      // Show landing choice modal (Cancel / Start Auction)
       setShowAuctionLandingModal(true);
       return; 
     }
@@ -1330,7 +1349,7 @@ function App() {
       const total = die1 + die2;
       const tax = total * 300; // ×300 multiplier
       
-      if (networkMode === 'online') {
+      if (effectiveIsOnline) {
         // Send audit action to server - server will broadcast to all players
         sendGameAction('audit_show', { diceValues: [die1, die2], taxAmount: tax });
       } else {
@@ -1345,16 +1364,16 @@ function App() {
 
     // Property War (Index 26) - Initiate War Event
     if (tileIndex === 26) {
-      // Check if any properties are unowned
+      console.log('[handleTileArrival] Landed on Property War (26). effectiveIsOnline:', effectiveIsOnline);
+      // Check if any properties are unowned using EFFECTIVE ownership
       const allPropertyTiles = Object.keys(RENT_DATA).map(Number);
-      const unownedProperties = allPropertyTiles.filter(t => propertyOwnership[t] === undefined);
+      const unownedProperties = allPropertyTiles.filter(t => effectiveOwnership[t] === undefined);
       
       const mode = unownedProperties.length > 0 ? 'A' : 'B';
       
-      if (networkMode === 'online') {
+      if (effectiveIsOnline) {
         console.log('[Property War] Sending war_init action, mode:', mode);
         sendGameAction('war_init', { mode });
-        setHistory(prev => [`⚔️ ${gamePlayers[playerIndex].name} triggered PROPERTY WAR!`, ...prev.slice(0, 9)]);
         return;
       }
       
@@ -2427,7 +2446,8 @@ function App() {
       const allPropertyTiles = Object.keys(RENT_DATA).map(Number);
       const availableIndices = allPropertyTiles.filter(t => {
         const owner = propertyOwnership[t];
-        return owner === undefined || owner === null;
+        // Exclude Trains from Property War
+        return (owner === undefined || owner === null) && !TRAIN_TILES.includes(t);
       });
       
       sendGameAction('war_start', { availableIndices });
@@ -2445,6 +2465,8 @@ function App() {
       setWarPhase('roll');
     }
   };
+  
+
   
   const handleWarReveal = () => {
     // Select random unowned property - must check propertyOwnership properly
@@ -2725,6 +2747,10 @@ function App() {
   // Helper: Check if tile is selectable for auction (opponent-owned property)
   const isAuctionSelectable = (tileIndex) => {
     if (!isSelectingAuctionProperty) return false;
+    
+    // Exclude Trains from Auction
+    if (TRAIN_TILES.includes(tileIndex)) return false;
+
     const property = RENT_DATA[tileIndex];
     if (!property) return false; // Not a property
     const owner = propertyOwnership[tileIndex];
@@ -2735,12 +2761,46 @@ function App() {
   
   // Helper: Get style for auction selection mode (greyscale non-selectable tiles)
   const getAuctionSelectionStyle = (tileIndex) => {
-    if (!isSelectingAuctionProperty) return {};
-    const selectable = isAuctionSelectable(tileIndex);
-    if (!selectable) {
-      return { filter: 'grayscale(100%) brightness(0.6)', pointerEvents: 'none' };
+    // 1. Selector View (Local Player Selecting)
+    if (isSelectingAuctionProperty) {
+      const selectable = isAuctionSelectable(tileIndex);
+      if (!selectable) {
+        return { filter: 'grayscale(100%) brightness(0.6)', pointerEvents: 'none', transition: 'filter 0.3s' };
+      }
+      return { transition: 'filter 0.3s', cursor: 'pointer' }; 
     }
-    return {}; // Normal styling for selectable tiles
+
+    // 2. Online Logic (Spectators & Announcement)
+    if (networkMode === 'online' && auctionState.active) {
+        // Spectator Waiting View (While someone else is selecting)
+        if (auctionState.status === 'thinking') {
+            return { filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s' };
+        }
+        
+        // Announcement Phase (The Reveal)
+        if (auctionState.status === 'announcing') {
+            if (auctionState.propertyIndex === tileIndex) {
+                 // The Chosen One: Glow!
+                 return { 
+                     filter: 'brightness(1.2) drop-shadow(0 0 20px gold)', 
+                     zIndex: 100, 
+                     transform: 'scale(1.15)',
+                     boxShadow: '0 0 15px gold',
+                     border: '2px solid gold',
+                     transition: 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' // Bounce effect
+                 };
+            } else {
+                 // Others: Darken
+                 return { filter: 'grayscale(100%) brightness(0.4)', transition: 'filter 0.5s' };
+            }
+        }
+        
+        // Active Bidding Phase: Restore color? Or keep focused? 
+        // User didn't specify. Standard practice is restore or keep B&W.
+        // Let's restore for now as the modal covers the screen.
+    }
+
+    return {}; // Normal styling
   };
 
   // Handle Auction Selection Confirmation
@@ -3311,21 +3371,21 @@ function App() {
         {/* Game Board */}
       <div className="board">
         {/* Corner Spaces */}
-        <div className="corner start" style={isSelectingAuctionProperty ? {filter: 'grayscale(100%) brightness(0.6)'} : {}}>
+        <div className="corner start" style={(isSelectingAuctionProperty || (networkMode==='online' && auctionState?.active && ['thinking', 'announcing'].includes(auctionState.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
           <img src={startIcon} alt="Start" className="corner-icon" />
         </div>
         
-        <div className="corner parking" style={isSelectingAuctionProperty ? {filter: 'grayscale(100%) brightness(0.6)'} : {}}>
+        <div className="corner parking" style={(isSelectingAuctionProperty || (networkMode==='online' && auctionState?.active && ['thinking', 'announcing'].includes(auctionState.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
           <img src={parkingIcon} alt="Free Parking" className="corner-icon" />
         </div>
         
-        <div className="corner robbank" style={isSelectingAuctionProperty ? {filter: 'grayscale(100%) brightness(0.6)'} : {}}>
+        <div className="corner robbank" style={(isSelectingAuctionProperty || (networkMode==='online' && auctionState?.active && ['thinking', 'announcing'].includes(auctionState.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
           <span className="rob-text">ROB</span>
           <img src={robBankIcon} alt="Rob Bank" className="corner-icon-center" />
           <span className="bank-text">BANK</span>
         </div>
         
-        <div className="corner jail" style={isSelectingAuctionProperty ? {filter: 'grayscale(100%) brightness(0.6)'} : {}}>
+        <div className="corner jail" style={(isSelectingAuctionProperty || (networkMode==='online' && auctionState?.active && ['thinking', 'announcing'].includes(auctionState.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
           <span className="jail-text">JAIL</span>
           <img src={jailIcon} alt="Jail" className="corner-icon-center" />
         </div>
@@ -3543,107 +3603,6 @@ function App() {
               ROB
             </button>
           </div>
-        </div>
-
-        {/* Player Pawns */}
-        <div className="pawns-container">
-          {gamePlayers.map((player, index) => (
-            <div 
-              key={player.id} 
-              className={`player-pawn ${hoppingPlayer === index ? 'pawn-hopping' : ''}`}
-              style={getPawnStyle(playerPositions[index], index)}
-            >
-              <img src={player.avatar} alt={player.name} className="pawn-img" />
-            </div>
-          ))}
-        </div>
-
-        {/* Floating Price Animations */}
-        {floatingPrices.map((fp, index) => (
-          <div 
-            key={`${fp.key}-${index}`}
-            className={`floating-price ${fp.isPositive ? 'positive' : 'negative'}`}
-            style={{
-              top: `${getFloatingPosition(fp.tileIndex).top}vh`,
-              left: `${getFloatingPosition(fp.tileIndex).left}vh`
-            }}
-          >
-            {fp.isPositive ? '+' : '-'}{(fp.price || 0).toLocaleString()}
-          </div>
-        ))}
-      </div>
-
-      {/* Sidebar */}
-      <div className="sidebar">
-        {/* Unified Top Section (Orange) */}
-        <div className="sidebar-top-section">
-          {/* Top Controls (Blue Icons) */}
-          <div className="top-controls">
-            <button className="control-btn settings">⚙️</button>
-            <button className="control-btn sound">🔊</button>
-            <button className="control-btn help">❓</button>
-            <button className="control-btn menu">☰</button>
-          </div>
-
-          {/* Player Panel (Blue) */}
-          <div className="player-panel">
-            {gamePlayers.map((player, index) => (
-              <div 
-                key={player.id}
-                className={`player-item ${index === currentPlayer ? 'active' : ''}`}
-              >
-                <div className="player-avatar">
-                  <img src={player.avatar} alt={player.name} className="avatar-img" />
-                </div>
-                <div className="player-info">
-                  <div className="player-name">{player.name}</div>
-                </div>
-                <div className="player-money">${playerMoney[index].toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Cash Stack (The Pot) */}
-        <div className="cash-stack-panel" style={{
-          background: 'linear-gradient(135deg, #1a5c1a 0%, #0d3d0d 100%)',
-          borderRadius: '10px',
-          padding: '8px',
-          marginBottom: '4px',
-          textAlign: 'center',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          position: 'relative' // For floating price positioning
-        }}>
-          <div style={{ fontSize: '14px', color: '#90EE90', marginBottom: '2px' }}>💵 CASH STACK</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#00FF00' }}>${cashStack.toLocaleString()}</div>
-          
-          {/* Floating Prices for Cash Stack */}
-          {cashStackFloatingPrices.map(fp => (
-            <div 
-              key={fp.key} 
-              className="floating-price-stack"
-              style={{ color: fp.amount >= 0 ? '#00FF00' : '#FF5252' }}
-            >
-              {fp.amount >= 0 ? '+' : ''}{fp.amount.toLocaleString()}
-            </div>
-          ))}
-        </div>
-
-        {/* History Panel */}
-        <div className="history-panel">
-          <div className="history-header">
-            <h2>HISTORY</h2>
-          </div>
-          <div className="history-content">
-            {history.map((item, index) => (
-              <div key={index} className="history-item">
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* Buying Modal */}
       {(showBuyModal || (isModalClosing && buyingProperty)) && buyingProperty && (
         <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
@@ -4027,8 +3986,8 @@ function App() {
                       <button 
                         className="modal-btn buy" 
                         onClick={handleWarStartProgress}
-                        disabled={warParticipants.length === 0}
-                        style={{ width: '100%', background: warParticipants.length ? '#8B0000' : '#ccc' }}
+                        disabled={warParticipants.length < 2}
+                        style={{ width: '100%', background: warParticipants.length >= 2 ? '#8B0000' : '#ccc' }}
                       >
                         START WAR ({warParticipants.length} participants)
                       </button>
@@ -4086,25 +4045,21 @@ function App() {
               )}
               
               {/* Roll Phase - Ready to start */}
-              {warPhase === 'roll' && (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <div className="modal-city-name" style={{ fontSize: '20px', marginBottom: '20px' }}>
-                    {warMode === 'A' && warProperty ? `Fighting for "${warProperty.name}"` : `Fighting for $${battlePot.toLocaleString()}`}
+              {/* Tie Phase */}
+              {warPhase === 'tie' && (
+                <div style={{ textAlign: 'center', padding: '30px 20px' }}>
+                  <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚔️</div>
+                  <div className="modal-city-name" style={{ fontSize: '20px', color: '#B71C1C', marginBottom: '15px', lineHeight: '1.4' }}>
+                     {warTieMessage || "IT'S A TIE!"}
                   </div>
-                  <div className="modal-buttons">
-                    <button 
-                      className="modal-btn buy" 
-                      onClick={handleWarStartRolling}
-                      style={{ width: '100%', background: '#8B0000' }}
-                    >
-                      🎲 START ROLLING!
-                    </button>
+                   <div style={{ fontSize: '16px', color: '#555' }}>
+                     Preparing for re-roll...
                   </div>
                 </div>
               )}
-              
-              {/* Rolling Phase - Turn by turn */}
-              {warPhase === 'rolling' && warCurrentRoller !== null && (
+
+              {/* Roll Phase - Dice Interface (Combined) */}
+              {(warPhase === 'roll' || warPhase === 'rolling') && warCurrentRoller !== null && (
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <div className="modal-city-name" style={{ fontSize: '18px', marginBottom: '15px' }}>
                     {gamePlayers[warParticipants[warCurrentRoller]]?.name}'s Turn
@@ -4148,10 +4103,14 @@ function App() {
                     <button 
                       className="modal-btn buy" 
                       onClick={handleWarDoRoll}
-                      disabled={warIsRolling}
-                      style={{ width: '100%', background: warIsRolling ? '#ccc' : '#8B0000' }}
+                      disabled={warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)}
+                      style={{ 
+                        width: '100%', 
+                        background: (warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)) ? '#ccc' : '#8B0000',
+                        cursor: (warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)) ? 'not-allowed' : 'pointer'
+                      }}
                     >
-                      {warIsRolling ? 'ROLLING...' : '🎲 ROLL!'}
+                      {warIsRolling ? 'ROLLING...' : (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex) ? `Waiting for ${gamePlayers[warParticipants[warCurrentRoller]]?.name}...` : '🎲 ROLL!'}
                     </button>
                   </div>
                 </div>
@@ -4593,6 +4552,107 @@ function App() {
           </div>
         </div>
       )}
+        </div>
+
+        {/* Player Pawns */}
+        <div className="pawns-container">
+          {gamePlayers.map((player, index) => (
+            <div 
+              key={player.id} 
+              className={`player-pawn ${hoppingPlayer === index ? 'pawn-hopping' : ''}`}
+              style={getPawnStyle(playerPositions[index], index)}
+            >
+              <img src={player.avatar} alt={player.name} className="pawn-img" />
+            </div>
+          ))}
+        </div>
+
+        {/* Floating Price Animations */}
+        {floatingPrices.map((fp, index) => (
+          <div 
+            key={`${fp.key}-${index}`}
+            className={`floating-price ${fp.isPositive ? 'positive' : 'negative'}`}
+            style={{
+              top: `${getFloatingPosition(fp.tileIndex).top}vh`,
+              left: `${getFloatingPosition(fp.tileIndex).left}vh`
+            }}
+          >
+            {fp.isPositive ? '+' : '-'}{(fp.price || 0).toLocaleString()}
+          </div>
+        ))}
+      </div>
+
+      {/* Sidebar */}
+      <div className="sidebar">
+        {/* Unified Top Section (Orange) */}
+        <div className="sidebar-top-section">
+          {/* Top Controls (Blue Icons) */}
+          <div className="top-controls">
+            <button className="control-btn settings">⚙️</button>
+            <button className="control-btn sound">🔊</button>
+            <button className="control-btn help">❓</button>
+            <button className="control-btn menu">☰</button>
+          </div>
+
+          {/* Player Panel (Blue) */}
+          <div className="player-panel">
+            {gamePlayers.map((player, index) => (
+              <div 
+                key={player.id}
+                className={`player-item ${index === currentPlayer ? 'active' : ''}`}
+              >
+                <div className="player-avatar">
+                  <img src={player.avatar} alt={player.name} className="avatar-img" />
+                </div>
+                <div className="player-info">
+                  <div className="player-name">{player.name}</div>
+                </div>
+                <div className="player-money">${playerMoney[index].toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Cash Stack (The Pot) */}
+        <div className="cash-stack-panel" style={{
+          background: 'linear-gradient(135deg, #1a5c1a 0%, #0d3d0d 100%)',
+          borderRadius: '10px',
+          padding: '8px',
+          marginBottom: '4px',
+          textAlign: 'center',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          position: 'relative' // For floating price positioning
+        }}>
+          <div style={{ fontSize: '14px', color: '#90EE90', marginBottom: '2px' }}>💵 CASH STACK</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#00FF00' }}>${cashStack.toLocaleString()}</div>
+          
+          {/* Floating Prices for Cash Stack */}
+          {cashStackFloatingPrices.map(fp => (
+            <div 
+              key={fp.key} 
+              className="floating-price-stack"
+              style={{ color: fp.amount >= 0 ? '#00FF00' : '#FF5252' }}
+            >
+              {fp.amount >= 0 ? '+' : ''}{fp.amount.toLocaleString()}
+            </div>
+          ))}
+        </div>
+
+        {/* History Panel */}
+        <div className="history-panel">
+          <div className="history-header">
+            <h2>HISTORY</h2>
+          </div>
+          <div className="history-content">
+            {history.map((item, index) => (
+              <div key={index} className="history-item">
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Debug Panel */}
       <div className="debug-panel">
         <input 

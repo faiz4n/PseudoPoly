@@ -8,7 +8,8 @@ import {
   corners, 
   players,
   SPACE_TYPES,
-  AVATAR_COLORS
+  AVATAR_COLORS,
+  PROPERTY_COLORS
 } from './data/boardData';
 import './App.css';
 import startIcon from './assets/start.png';
@@ -16,6 +17,10 @@ import parkingIcon from './assets/parking.png';
 import robBankIcon from './assets/robbank.png';
 import jailIcon from './assets/jail.png';
 import startupBg from './assets/startup_bg.png';
+import dealIcon from './assets/deal.png';
+import sellIcon from './assets/sell.png';
+import buildIcon from './assets/build.png';
+import bankIcon from './assets/bank.png';
 import './pawn.css';
 import './safe_animation.css';
 import './upgrades.css';
@@ -106,6 +111,13 @@ function App() {
   // Structure: { playerIndex: { discount_50: false } }
   const [activeEffects, setActiveEffects] = useState({});
   
+  // Bank & Loan System State
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankPhase, setBankPhase] = useState('entry'); // 'entry' | 'loan'
+  const [loanSliderValue, setLoanSliderValue] = useState(0);
+  const [playerLoans, setPlayerLoans] = useState({}); // { playerIndex: { principalAmount, repayAmount, lapsRemaining, loanStartTile } }
+  const [showBankDebitModal, setShowBankDebitModal] = useState(false);
+  
   // Game State Ref (for accessing latest state in event listeners)
   const gameStateRef = useRef({
     gamePlayers,
@@ -121,7 +133,8 @@ function App() {
     propertyLevels,
     history,
     hoppingPlayer,
-    myPlayerIndex
+    myPlayerIndex,
+    playerLoans
   });
   
   // Update Ref whenever state changes
@@ -140,9 +153,10 @@ function App() {
       propertyLevels,
       history,
       hoppingPlayer,
-      myPlayerIndex
+      myPlayerIndex,
+      playerLoans
     };
-  }, [gamePlayers, connectedPlayers, networkMode, gameStage, currentPlayer, diceValues, isRolling, playerPositions, playerMoney, propertyOwnership, propertyLevels, history, hoppingPlayer, myPlayerIndex]);
+  }, [gamePlayers, connectedPlayers, networkMode, gameStage, currentPlayer, diceValues, isRolling, playerPositions, playerMoney, propertyOwnership, propertyLevels, history, hoppingPlayer, myPlayerIndex, playerLoans]);
   
   // Cash Stack (The Pot) - Collects all fines/fees
   
@@ -176,6 +190,7 @@ function App() {
   
   // Modal closing animation state
   const [isModalClosing, setIsModalClosing] = useState(false);
+  const [closingModal, setClosingModal] = useState(null); // 'buy', 'parking', 'robbank', 'property', 'chance', 'chest', 'audit', 'war'
   
   // Skip turn state { playerIndex: boolean }
   const [skippedTurns, setSkippedTurns] = useState({});
@@ -185,6 +200,45 @@ function App() {
   const [robProgress, setRobProgress] = useState(0);
   const [robStatus, setRobStatus] = useState('idle'); // 'idle', 'robbing', 'success', 'caught'
   const [robResult, setRobResult] = useState({ amount: 0, message: '' });
+
+  // Deal System State
+  const [showDealModal, setShowDealModal] = useState(false);
+  const [dealPhase, setDealPhase] = useState('select'); // 'select' | 'configure' | 'review' | 'result'
+  const [selectedDealPlayer, setSelectedDealPlayer] = useState(null);
+  const [dealGiveProperties, setDealGiveProperties] = useState([]); // tiles active player gives
+  const [dealReceiveProperties, setDealReceiveProperties] = useState([]); // tiles active player receives
+  const [dealMoneyOffer, setDealMoneyOffer] = useState(0);
+  const [dealSelectionMode, setDealSelectionMode] = useState(false);
+  const [incomingDeal, setIncomingDeal] = useState(null);
+  const [showDealReviewModal, setShowDealReviewModal] = useState(false);
+  const [dealResultMessage, setDealResultMessage] = useState('');
+  const [showDealResultModal, setShowDealResultModal] = useState(false);
+  
+  // Bankruptcy System State
+  const [bankruptPlayers, setBankruptPlayers] = useState({}); // { playerIndex: true }
+  const [showBankruptcyModal, setShowBankruptcyModal] = useState(false);
+  
+  // Build System State
+  const [showBuildModal, setShowBuildModal] = useState(false);
+  const [buildMode, setBuildMode] = useState(false); // true when board interaction is active
+  const [buildTotalCost, setBuildTotalCost] = useState(0);
+  const [buildNoMonopolyModal, setBuildNoMonopolyModal] = useState(false);
+  
+  // Toast Notification
+  const [toast, setToast] = useState({ show: false, message: '' });
+  const showToast = useCallback((message) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show: false, message: '' }), 3000);
+  }, []);
+
+  // Turn Validation Helper
+  const validateTurn = () => {
+    if (networkMode === 'online' && myPlayerIndex !== currentPlayer) {
+      showToast("Not your turn!");
+      return false;
+    }
+    return true;
+  };
   
 
   
@@ -221,6 +275,17 @@ function App() {
   // Helper: Close any modal with animation
   const closeAllModals = (callback, keepBuyingState = false) => {
     setIsModalClosing(true);
+    
+    // Determine which modal is currently showing to set closingModal
+    if (showBuyModal) setClosingModal('buy');
+    else if (showParkingModal) setClosingModal('parking');
+    else if (showRobBankModal) setClosingModal('robbank');
+    else if (showPropertyModal) setClosingModal('property');
+    else if (showChanceModal) setClosingModal('chance');
+    else if (showChestModal) setClosingModal('chest');
+    else if (showAuditModal) setClosingModal('audit');
+    else if (showWarModal) setClosingModal('war');
+
     setTimeout(() => {
       setShowBuyModal(false);
       if (!keepBuyingState) {
@@ -233,11 +298,32 @@ function App() {
       setShowChanceModal(false);
       setShowChestModal(false);
       setShowAuditModal(false);
+      setShowWarModal(false);
       setAuditStatus('idle');
       setRobStatus('idle'); // Reset status
       setIsModalClosing(false);
+      setClosingModal(null);
       if (callback) callback();
     }, 300); // 300ms matches CSS animation duration
+  };
+
+  // Helper: Immediately reset all modal states (no animation) - use before opening new modals
+  const resetAllModals = () => {
+    setShowBuyModal(false);
+    setBuyingProperty(null);
+    setShowParkingModal(false);
+    setShowRobBankModal(false);
+    setShowPropertyModal(false);
+    setSelectedProperty(null);
+    setShowChanceModal(false);
+    setShowChestModal(false);
+    setShowAuditModal(false);
+    setShowWarModal(false);
+    setAuditStatus('idle');
+    setRobStatus('idle');
+    setIsModalClosing(false);
+    setCurrentChanceCard(null);
+    setCurrentChestCard(null);
   };
 
   // Floating price animation state - array to support multiple animations
@@ -348,16 +434,56 @@ function App() {
     socket.on('floating_price', (payload) => {
       // payload: { tileIndex, price, isPositive, label }
       // Trigger floating price animation
-      const animKey = getUniqueKey();
-      setFloatingPrices(prev => [...prev, { ...payload, key: animKey }]);
-      setTimeout(() => {
-        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
-      }, 3000);
+      console.log('[CLIENT] Received floating_price event:', payload);
       
-      // If it's a tax (index 7), also show Cash Stack animation
-      if (payload.tileIndex === 7 && !payload.isPositive) {
-         showCashStackFloatingPrice(Math.abs(payload.price));
+      try {
+        const animKey = getUniqueKey();
+        setFloatingPrices(prev => {
+          console.log('[CLIENT] Adding floating price to state:', { ...payload, key: animKey });
+          return [...prev, { ...payload, key: animKey }];
+        });
+        
+        setTimeout(() => {
+          setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
+        }, 3000);
+        
+        // If it's a tax (index 7), also show Cash Stack animation
+        if (payload.tileIndex === 7 && !payload.isPositive) {
+           showCashStackFloatingPrice(Math.abs(payload.price));
+        }
+      } catch (err) {
+        console.error('[CLIENT] Error handling floating_price:', err);
       }
+    });
+    
+    // Deal System: Handle incoming deal offers
+    socket.on('deal_offer', (dealData) => {
+      console.log('[CLIENT] Received deal_offer:', dealData);
+      // Show the deal review modal for the recipient
+      setIncomingDeal(dealData);
+      setShowDealReviewModal(true);
+    });
+    
+    // Deal System: Handle deal result (for proposer)
+    // Deal System: Handle deal result (for proposer)
+    socket.on('deal_result', ({ accepted, deal }) => {
+      console.log('[CLIENT] Received deal_result:', accepted, deal);
+      
+      const { myPlayerIndex: currentMyIndex, gamePlayers: currentPlayers } = gameStateRef.current;
+
+      // ONLY show the result modal for the proposer (the offering player)
+      if (currentMyIndex === deal.proposer) {
+        showDealResult(accepted, deal);
+      } else if (currentMyIndex === deal.recipient) {
+        // Recipient only sees history log
+        const proposerName = currentPlayers[deal.proposer]?.name || 'Player';
+        if (accepted) {
+          setHistory(prev => [`✅ You accepted the deal from ${proposerName}!`, ...prev.slice(0, 9)]);
+        } else {
+          setHistory(prev => [`❌ You denied the deal from ${proposerName}.`, ...prev.slice(0, 9)]);
+        }
+      }
+      resetDealState();
     });
     
     socket.on('room_closed', ({ message }) => {
@@ -414,18 +540,67 @@ function App() {
     }
     
     // ===== SYNC ALL UI STATE TO ALL CLIENTS =====
+    // CRITICAL: Protect loan/money/history state from being overwritten during animations
+    // Otherwise, server echoing stale data back will reset the lap count and wipe history
+    const isSafeToOverwriteState = !isAnimatingRef.current;
+
     if (state.currentPlayer !== undefined) setCurrentPlayer(state.currentPlayer);
     if (state.diceValues) setDiceValues(state.diceValues);
     if (state.isRolling !== undefined) setIsRolling(state.isRolling);
-    if (state.playerMoney) setPlayerMoney(state.playerMoney);
+    
+    // These state updates are protected during animations
+    if (isSafeToOverwriteState) {
+        if (state.playerMoney) setPlayerMoney(state.playerMoney);
+        if (state.history) setHistory(state.history);
+        
+        // Smart playerLoans sync: ALWAYS preserve local loan progress.
+        // The only case we accept server's deletion is when loan was fully repaid (debit).
+        // This prevents ANY stale server broadcast from resetting lap count.
+        if (state.playerLoans) {
+            setPlayerLoans(currentLoans => {
+                const serverLoans = state.playerLoans || {};
+                const merged = { ...serverLoans };
+                
+                // For each local loan, ALWAYS keep it (preserves progress)
+                // Only exception: if server deleted it (loan was debited)
+                Object.keys(currentLoans).forEach(pIdx => {
+                    const localLoan = currentLoans[pIdx];
+                    const serverLoan = serverLoans[pIdx];
+                    
+                    if (localLoan) {
+                        if (serverLoan) {
+                            // Both exist: ALWAYS keep local (it has the most recent progress)
+                            merged[pIdx] = localLoan;
+                        } else {
+                            // Server deleted loan (debit happened) - accept deletion only if 
+                            // we're not the loan owner OR our local laps is already 0 or less
+                            // This prevents premature deletion from stale broadcasts
+                            if (localLoan.lapsRemaining <= 0) {
+                                // Loan was debited, accept deletion
+                                delete merged[pIdx];
+                            } else {
+                                // Stale broadcast trying to delete active loan - keep it
+                                merged[pIdx] = localLoan;
+                            }
+                        }
+                    }
+                });
+                
+                gameStateRef.current.playerLoans = merged;
+                return merged;
+            });
+        }
+    }
+    
     if (state.propertyOwnership) setPropertyOwnership(state.propertyOwnership);
     if (state.propertyLevels) setPropertyLevels(state.propertyLevels);
-    if (state.history) setHistory(state.history);
     if (state.turnFinished !== undefined) setTurnFinished(state.turnFinished);
     if (state.isProcessingTurn !== undefined) setIsProcessingTurn(state.isProcessingTurn);
     if (state.cashStack !== undefined) setCashStack(state.cashStack);
     if (state.battlePot !== undefined) setBattlePot(state.battlePot);
     if (state.auctionState) setAuctionState(state.auctionState);
+    if (state.bankruptPlayers) setBankruptPlayers(state.bankruptPlayers);
+    if (state.gamePlayers) gameStateRef.current.gamePlayers = state.gamePlayers;
     
     // Sync Property War State
     if (state.warState) {
@@ -479,20 +654,28 @@ function App() {
       } else if (state.modalState.type === 'CHANCE') {
         console.log('[applyGameState] Received CHANCE modal:', state.modalState.payload);
         if (state.modalState.payload?.card) {
+             resetAllModals(); // Clear any stacked modals
              setCurrentChanceCard(state.modalState.payload.card);
              setShowChanceModal(true);
         }
       } else if (state.modalState.type === 'CHEST') {
         console.log('[applyGameState] Received CHEST modal:', state.modalState.payload);
         if (state.modalState.payload?.card) {
+             resetAllModals(); // Clear any stacked modals
              setCurrentChestCard(state.modalState.payload.card);
              setShowChestModal(true);
         }
+      } else if (state.modalState.type === 'PARKING') {
+         resetAllModals(); // Clear any stacked modals
+         setShowParkingModal(true);
       } else if (state.modalState.type === 'NONE') {
         // Only log if we are hiding a modal that was showing
         if (showAuditModal) console.log('[applyGameState] Hiding AUDIT modal (type NONE)');
         setShowRobBankModal(false);
         setShowAuditModal(false);
+        setShowParkingModal(false);
+        setShowChanceModal(false);
+        setShowChestModal(false);
         setRobStatus('idle');
         setAuditStatus('idle');
       }
@@ -675,6 +858,41 @@ function App() {
     return null;
   };
 
+  // Color groups for monopoly detection: color -> [tileIndices]
+  const COLOR_GROUPS = {
+    [PROPERTY_COLORS.yellow]: [1, 2, 5],      // Shop, Super market, Service station
+    [PROPERTY_COLORS.red]: [6, 8, 9],          // Swim pool, Zoo, Ice-rink
+    [PROPERTY_COLORS.pink]: [11, 12, 14],      // Pizzeria, Cinema, Night club
+    [PROPERTY_COLORS.darkOrange]: [15, 16, 17], // Airport, Car salon, Harbor
+    [PROPERTY_COLORS.lightGreen]: [19, 20, 22], // Newspaper, TV channel, Mobile op.
+    [PROPERTY_COLORS.purple]: [24, 25, 27],     // Toy factory, Candy factory, Organic farm
+    [PROPERTY_COLORS.darkGreen]: [29, 30],      // Oil well, Diamond mine (only 2)
+    [PROPERTY_COLORS.limeGreen]: [34, 35],      // Hollywood, Electronics factory (only 2)
+  };
+
+  // Get all monopoly tile indices for a player (tiles where player owns ALL properties in color group)
+  const getMonopolyTiles = (playerIdx) => {
+    const monopolyTiles = [];
+    
+    Object.entries(COLOR_GROUPS).forEach(([color, tileIndices]) => {
+      // Check if player owns ALL tiles in this color group
+      const ownsAll = tileIndices.every(tileIdx => propertyOwnership[tileIdx] === playerIdx);
+      if (ownsAll) {
+        monopolyTiles.push(...tileIndices);
+      }
+    });
+    
+    return monopolyTiles;
+  };
+
+  // Get upgrade cost for a property at a given level (returns cost to upgrade TO next level)
+  const getUpgradeCost = (tileIndex) => {
+    const property = getPropertyByTileIndex(tileIndex);
+    if (!property) return 0;
+    // Upgrade cost is typically 50% of property price
+    return Math.round(property.price * 0.5);
+  };
+
   // Helper to get owner's color for a tile (returns null if unowned)
   // Returns { bgColor, textColor } for owned properties
   const getOwnerStyle = (tileIndex) => {
@@ -744,7 +962,10 @@ function App() {
     const property = RENT_DATA[tileIndex];
     if (!property) return 0; // Should not happen for valid properties
     
-    const level = propertyLevels[tileIndex] || 0;
+    // START: Use Ref for latest levels to avoid stale closures in timeouts
+    const currentLevels = gameStateRef.current?.propertyLevels || propertyLevels;
+    const level = currentLevels[tileIndex] || 0;
+    // END: Use Ref
     const ownerIndex = currentOwnership[tileIndex];
     
     // Check Monopoly (only relevant if level is 0)
@@ -1047,33 +1268,93 @@ function App() {
     setHoppingPlayer(playerIdx); // Enable hop animation
 
     for (let i = 1; i <= count; i++) {
-      // 1. Update position
+      // 1. Calculate and update position
+      const currentNextPos = (startPos + (i * direction) + 36) % 36;
+      
       setPlayerPositions(prev => {
-        const newPositions = [...prev];
-        // Handle wrapping correctly for both directions
-        const nextPos = (startPos + (i * direction) + 36) % 36;
-        newPositions[playerIdx] = nextPos;
-        
-        // Check for GO (passing index 0)
-        if (nextPos === 0 && direction > 0) {
-             setPlayerMoney(moneyPrev => {
-               const moneyUpdated = [...moneyPrev];
-               moneyUpdated[playerIdx] += 1000;
-               return moneyUpdated;
-             });
-             playCollectMoneySound(); // Play money sound for GO
-             setFloatingPrices(fpPrev => [...fpPrev, { price: 1000, tileIndex: 0, key: Date.now(), isPositive: true }]);
-             setHistory(histPrev => [`${gamePlayers[playerIdx].name} passed GO! Collect $1000`, ...histPrev.slice(0, 9)]);
-        }
-        
-        return newPositions;
+        const result = [...prev];
+        result[playerIdx] = currentNextPos;
+        return result;
       });
 
+      // --- Side Effects (Lap Logic & GO Reward) ---
+      
+      // A. LAP DETECTION (Visuals & History for everyone)
+      // IMPORTANT: Access latest loans from ref to avoid stale closure in the hop loop
+      const loan = gameStateRef.current.playerLoans[playerIdx];
+      const currentPlayerList = gameStateRef.current.gamePlayers;
+
+      if (loan && currentNextPos === loan.loanStartTile && direction > 0) {
+        const remaining = loan.lapsRemaining - 1;
+        if (remaining <= 0) {
+          setHistory(histPrev => [`🏦 Bank debited $${loan.repayAmount.toLocaleString()} loan from ${currentPlayerList[playerIdx].name}`, ...histPrev.slice(0, 9)]);
+          const debitKey = getUniqueKey();
+          setFloatingPrices(fpPrev => [...fpPrev, { price: loan.repayAmount, tileIndex: currentNextPos, key: debitKey, isPositive: false }]);
+          setTimeout(() => setFloatingPrices(fpPrev => fpPrev.filter(fp => fp.key !== debitKey)), 3000);
+        } else {
+          setHistory(histPrev => [`🏦 ${currentPlayerList[playerIdx].name} completed a lap! ${remaining} left for loan.`, ...histPrev.slice(0, 9)]);
+        }
+      }
+
+      // B. GO Reward (Visuals & History for everyone)
+      if (currentNextPos === 0 && direction > 0) {
+        setHistory(histPrev => [`${currentPlayerList[playerIdx].name} passed GO! Collect $1000`, ...histPrev.slice(0, 9)]);
+        setFloatingPrices(fpPrev => [...fpPrev, { price: 1000, tileIndex: 0, key: getUniqueKey(), isPositive: true }]);
+        playCollectMoneySound();
+      }
+
+      // --- State Synchronization (Only token owner/local processes definitively) ---
+      if (networkMode !== 'online' || playerIdx === myPlayerIndex) {
+        if (loan && currentNextPos === loan.loanStartTile && direction > 0) {
+          const remaining = loan.lapsRemaining - 1;
+          if (remaining <= 0) {
+            const repayAmount = loan.repayAmount;
+            setShowBankDebitModal(true);
+            setPlayerMoney(moneyPrev => {
+              const nextMoney = [...moneyPrev];
+              nextMoney[playerIdx] -= repayAmount;
+              setPlayerLoans(loansPrev => {
+                const nextLoans = { ...loansPrev };
+                delete nextLoans[playerIdx];
+                if (networkMode === 'online') {
+                  sendGameAction('update_state', { playerMoney: nextMoney, playerLoans: nextLoans });
+                }
+                gameStateRef.current.playerLoans = nextLoans; // Sync ref immediately
+                return nextLoans;
+              });
+              gameStateRef.current.playerMoney = nextMoney; // Sync ref immediately
+              return nextMoney;
+            });
+          } else {
+            setPlayerLoans(loansPrev => {
+                const nextLoans = { ...loansPrev, [playerIdx]: { ...loansPrev[playerIdx], lapsRemaining: remaining } };
+                if (networkMode === 'online') {
+                    sendGameAction('update_state', { playerLoans: nextLoans });
+                }
+                gameStateRef.current.playerLoans = nextLoans; // Sync ref immediately
+                return nextLoans;
+            });
+          }
+        }
+
+        if (currentNextPos === 0 && direction > 0) {
+          setPlayerMoney(moneyPrev => {
+            const nextMoney = [...moneyPrev];
+            nextMoney[playerIdx] += 1000;
+            if (networkMode === 'online') {
+              sendGameAction('update_state', { playerMoney: nextMoney });
+            }
+            gameStateRef.current.playerMoney = nextMoney; // Sync ref immediately
+            return nextMoney;
+          });
+        }
+      }
+      
       // 2. Play hop sound
       playHopSound();
 
       // 3. Wait for animation to complete
-      await wait(delay); // Sync with CSS transition/animation duration
+      await wait(delay); 
     }
     
     setHoppingPlayer(null); // Disable hop animation
@@ -1322,10 +1603,13 @@ function App() {
     // Offline Mode: Handle locally
     let nextIdx = (currentPlayer + 1) % gamePlayers.length;
     let skippedPlayers = [];
+    let loopCount = 0;
     
-    while (skippedTurns[nextIdx]) {
-       skippedPlayers.push(nextIdx);
+    // Skip both skipped turns AND bankrupt players
+    while ((skippedTurns[nextIdx] || bankruptPlayers[nextIdx]) && loopCount < gamePlayers.length) {
+       if (skippedTurns[nextIdx]) skippedPlayers.push(nextIdx);
        nextIdx = (nextIdx + 1) % gamePlayers.length;
+       loopCount++;
        if (nextIdx === currentPlayer) break; 
     }
     
@@ -1449,6 +1733,8 @@ function App() {
     }
   };
 
+
+
   const handleJailSkip = () => {
       const turnsLeft = jailStatus[currentPlayer];
       const newTurns = turnsLeft - 1;
@@ -1487,9 +1773,22 @@ function App() {
     const effectiveDiceValues = diceValuesOverride || diceValues;
     const effectiveIsOnline = isOnlineOverride !== null ? isOnlineOverride : (networkMode === 'online');
     
+    // Use ref for myPlayerIndex to avoid stale closure
+    const effectiveMyPlayerIndex = gameStateRef.current.myPlayerIndex;
+    console.log(`[handleTileArrival] effectiveIsOnline=${effectiveIsOnline}, playerIndex=${playerIndex}, effectiveMyPlayerIndex=${effectiveMyPlayerIndex}`);
+    
     // 1. Check Special Tiles
     // Parking (Index 9 - bottom-left corner)
-    if (tileIndex === 9) {
+    // Parking (Index 10 - bottom-left corner)
+    if (tileIndex === 10) {
+      if (effectiveIsOnline) {
+         if (playerIndex === effectiveMyPlayerIndex) {
+            console.log('[handleTileArrival] Sending modal_open for PARKING');
+            sendGameAction('modal_open', { type: 'PARKING' });
+         }
+         return; 
+      }
+
       setShowParkingModal(true);
       return; 
     }
@@ -1542,6 +1841,28 @@ function App() {
       const total = die1 + die2;
       const tax = total * 300; // ×300 multiplier
       
+      // Check Audit Immunity (Chest Card)
+      if (activeEffects[playerIndex]?.audit_immunity) {
+         setHistory(prev => [`🛡️ ${gamePlayers[playerIndex].name} used Audit Immunity! No tax paid.`, ...prev.slice(0, 9)]);
+         // Consume immunity locally
+         setActiveEffects(prev => ({
+             ...prev,
+             [playerIndex]: { ...prev[playerIndex], audit_immunity: false }
+         }));
+         // If online, we should probably tell server to consume it or just rely on local state updates if they weren't synced?
+         // Since activeEffects aren't fully synced, we just end the turn nicely.
+         // We do NOT send 'audit_show', so other players see nothing (or just history if synced).
+         // Actually, let's sync history via an update (history is local derived usually, but if we send update_state with history it overrides?)
+         // Server maintains history. We can't push history easily without a specific action.
+         // But we can send a custom notification? Or just end turn.
+         if (effectiveIsOnline) {
+             sendGameAction('end_turn'); // Just end turn immediately
+         } else {
+             endTurn(playerIndex, false);
+         }
+         return;
+      }
+
       if (effectiveIsOnline) {
         // Send audit action to server - server will broadcast to all players
         sendGameAction('audit_show', { diceValues: [die1, die2], taxAmount: tax });
@@ -1586,14 +1907,16 @@ function App() {
 
     // Chance Tiles (31 = right column only, tile 3 is Cash Stack now)
     if (tileIndex === 31) {
-      if (effectiveIsOnline && playerIndex !== myPlayerIndex) return;
-
-      const randomCard = getSmartChanceCard(playerIndex);
-      
       if (effectiveIsOnline) {
-         sendGameAction('modal_open', { type: 'CHANCE', payload: { card: randomCard } });
+         if (playerIndex === effectiveMyPlayerIndex) {
+            console.log('[handleTileArrival] Sending modal_open for CHANCE');
+            const randomCard = getSmartChanceCard(playerIndex);
+            sendGameAction('modal_open', { type: 'CHANCE', payload: { card: randomCard } });
+         }
+         return; 
       }
       
+      const randomCard = getSmartChanceCard(playerIndex);
       setCurrentChanceCard(randomCard);
       setShowChanceModal(true);
       return;
@@ -1601,14 +1924,16 @@ function App() {
     
     // Community Chest (Index 33 - in rightColumn)
     if (tileIndex === 33) {
-      if (effectiveIsOnline && playerIndex !== myPlayerIndex) return;
-
-      const randomCard = getSmartChestCard(playerIndex);
-      
       if (effectiveIsOnline) {
-         sendGameAction('modal_open', { type: 'CHEST', payload: { card: randomCard } });
+         if (playerIndex === effectiveMyPlayerIndex) {
+            console.log('[handleTileArrival] Sending modal_open for CHEST');
+            const randomCard = getSmartChestCard(playerIndex);
+            sendGameAction('modal_open', { type: 'CHEST', payload: { card: randomCard } });
+         }
+         return;
       }
 
+      const randomCard = getSmartChestCard(playerIndex);
       setCurrentChestCard(randomCard);
       setShowChestModal(true);
       return;
@@ -1653,12 +1978,27 @@ function App() {
     const ownerIndex = effectiveOwnership[tileIndex];
     
     if (property && ownerIndex === undefined) {
-      // Unowned property - show buying modal
+      // Unowned property - show buying modal only if player can afford it
       const rentData = RENT_DATA[tileIndex];
       const rent = rentData ? rentData.rentLevels[0] : (property.rent || Math.floor(property.price * 0.1));
       
       setBuyingProperty({ ...property, rent, buyerIndex: playerIndex, isDoubles });
-      setShowBuyModal(true);
+      
+      // Only auto-show modal if player can afford the property (Use Ref for latest money)
+      const currentMoney = gameStateRef.current?.playerMoney || playerMoney;
+      if (currentMoney[playerIndex] >= property.price) {
+        setShowBuyModal(true);
+      } else {
+        // Optional: Show toast explaining why no modal appeared?
+        // showToast(`Can't afford ${property.name}! Need $${property.price}`);
+        // We probably don't want to spam toast automatically, just let them see they landed and can't buy.
+        // Actually, let's auto-end turn if they can't buy? 
+        // Standard Monopoly rules: If you land on unowned property and don't buy, it goes to auction.
+        // But for now, we just wait for them to end turn or use other buttons.
+        // If we don't show modal, they might be confused.
+        // Let's show a toast.
+        showToast(`Can't afford ${property.name} ($${property.price})`);
+      }
     } else if (property && ownerIndex !== undefined && Number(ownerIndex) !== playerIndex) {
       // Owned by another player - pay rent!
       // CHECK JAIL STATUS: If owner is in jail, skip rent
@@ -1681,25 +2021,40 @@ function App() {
         updated[ownerIndex] += rent;
         
         // Online Sync
+        // Online Sync
         if (networkMode === 'online') {
           sendGameAction('update_state', { playerMoney: updated });
+          // Broadcast Floating Price (Payer)
+          sendGameAction('floating_price', { 
+             tileIndex: tileIndex, 
+             price: rent, 
+             isPositive: false 
+          });
+          // Broadcast Floating Price (Receiver)
+          sendGameAction('floating_price', { 
+             tileIndex: ownerPosition, 
+             price: rent, 
+             isPositive: true 
+          });
         }
         
         return updated;
       });
       playPayRentSound(); // Play sad rent payment sound
       
-      // Trigger dual floating price animations
-      const animKey1 = getUniqueKey();
-      const animKey2 = getUniqueKey();
-      setFloatingPrices(prev => [
-        ...prev, 
-        { price: rent, tileIndex: tileIndex, key: animKey1, isPositive: false },
-        { price: rent, tileIndex: ownerPosition, key: animKey2, isPositive: true }
-      ]);
-      setTimeout(() => {
-        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey1 && fp.key !== animKey2));
-      }, 3000);
+      // Trigger floating price animations (Local only in offline mode)
+      if (networkMode !== 'online') {
+        const animKey1 = getUniqueKey();
+        const animKey2 = getUniqueKey();
+        setFloatingPrices(prev => [
+          ...prev, 
+          { price: rent, tileIndex: tileIndex, key: animKey1, isPositive: false },
+          { price: rent, tileIndex: ownerPosition, key: animKey2, isPositive: true }
+        ]);
+        setTimeout(() => {
+          setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey1 && fp.key !== animKey2));
+        }, 3000);
+      }
       
       // Add to history
       setHistory(historyPrev => [
@@ -1718,7 +2073,7 @@ function App() {
         // Count owned trains
         const ownedTrains = TRAIN_TILES.filter(t => effectiveOwnership[t] === playerIndex).length;
         if (ownedTrains > 1) {
-          setHistory(prev => [`🚂 ${gamePlayers[playerIndex].name} arrived at ${property.name}. Travel available?`, ...prev.slice(0, 9)]);
+          setHistory(prev => [`🚅 ${gamePlayers[playerIndex].name} arrived at ${property.name}. Travel available?`, ...prev.slice(0, 9)]);
           // Offer Travel: Set state to show Travel button
           // We reuse buyingProperty with a flag to indicate this is a travel offer, not a buy offer
           setBuyingProperty({ ...property, isTravelOffer: true });
@@ -1805,24 +2160,29 @@ function App() {
         return updated;
       });
       
-      // Floating Price
-      const animKey = getUniqueKey();
-      setFloatingPrices(prev => [
-        ...prev, 
-        { price: robResult.amount, tileIndex: 18, key: animKey, isPositive: true }
-      ]);
-      setTimeout(() => {
-        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
-      }, 3000);
+      // Floating Price Sync
+      if (networkMode === 'online') {
+        sendGameAction('floating_price', { 
+            tileIndex: 18, 
+            price: robResult.amount, 
+            isPositive: true 
+        });
+      } else {
+        const animKey = getUniqueKey();
+        setFloatingPrices(prev => [
+          ...prev, 
+          { price: robResult.amount, tileIndex: 18, key: animKey, isPositive: true }
+        ]);
+        setTimeout(() => {
+          setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
+        }, 3000);
+      }
       
       setHistory(prev => [`💰 ${gamePlayers[playerIndex].name} robbed the bank for $${robResult.amount}!`, ...prev.slice(0, 9)]);
       
       if (networkMode === 'online') {
         sendGameAction('close_modal');
-        // End turn is handled by server or separate action?
-        // Usually we end turn after modal closes.
-        // But close_modal just updates state.
-        // We should probably call endTurn locally which sends 'end_turn' action.
+        // End turn is handled by calling endTurn locally which sends 'end_turn' action
         endTurn(playerIndex, false);
       } else {
         closeAllModals(() => {
@@ -1919,8 +2279,7 @@ function App() {
         sendGameAction('floating_price', { 
           tileIndex: 7, 
           price: tax, 
-          isPositive: false, 
-          label: `-$${tax}` 
+          isPositive: false 
         });
       }
       
@@ -1955,6 +2314,10 @@ function App() {
     if (!card) return;
     
     // Close modal first, then execute action with animation
+    if (networkMode === 'online') {
+       sendGameAction('close_modal');
+    }
+    
     closeAllModals(async () => {
       const playerIndex = currentPlayer;
       const currentPos = playerPositions[playerIndex];
@@ -1974,15 +2337,23 @@ function App() {
             
             return updated;
           });
-          // Floating Price
-          const animKeyAdd = getUniqueKey();
-          setFloatingPrices(prev => [
-            ...prev, 
-            { price: card.amount, tileIndex: currentPos, key: animKeyAdd, isPositive: true }
-          ]);
-          setTimeout(() => {
-            setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyAdd));
-          }, 3000);
+          // Floating Price sync
+          if (networkMode === 'online') {
+            sendGameAction('floating_price', { 
+               tileIndex: currentPos, 
+               price: card.amount, 
+               isPositive: true 
+            });
+          } else {
+            const animKeyAdd = getUniqueKey();
+            setFloatingPrices(prev => [
+              ...prev, 
+              { price: card.amount, tileIndex: currentPos, key: animKeyAdd, isPositive: true }
+            ]);
+            setTimeout(() => {
+              setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyAdd));
+            }, 3000);
+          }
           setHistory(prev => [`${gamePlayers[playerIndex].name} gained $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
@@ -1998,15 +2369,23 @@ function App() {
             
             return updated;
           });
-          // Floating Price
-          const animKeySub = getUniqueKey();
-          setFloatingPrices(prev => [
-            ...prev, 
-            { price: card.amount, tileIndex: currentPos, key: animKeySub, isPositive: false }
-          ]);
-          setTimeout(() => {
-            setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeySub));
-          }, 3000);
+          // Floating Price sync
+          if (networkMode === 'online') {
+            sendGameAction('floating_price', { 
+               tileIndex: currentPos, 
+               price: card.amount, 
+               isPositive: false 
+            });
+          } else {
+            const animKeySub = getUniqueKey();
+            setFloatingPrices(prev => [
+              ...prev, 
+              { price: card.amount, tileIndex: currentPos, key: animKeySub, isPositive: false }
+            ]);
+            setTimeout(() => {
+              setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeySub));
+            }, 3000);
+          }
           setHistory(prev => [`${gamePlayers[playerIndex].name} lost $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
           break;
           
@@ -2047,16 +2426,26 @@ function App() {
                
                return updated;
              });
-             const animKeyStart = getUniqueKey();
-             setFloatingPrices(prev => [
-                ...prev, 
-                { price: 200, tileIndex: 0, key: animKeyStart, isPositive: true }
-             ]);
-             setTimeout(() => {
-               setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyStart));
-             }, 3000);
+
              setHistory(prev => [`${gamePlayers[playerIndex].name} collected $200 for passing Start`, ...prev.slice(0, 9)]);
-          }
+              
+              if (networkMode === 'online') {
+                sendGameAction('floating_price', { 
+                   tileIndex: 0, 
+                   price: 200, 
+                   isPositive: true 
+                });
+              } else {
+                 const animKeyStart = getUniqueKey();
+                 setFloatingPrices(prev => [
+                    ...prev, 
+                    { price: 200, tileIndex: 0, key: animKeyStart, isPositive: true }
+                 ]);
+                 setTimeout(() => {
+                   setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyStart));
+                 }, 3000);
+              }
+           }
           
           setHistory(prev => [`${gamePlayers[playerIndex].name} moved to ${getTileName(targetPos)}`, ...prev.slice(0, 9)]);
           
@@ -2231,20 +2620,42 @@ function App() {
   const handleChestCardAction = (card) => {
     if (!card) return;
     
+    // Close modal first, then execute action with animation
+    if (networkMode === 'online') {
+       sendGameAction('close_modal');
+    }
+
     closeAllModals(async () => {
       const playerIndex = currentPlayer;
       const currentPos = playerPositions[playerIndex];
       
       switch (card.action) {
         case 'MONEY_ADD':
-           setPlayerMoney(prev => {
-             const updated = [...prev];
-             updated[playerIndex] += card.amount;
-             if (networkMode === 'online') sendGameAction('update_state', { playerMoney: updated });
-             return updated;
-           });
-           setHistory(prev => [`${gamePlayers[playerIndex].name} received $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
-           break;
+            setPlayerMoney(prev => {
+              const updated = [...prev];
+              updated[playerIndex] += card.amount;
+              if (networkMode === 'online') sendGameAction('update_state', { playerMoney: updated });
+              return updated;
+            });
+            // Floating Price Sync
+            if (networkMode === 'online') {
+              sendGameAction('floating_price', { 
+                 tileIndex: currentPos, 
+                 price: card.amount, 
+                 isPositive: true 
+              });
+            } else {
+              const animKeyAdd = getUniqueKey();
+              setFloatingPrices(prev => [
+                ...prev, 
+                { price: card.amount, tileIndex: currentPos, key: animKeyAdd, isPositive: true }
+              ]);
+              setTimeout(() => {
+                setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyAdd));
+              }, 3000);
+            }
+            setHistory(prev => [`${gamePlayers[playerIndex].name} received $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
+            break;
 
         case 'ADD_INVENTORY':
           setPlayerInventory(prev => ({
@@ -2377,6 +2788,232 @@ function App() {
     handleTileArrival(movingPlayer, finalPos, isDoubles);
   };
 
+  // Action Button Placeholders
+  const handleBuild = () => {
+    if (!validateTurn()) return;
+    
+    // Check if player has any monopoly properties
+    const monopolyTiles = getMonopolyTiles(currentPlayer);
+    
+    if (monopolyTiles.length === 0) {
+      // No monopolies - show small modal
+      setBuildNoMonopolyModal(true);
+      return;
+    }
+    
+    // Has monopolies - open build modal and enable build mode
+    setBuildTotalCost(0);
+    setBuildMode(true);
+    setShowBuildModal(true);
+  };
+
+  // Handle tap on a tile during build mode
+  const handleBuildTileTap = (tileIndex) => {
+    if (!buildMode) return;
+    
+    const monopolyTiles = getMonopolyTiles(currentPlayer);
+    if (!monopolyTiles.includes(tileIndex)) {
+      // Not a monopoly property - ignore
+      return;
+    }
+    
+    const currentLevel = propertyLevels[tileIndex] || 0;
+    const upgradeCost = getUpgradeCost(tileIndex);
+    
+    // Level cycling: 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 1
+    let newLevel;
+    if (currentLevel >= 5) {
+      // Reset to level 1 (player tapped at max, they're cycling to fix mistakes)
+      newLevel = 1;
+      // Refund the difference (levels 2-5 cost back, minus level 1 cost)
+      const refund = upgradeCost * 4; // 4 upgrades refunded (2,3,4,5)
+      setBuildTotalCost(prev => Math.max(0, prev - refund + upgradeCost));
+    } else {
+      // Normal upgrade
+      newLevel = currentLevel + 1;
+      
+      // Affordability check
+      const newTotalCost = buildTotalCost + upgradeCost;
+      if (playerMoney[currentPlayer] < newTotalCost) {
+        showToast(`Can't afford! Need $${newTotalCost.toLocaleString()}`);
+        return;
+      }
+      
+      setBuildTotalCost(prev => prev + upgradeCost);
+    }
+    
+    // Apply the build
+    setPropertyLevels(prev => {
+      const updated = { ...prev, [tileIndex]: newLevel };
+      if (networkMode === 'online') {
+        sendGameAction('update_state', { propertyLevels: updated });
+      }
+      return updated;
+    });
+  };
+
+  // Close build mode
+  const closeBuildMode = () => {
+    // Deduct the total cost from player's money
+    if (buildTotalCost > 0) {
+      setPlayerMoney(prev => {
+        const updated = [...prev];
+        updated[currentPlayer] -= buildTotalCost;
+        if (networkMode === 'online') {
+          sendGameAction('update_state', { playerMoney: updated });
+        }
+        return updated;
+      });
+      
+      setHistory(prev => [`🏗️ ${gamePlayers[currentPlayer].name} built upgrades for $${buildTotalCost.toLocaleString()}`, ...prev.slice(0, 9)]);
+    }
+    
+    setBuildMode(false);
+    setShowBuildModal(false);
+    setBuildTotalCost(0);
+  };
+
+  const handleSell = () => {
+    if (!validateTurn()) return;
+    showToast("Selling system coming soon!");
+  };
+
+  const handleBank = () => {
+    if (!validateTurn()) return;
+    setBankPhase('entry');
+    setLoanSliderValue(1000);
+    setShowBankModal(true);
+  };
+
+  const handleConfirmLoan = () => {
+    const principal = loanSliderValue;
+    const repay = Math.round(principal * 1.3);
+    const startTile = playerPositions[currentPlayer];
+    
+    const newLoan = {
+      principalAmount: principal,
+      repayAmount: repay,
+      lapsRemaining: 3,
+      loanStartTile: startTile
+    };
+
+    setPlayerLoans(prev => {
+      const updated = { ...prev, [currentPlayer]: newLoan };
+      if (networkMode === 'online') sendGameAction('update_state', { playerLoans: updated });
+      return updated;
+    });
+
+    setPlayerMoney(prev => {
+      const updated = [...prev];
+      updated[currentPlayer] += principal;
+      if (networkMode === 'online') sendGameAction('update_state', { playerMoney: updated });
+      return updated;
+    });
+
+    // Floating Green Money
+    const loanKey = getUniqueKey();
+    setFloatingPrices(prev => [...prev, { price: principal, tileIndex: startTile, key: loanKey, isPositive: true }]);
+    setTimeout(() => {
+      setFloatingPrices(prev => prev.filter(fp => fp.key !== loanKey));
+    }, 3000);
+
+    setHistory(prev => [`🏦 ${gamePlayers[currentPlayer].name} took a $${principal.toLocaleString()} loan`, ...prev.slice(0, 9)]);
+    setShowBankModal(false);
+  };
+
+  const handleRepayLoanManual = () => {
+    const loan = playerLoans[currentPlayer];
+    if (!loan) return;
+
+    if (playerMoney[currentPlayer] < loan.repayAmount) {
+      showToast("Not enough balance to repay the loan.");
+      return;
+    }
+
+    setPlayerMoney(prev => {
+      const updated = [...prev];
+      updated[currentPlayer] -= loan.repayAmount;
+      if (networkMode === 'online') sendGameAction('update_state', { playerMoney: updated });
+      return updated;
+    });
+
+    setPlayerLoans(prev => {
+      const updated = { ...prev };
+      delete updated[currentPlayer];
+      if (networkMode === 'online') sendGameAction('update_state', { playerLoans: updated });
+      return updated;
+    });
+
+    // Floating Red Money
+    const repayKey = getUniqueKey();
+    setFloatingPrices(prev => [...prev, { price: loan.repayAmount, tileIndex: playerPositions[currentPlayer], key: repayKey, isPositive: false }]);
+    setTimeout(() => {
+      setFloatingPrices(prev => prev.filter(fp => fp.key !== repayKey));
+    }, 3000);
+
+    setHistory(prev => [`🏦 ${gamePlayers[currentPlayer].name} repaid their loan early`, ...prev.slice(0, 9)]);
+    setShowBankModal(false);
+  };
+
+  // Handle player bankruptcy
+  const handleBankrupt = () => {
+    const playerIdx = currentPlayer;
+    
+    // Clear all properties owned by this player
+    setPropertyOwnership(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(tileIdx => {
+        if (updated[tileIdx] === playerIdx) {
+          delete updated[tileIdx];
+        }
+      });
+      if (networkMode === 'online') {
+        sendGameAction('update_state', { propertyOwnership: updated });
+      }
+      return updated;
+    });
+    
+    // Clear property levels for their properties
+    setPropertyLevels(prev => {
+      const updated = { ...prev };
+      Object.keys(propertyOwnership).forEach(tileIdx => {
+        if (propertyOwnership[tileIdx] === playerIdx) {
+          delete updated[tileIdx];
+        }
+      });
+      if (networkMode === 'online') {
+        sendGameAction('update_state', { propertyLevels: updated });
+      }
+      return updated;
+    });
+    
+    // Clear any active loan
+    setPlayerLoans(prev => {
+      const updated = { ...prev };
+      delete updated[playerIdx];
+      if (networkMode === 'online') {
+        sendGameAction('update_state', { playerLoans: updated });
+      }
+      return updated;
+    });
+    
+    // Mark player as bankrupt
+    setBankruptPlayers(prev => {
+      const updated = { ...prev, [playerIdx]: true };
+      if (networkMode === 'online') {
+        sendGameAction('update_state', { bankruptPlayers: updated });
+      }
+      return updated;
+    });
+    
+    // Add history entry
+    setHistory(prev => [`💀 ${gamePlayers[playerIdx].name} declared BANKRUPTCY!`, ...prev.slice(0, 9)]);
+    
+    // Close modal and end turn
+    setShowBankruptcyModal(false);
+    handleEndTurn();
+  };
+
   // Handle buying a property
   const handleBuyProperty = () => {
     // Network Check
@@ -2407,13 +3044,13 @@ function App() {
       }
       
       sendGameAction('buy_property', { tileIndex, price: finalPrice });
+      sendGameAction('floating_price', { 
+           tileIndex, 
+           price: finalPrice, 
+           isPositive: false 
+      });
       
-      // Trigger floating price animation locally (shows immediately)
-      const animKey = getUniqueKey();
-      setFloatingPrices(prev => [...prev, { price: finalPrice, tileIndex, key: animKey, isPositive: false }]);
-      setTimeout(() => {
-        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
-      }, 3000);
+      // NOTE: Don't trigger local floating price here - server broadcast handles it
       playBuySound();
       
       // Close modal locally
@@ -2518,6 +3155,183 @@ function App() {
     }, true);
   };
 
+  // Handle Deal Result (Helper to show proposer the outcome)
+  const showDealResult = (accepted, deal) => {
+    const currentPlayers = gamePlayers; // Use latest from closure if possible, or ref
+    const recipientName = currentPlayers[deal.recipient]?.name || 'Player';
+    const proposerName = currentPlayers[deal.proposer]?.name || 'Player';
+
+    if (accepted) {
+      setHistory(prev => [`✅ ${recipientName} accepted the deal!`, ...prev.slice(0, 9)]);
+      setDealResultMessage(`✅ ${recipientName} accepted your deal!`);
+    } else {
+      setHistory(prev => [`❌ ${recipientName} denied your deal.`, ...prev.slice(0, 9)]);
+      setDealResultMessage(`❌ ${recipientName} denied your deal.`);
+    }
+    setShowDealResultModal(true);
+  };
+
+  // Reset Deal State Helper
+  const resetDealState = () => {
+    setShowDealModal(false);
+    setDealPhase('select');
+    setSelectedDealPlayer(null);
+    setDealGiveProperties([]);
+    setDealReceiveProperties([]);
+    setDealMoneyOffer(0);
+    setDealSelectionMode(false);
+    setIncomingDeal(null);
+    setShowDealReviewModal(false);
+  };
+
+  // Handle Deal Initiate
+  const handleDeal = () => {
+    if (!validateTurn()) return;
+    
+    // Check if player is allowed to deal
+    if (showAuctionModal || isProcessingTurn || showWarModal || showBuyModal || isRolling) {
+      return;
+    }
+
+    // Play interaction sound
+    try {
+      const audio = new Audio(cashRegisterSound);
+      audio.volume = 0.5;
+      audio.play();
+    } catch (e) {}
+
+    // Open deal modal in player selection phase
+    setShowDealModal(true);
+    setDealPhase('select');
+  };
+
+  // Handle Deal Player Selection
+  const handleDealPlayerSelect = (playerIndex) => {
+    setSelectedDealPlayer(playerIndex);
+    setDealPhase('configure');
+    setDealSelectionMode(true); // Enable board interaction mode
+  };
+
+  // Handle Deal Cancel
+  const handleDealCancel = () => {
+    resetDealState();
+  };
+
+  // Handle Deal Tile Click (in board interaction mode)
+  const handleDealTileClick = (tileIndex) => {
+    if (!dealSelectionMode) return;
+
+    const owner = propertyOwnership[tileIndex];
+    
+    // Check if it's active player's property
+    if (owner === currentPlayer) {
+      // Toggle in give list
+      setDealGiveProperties(prev => {
+        if (prev.includes(tileIndex)) {
+          return prev.filter(t => t !== tileIndex);
+        } else {
+          return [...prev, tileIndex];
+        }
+      });
+    }
+    // Check if it's selected player's property
+    else if (owner === selectedDealPlayer) {
+      // Toggle in receive list
+      setDealReceiveProperties(prev => {
+        if (prev.includes(tileIndex)) {
+          return prev.filter(t => t !== tileIndex);
+        } else {
+          return [...prev, tileIndex];
+        }
+      });
+    }
+  };
+
+  // Handle Deal Offer Submit
+  const handleDealOffer = () => {
+    const dealData = {
+      proposer: currentPlayer,
+      recipient: selectedDealPlayer,
+      giveProperties: dealGiveProperties,
+      receiveProperties: dealReceiveProperties,
+      moneyOffer: dealMoneyOffer
+    };
+
+    if (networkMode === 'online') {
+      sendGameAction('deal_offer', dealData);
+    } else {
+      // Offline mode: Show review modal for selected player
+      setIncomingDeal(dealData);
+      setShowDealReviewModal(true);
+    }
+
+    // Close proposer's modal
+    setShowDealModal(false);
+    setDealSelectionMode(false);
+  };
+
+  // Handle Deal Accept
+  const handleDealAccept = () => {
+    const deal = incomingDeal;
+    if (!deal) return;
+
+    // Transfer properties: proposer gives -> recipient receives
+    setPropertyOwnership(prev => {
+      const updated = { ...prev };
+      deal.giveProperties.forEach(tile => {
+        updated[tile] = deal.recipient;
+      });
+      deal.receiveProperties.forEach(tile => {
+        updated[tile] = deal.proposer;
+      });
+      return updated;
+    });
+
+    // Transfer money (bidirectional: positive = proposer gives, negative = proposer receives)
+    if (deal.moneyOffer !== 0) {
+      setPlayerMoney(prev => {
+        const updated = [...prev];
+        updated[deal.proposer] -= deal.moneyOffer;
+        updated[deal.recipient] += deal.moneyOffer;
+        return updated;
+      });
+
+      // Floating prices are broadcast by server on deal_response - no need to call here
+    }
+
+    // Add history
+    const proposerName = gamePlayers[deal.proposer]?.name || 'Player';
+    const recipientName = gamePlayers[deal.recipient]?.name || 'Player';
+    setHistory(prev => [`✅ ${proposerName} and ${recipientName} made a deal!`, ...prev.slice(0, 9)]);
+
+    if (networkMode === 'online') {
+      sendGameAction('deal_response', { accepted: true, deal });
+    } else {
+      // Offline mode: Show result to proposer locally
+      showDealResult(true, deal);
+    }
+
+    resetDealState();
+  };
+
+  // Handle Deal Deny
+  const handleDealDeny = () => {
+    const deal = incomingDeal;
+    if (!deal) return;
+
+    const recipientName = gamePlayers[deal.recipient]?.name || 'Player';
+    setHistory(prev => [`❌ ${recipientName} denied the deal.`, ...prev.slice(0, 9)]);
+
+    if (networkMode === 'online') {
+      sendGameAction('deal_response', { accepted: false, deal });
+    } else {
+      // Offline mode: Show result to proposer locally
+      showDealResult(false, deal);
+    }
+
+    resetDealState();
+  };
+
   // Handle Parking Confirm
   const handleParkingConfirm = () => {
     // Mark player to skip next turn
@@ -2529,6 +3343,7 @@ function App() {
       if (networkMode === 'online') {
         // We'll sync this as part of general state - but server doesn't track skippedTurns
         // For now, just end turn and hope sync works via other mechanisms
+        sendGameAction('close_modal');
       }
       
       return updated;
@@ -2543,6 +3358,14 @@ function App() {
 
   // --- Property War Handlers ---
   const handleWarJoin = (playerIdx) => {
+    const fee = warMode === 'A' ? 3000 : 2000;
+    
+    // Check if player has enough money
+    if (playerMoney[playerIdx] < fee) {
+      showToast(`Not enough funds! Need $${fee.toLocaleString()} to join.`);
+      return;
+    }
+
     // Online Mode
     if (networkMode === 'online') {
       if (playerIdx !== myPlayerIndex) return; // Only I can join for myself
@@ -2550,7 +3373,6 @@ function App() {
       return;
     }
 
-    const fee = warMode === 'A' ? 3000 : 2000;
     
     // Deduct fee
     setPlayerMoney(prev => {
@@ -2895,8 +3717,20 @@ function App() {
     handleTileArrival(currentPlayer, targetIndex, false); 
   };
 
-  // Handle Tile Click (Open Property Details OR Select Travel Destination OR Auction Selection)
+  // Handle Tile Click (Open Property Details OR Select Travel Destination OR Auction Selection OR Deal Selection)
   const handleTileClick = (tileIndex) => {
+    // Build Mode - Tap to upgrade
+    if (buildMode) {
+      handleBuildTileTap(tileIndex);
+      return;
+    }
+
+    // Deal Selection Mode - handle property selection for trades
+    if (dealSelectionMode) {
+      handleDealTileClick(tileIndex);
+      return;
+    }
+
     // Forced Auction Selection
     if (isSelectingAuctionProperty) {
       if (tileIndex === 23) return; // Ignore self (Forced Auction tile)
@@ -3027,6 +3861,63 @@ function App() {
     }
 
     return {}; // Normal styling
+  };
+
+  // Helper: Get style for deal selection mode (greyscale non-eligible tiles)
+  const getDealSelectionStyle = (tileIndex) => {
+    if (!dealSelectionMode) return {};
+    
+    const owner = propertyOwnership[tileIndex];
+    const isCurrentPlayerProperty = owner === currentPlayer;
+    const isSelectedPlayerProperty = owner === selectedDealPlayer;
+    
+    // Keep tile colored if owned by current player or selected player
+    if (isCurrentPlayerProperty || isSelectedPlayerProperty) {
+      return { transition: 'filter 0.3s', cursor: 'pointer' };
+    }
+    
+    // Grayscale everything else
+    return { filter: 'grayscale(100%) brightness(0.6)', pointerEvents: 'none', transition: 'filter 0.3s' };
+  };
+
+  // Helper: Get style for build mode (greyscale non-monopoly tiles)
+  const getBuildSelectionStyle = (tileIndex) => {
+    if (!buildMode) return {};
+    
+    const monopolyTiles = getMonopolyTiles(currentPlayer);
+    
+    // Keep tile colored if it's one of the current player's monopoly properties
+    if (monopolyTiles.includes(tileIndex)) {
+      return { 
+        transition: 'filter 0.3s', 
+        cursor: 'pointer',
+        boxShadow: '0 0 15px rgba(76, 175, 80, 0.6)', // Green glow for buildable tiles
+        zIndex: 5
+      };
+    }
+    
+    // Grayscale everything else
+    return { filter: 'grayscale(100%) brightness(0.6)', pointerEvents: 'none', transition: 'filter 0.3s' };
+  };
+
+  // Helper: Render deal indicator (+) or (-) on selected tiles
+  const renderDealIndicator = (tileIndex) => {
+    if (!dealSelectionMode) return null;
+    
+    const isGiving = dealGiveProperties.includes(tileIndex);
+    const isReceiving = dealReceiveProperties.includes(tileIndex);
+    
+    if (isGiving) {
+      return (
+        <div className="deal-tile-indicator give">−</div>
+      );
+    }
+    if (isReceiving) {
+      return (
+        <div className="deal-tile-indicator receive">+</div>
+      );
+    }
+    return null;
   };
 
   // Handle Auction Selection Confirmation
@@ -3595,23 +4486,23 @@ function App() {
       {gameStage === 'playing' && (
         <div className="game-container">
         {/* Game Board */}
-      <div className="board">
+      <div className={`board ${dealSelectionMode || buildMode ? 'deal-selection-active' : ''}`}>
         {/* Corner Spaces */}
-        <div className="corner start" style={(isSelectingAuctionProperty || (networkMode==='online' && auctionState?.active && ['thinking', 'announcing'].includes(auctionState.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
+        <div className="corner start" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
           <img src={startIcon} alt="Start" className="corner-icon" />
         </div>
         
-        <div className="corner parking" style={(isSelectingAuctionProperty || (networkMode==='online' && auctionState?.active && ['thinking', 'announcing'].includes(auctionState.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
+        <div className="corner parking" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
           <img src={parkingIcon} alt="Free Parking" className="corner-icon" />
         </div>
         
-        <div className="corner robbank" style={(isSelectingAuctionProperty || (networkMode==='online' && auctionState?.active && ['thinking', 'announcing'].includes(auctionState.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
+        <div className="corner robbank" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
           <span className="rob-text">ROB</span>
           <img src={robBankIcon} alt="Rob Bank" className="corner-icon-center" />
           <span className="bank-text">BANK</span>
         </div>
         
-        <div className="corner jail" style={(isSelectingAuctionProperty || (networkMode==='online' && auctionState?.active && ['thinking', 'announcing'].includes(auctionState.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
+        <div className="corner jail" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
           <span className="jail-text">JAIL</span>
           <img src={jailIcon} alt="Jail" className="corner-icon-center" />
         </div>
@@ -3621,11 +4512,13 @@ function App() {
           const tileIndex = index + 1;
           const ownerStyle = getOwnerStyle(tileIndex);
           const auctionStyle = getAuctionSelectionStyle(tileIndex);
+          const dealStyle = getDealSelectionStyle(tileIndex);
+          const buildStyle = getBuildSelectionStyle(tileIndex);
           return (
             <div 
               key={tile.id}
               className={`tile horizontal ${tile.type}`}
-              style={{...getTileStyle(index, 'bottom', tile.color), ...auctionStyle}}
+              style={{...getTileStyle(index, 'bottom', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle}}
               onClick={() => handleTileClick(tileIndex)}
             >
               {renderUpgrades(tileIndex, 'bottom')}
@@ -3643,6 +4536,8 @@ function App() {
               {pendingAuctionProperty?.tileIndex === tileIndex && (
                 <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',fontSize:'36px',color:'#4CAF50',textShadow:'0 0 8px #000',pointerEvents:'none'}}>+</div>
               )}
+              {/* Deal Selection Indicator */}
+              {renderDealIndicator(tileIndex)}
             </div>
           );
         })}
@@ -3652,11 +4547,13 @@ function App() {
           const tileIndex = index + 11;
           const ownerStyle = getOwnerStyle(tileIndex);
           const auctionStyle = getAuctionSelectionStyle(tileIndex);
+          const dealStyle = getDealSelectionStyle(tileIndex);
+          const buildStyle = getBuildSelectionStyle(tileIndex);
           return (
             <div 
               key={tile.id}
               className={`tile vertical left ${tile.type}`}
-              style={{...getTileStyle(index, 'left', tile.color), ...auctionStyle}}
+              style={{...getTileStyle(index, 'left', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle}}
               onClick={() => handleTileClick(tileIndex)}
             >
               {renderUpgrades(tileIndex, 'left')}
@@ -3673,6 +4570,7 @@ function App() {
               {pendingAuctionProperty?.tileIndex === tileIndex && (
                 <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',fontSize:'36px',color:'#4CAF50',textShadow:'0 0 8px #000',pointerEvents:'none'}}>+</div>
               )}
+              {renderDealIndicator(tileIndex)}
             </div>
           );
         })}
@@ -3682,11 +4580,13 @@ function App() {
           const tileIndex = index + 19;
           const ownerStyle = getOwnerStyle(tileIndex);
           const auctionStyle = getAuctionSelectionStyle(tileIndex);
+          const dealStyle = getDealSelectionStyle(tileIndex);
+          const buildStyle = getBuildSelectionStyle(tileIndex);
           return (
             <div 
               key={tile.id}
               className={`tile horizontal ${tile.type}`}
-              style={{...getTileStyle(index, 'top', tile.color), ...auctionStyle}}
+              style={{...getTileStyle(index, 'top', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle}}
               onClick={() => handleTileClick(tileIndex)}
             >
               {renderUpgrades(tileIndex, 'top')}
@@ -3703,6 +4603,7 @@ function App() {
               {pendingAuctionProperty?.tileIndex === tileIndex && (
                 <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',fontSize:'36px',color:'#4CAF50',textShadow:'0 0 8px #000',pointerEvents:'none'}}>+</div>
               )}
+              {renderDealIndicator(tileIndex)}
             </div>
           );
         })}
@@ -3712,11 +4613,13 @@ function App() {
           const tileIndex = index + 29;
           const ownerStyle = getOwnerStyle(tileIndex);
           const auctionStyle = getAuctionSelectionStyle(tileIndex);
+          const dealStyle = getDealSelectionStyle(tileIndex);
+          const buildStyle = getBuildSelectionStyle(tileIndex);
           return (
             <div 
               key={tile.id}
               className={`tile vertical right ${tile.type}`}
-              style={{...getTileStyle(index, 'right', tile.color), ...auctionStyle}}
+              style={{...getTileStyle(index, 'right', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle}}
               onClick={() => handleTileClick(tileIndex)}
             >
               {renderUpgrades(tileIndex, 'right')}
@@ -3733,6 +4636,7 @@ function App() {
               {pendingAuctionProperty?.tileIndex === tileIndex && (
                 <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',fontSize:'36px',color:'#4CAF50',textShadow:'0 0 8px #000',pointerEvents:'none'}}>+</div>
               )}
+              {renderDealIndicator(tileIndex)}
             </div>
           );
         })}
@@ -3884,13 +4788,24 @@ function App() {
                   ) : (
                     /* Normal Controls */
                     <>
+                      {/* Show buy button only when player can afford the property */}
                       {buyingProperty && !showBuyModal && !buyingProperty.isTravelOffer && (
-                        <button 
-                          className="buy-button" 
-                          onClick={() => setShowBuyModal(true)}
-                        >
-                          BUY
-                        </button>
+                        playerMoney[currentPlayer] >= buyingProperty.price ? (
+                          <button 
+                            className="buy-button" 
+                            onClick={() => setShowBuyModal(true)}
+                          >
+                            BUY
+                          </button>
+                        ) : (
+                          <button 
+                            className="buy-button" 
+                            style={{ opacity: 0.5 }}
+                            onClick={() => showToast(`Not enough money! Need $${buyingProperty.price.toLocaleString()}`)}
+                          >
+                            BUY
+                          </button>
+                        )
                       )}
     
                       {buyingProperty && buyingProperty.isTravelOffer && (
@@ -3904,7 +4819,18 @@ function App() {
                       )}
                       <button 
                         className={`roll-button ${turnFinished ? 'done' : ''}`} 
-                        onClick={(turnFinished || skippedTurns[currentPlayer]) ? handleEndTurn : () => rollDice()} 
+                        onClick={() => {
+                          if (turnFinished || skippedTurns[currentPlayer]) {
+                            // If balance is negative, show bankruptcy modal instead of ending turn
+                            if (playerMoney[currentPlayer] < 0) {
+                              setShowBankruptcyModal(true);
+                            } else {
+                              handleEndTurn();
+                            }
+                          } else {
+                            rollDice();
+                          }
+                        }} 
                         tabIndex="-1" 
                         disabled={isLocalMoving || (!turnFinished && !skippedTurns[currentPlayer] && (isRolling || isProcessingTurn))}
                       >
@@ -3917,48 +4843,520 @@ function App() {
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons - Always visible so players with negative balance can take loans or sell properties */}
           <div className="action-buttons">
-            <button className="action-btn build">
-              <span className="btn-icon">🏠</span>
-              BUILD
+            <button className="action-btn build" onClick={handleBuild}>
+              <img src={buildIcon} alt="Build" className="btn-icon-img" />
             </button>
-            <button className="action-btn sell">
-              <span className="btn-icon">🔨</span>
-              SELL
+            <button className="action-btn sell" onClick={handleSell}>
+              <img src={sellIcon} alt="Sell" className="btn-icon-img" />
             </button>
-            <button className="action-btn bank">
-              <span className="btn-icon">🏛️</span>
-              BANK
+            <button className="action-btn bank" onClick={handleBank}>
+              <img src={bankIcon} alt="Bank" className="btn-icon-img" />
             </button>
-            {/* Debug Test Buttons */}
-            <button 
-              className="action-btn" 
-              style={{ background: '#1a5c1a' }}
-              onClick={() => handleTileArrival(currentPlayer, 3, false)}
-            >
-              <span className="btn-icon">💵</span>
-              CASH
+            <button className="action-btn deal" onClick={handleDeal}>
+              <img src={dealIcon} alt="Deal" className="btn-icon-img" />
             </button>
-            <button 
-              className="action-btn" 
-              style={{ background: '#8B0000' }}
-              onClick={() => handleTileArrival(currentPlayer, 26, false)}
-            >
-              <span className="btn-icon">⚔️</span>
-              WAR
-            </button>
-            <button 
-              className="action-btn" 
-              style={{ background: '#1A237E' }}
-              onClick={debugRobBank}
-            >
-              <span className="btn-icon">💰</span>
-              ROB
-            </button>
+            {/* Debug Test Buttons Removed */}
           </div>
+
+      {/* Deal Modal */}
+      {showDealModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal">
+            {/* Header */}
+            <div className="modal-heading">
+              <span className="modal-heading-text">
+                {dealPhase === 'select' ? 'Choose Player' : 'Make a Deal'}
+              </span>
+            </div>
+            
+            {/* Body */}
+            <div className="modal-body">
+              {dealPhase === 'select' ? (
+                /* Player Selection Phase */
+                <div className="deal-player-grid">
+                  {gamePlayers.map((player, idx) => {
+                    if (idx === currentPlayer) return null; // Skip active player
+                    return (
+                      <div 
+                        key={idx} 
+                        className="deal-player-item"
+                        onClick={() => handleDealPlayerSelect(idx)}
+                      >
+                        <img src={player.avatar} alt={player.name} className="deal-player-avatar" />
+                        <span className="deal-player-name">{player.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Configuration Phase */
+                <div className="deal-config-container">
+                  {/* Left Column - Active Player (Giving) */}
+                  <div className="deal-column deal-give-column">
+                    <div className="deal-column-header">
+                      <img src={gamePlayers[currentPlayer]?.avatar} alt="" className="deal-header-avatar" />
+                      <span>{gamePlayers[currentPlayer]?.name}</span>
+                      <span className="deal-subtitle">You Give</span>
+                    </div>
+                    <div className="deal-property-list">
+                      {dealGiveProperties.map(tileIndex => {
+                        const tile = getPropertyByTileIndex(tileIndex);
+                        return (
+                          <div 
+                            key={tileIndex} 
+                            className="deal-property-box"
+                            style={{ background: tile?.color || '#888' }}
+                          >
+                            {tile?.name || `Tile ${tileIndex}`}
+                          </div>
+                        );
+                      })}
+                      {dealGiveProperties.length === 0 && (
+                        <div className="deal-empty-hint">Tap your properties on the board</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="deal-divider"></div>
+
+                  {/* Right Column - Selected Player (Receiving) */}
+                  <div className="deal-column deal-receive-column">
+                    <div className="deal-column-header">
+                      <img src={gamePlayers[selectedDealPlayer]?.avatar} alt="" className="deal-header-avatar" />
+                      <span>{gamePlayers[selectedDealPlayer]?.name}</span>
+                      <span className="deal-subtitle">You Get</span>
+                    </div>
+                    <div className="deal-property-list">
+                      {dealReceiveProperties.map(tileIndex => {
+                        const tile = getPropertyByTileIndex(tileIndex);
+                        return (
+                          <div 
+                            key={tileIndex} 
+                            className="deal-property-box"
+                            style={{ background: tile?.color || '#888' }}
+                          >
+                            {tile?.name || `Tile ${tileIndex}`}
+                          </div>
+                        );
+                      })}
+                      {dealReceiveProperties.length === 0 && (
+                        <div className="deal-empty-hint">Tap their properties on the board</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Money Slider (only in configure phase) - Bidirectional */}
+              {dealPhase === 'configure' && (
+                <div className="deal-money-section">
+                  <div className="deal-money-label">
+                    {dealMoneyOffer === 0 ? (
+                      <span>No money exchange</span>
+                    ) : dealMoneyOffer > 0 ? (
+                      <span style={{ color: '#f44336' }}>You give: ${dealMoneyOffer.toLocaleString()}</span>
+                    ) : (
+                      <span style={{ color: '#4CAF50' }}>You get: ${Math.abs(dealMoneyOffer).toLocaleString()}</span>
+                    )}
+                  </div>
+                  <div className="deal-slider-row">
+                    <button 
+                      className="deal-slider-btn" 
+                      onClick={() => setDealMoneyOffer(prev => Math.max(-(playerMoney[selectedDealPlayer] || 0), prev - 100))}
+                      style={{ background: '#4CAF50' }}
+                    >
+                      −
+                    </button>
+                    <input 
+                      type="range" 
+                      min={-(playerMoney[selectedDealPlayer] || 0)}
+                      max={playerMoney[currentPlayer] || 0}
+                      step="100"
+                      value={dealMoneyOffer}
+                      onChange={(e) => setDealMoneyOffer(parseInt(e.target.value))}
+                      className="deal-money-slider"
+                      style={{ 
+                        background: dealMoneyOffer === 0 
+                          ? '#888' 
+                          : dealMoneyOffer > 0 
+                            ? `linear-gradient(to right, #888 50%, #f44336 50%)` 
+                            : `linear-gradient(to left, #888 50%, #4CAF50 50%)` 
+                      }}
+                    />
+                    <button 
+                      className="deal-slider-btn" 
+                      onClick={() => setDealMoneyOffer(prev => Math.min(playerMoney[currentPlayer] || 0, prev + 100))}
+                      style={{ background: '#f44336' }}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="deal-slider-labels">
+                    <span style={{ color: '#4CAF50' }}>← Get</span>
+                    <span style={{ color: '#f44336' }}>Give →</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="modal-buttons">
+                <button className="modal-btn cancel" onClick={handleDealCancel}>
+                  CANCEL
+                </button>
+                {dealPhase === 'configure' && (
+                  <button 
+                    className="modal-btn buy" 
+                    onClick={handleDealOffer}
+                    disabled={dealGiveProperties.length === 0 && dealReceiveProperties.length === 0 && dealMoneyOffer === 0}
+                    style={{ opacity: (dealGiveProperties.length === 0 && dealReceiveProperties.length === 0 && dealMoneyOffer === 0) ? 0.5 : 1 }}
+                  >
+                    OFFER
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deal Review Modal (for recipient) */}
+      {showDealReviewModal && incomingDeal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal deal-review-modal">
+            <div className="modal-heading">
+              <span className="modal-heading-text">Deal Offer</span>
+            </div>
+            <div className="modal-body">
+              <div className="deal-review-header">
+                {gamePlayers[incomingDeal.proposer]?.name} wants to trade!
+              </div>
+              
+              <div className="deal-config-container">
+                {/* What you give */}
+                <div className="deal-column">
+                  <div className="deal-column-header">
+                    <span className="deal-subtitle" style={{ color: '#f44336' }}>You Give</span>
+                  </div>
+                  <div className="deal-property-list">
+                    {incomingDeal.receiveProperties.map(tileIndex => {
+                      const tile = getPropertyByTileIndex(tileIndex);
+                      return (
+                        <div key={tileIndex} className="deal-property-box" style={{ background: tile?.color || '#888' }}>
+                          {tile?.name}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="deal-divider">
+                  <span className="deal-arrow deal-arrow-give">→</span>
+                  <span className="deal-arrow deal-arrow-receive">←</span>
+                </div>
+
+                {/* What you receive */}
+                <div className="deal-column">
+                  <div className="deal-column-header">
+                    <span className="deal-subtitle" style={{ color: '#4CAF50' }}>You Get</span>
+                  </div>
+                  <div className="deal-property-list">
+                    {incomingDeal.giveProperties.map(tileIndex => {
+                      const tile = getPropertyByTileIndex(tileIndex);
+                      return (
+                        <div key={tileIndex} className="deal-property-box" style={{ background: tile?.color || '#888' }}>
+                          {tile?.name}
+                        </div>
+                      );
+                    })}
+                    {incomingDeal.moneyOffer > 0 && (
+                      <div className="deal-property-box" style={{ background: '#4CAF50' }}>
+                        +${incomingDeal.moneyOffer.toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-buttons">
+                <button className="modal-btn cancel" onClick={handleDealDeny}>
+                  DENY
+                </button>
+                <button className="modal-btn buy" onClick={handleDealAccept}>
+                  ACCEPT
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deal Result Modal */}
+      {showDealResultModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal deal-result-modal">
+            <div className="modal-heading">
+              <span className="modal-heading-text">Deal Result</span>
+            </div>
+            <div className="modal-body" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+              <div 
+                className="deal-result-text" 
+                style={{ 
+                  fontFamily: 'Junegull, sans-serif', 
+                  fontSize: '20px', 
+                  color: '#4a2c18',
+                  marginBottom: '20px'
+                }}
+              >
+                {dealResultMessage}
+              </div>
+              <div className="modal-buttons" style={{ justifyContent: 'center', marginTop: '10px', width: '100%' }}>
+                <button 
+                  className="modal-btn buy" 
+                  style={{ flex: 'none', width: '140px', height: '45px', padding: '0' }}
+                  onClick={() => {
+                    setShowDealResultModal(false);
+                    setDealResultMessage('');
+                  }}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bank Modal */}
+      {showBankModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal bank-modal">
+            <div className="modal-heading">
+              <span className="modal-heading-text">Bank</span>
+            </div>
+            <div className="modal-body">
+              {bankPhase === 'entry' ? (
+                <>
+                  <div className="modal-details" style={{ textAlign: 'center', marginBottom: '20px' }}>
+                    {!playerLoans[currentPlayer] ? (
+                      <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '24px', color: '#4a2c18' }}>
+                        Need some extra cash?
+                      </div>
+                    ) : (
+                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '10px' }}>
+                        <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '20px', color: '#4a2c18', marginBottom: '10px' }}>
+                          Active Loan Summary
+                        </div>
+                        <div className="modal-row" style={{ fontSize: '15px', marginBottom: '8px' }}>
+                          <span>Repay Amount:</span>
+                          <span className="modal-value" style={{ color: '#f44336' }}>${playerLoans[currentPlayer].repayAmount.toLocaleString()}</span>
+                        </div>
+                        <div className="modal-row" style={{ fontSize: '15px', marginBottom: '8px' }}>
+                          <span>Laps Remaining:</span>
+                          <span className="modal-value">{playerLoans[currentPlayer].lapsRemaining}</span>
+                        </div>
+                        <div className="modal-row" style={{ fontSize: '15px' }}>
+                          <span>Repay Tile:</span>
+                          <span className="modal-value">{getTileName(playerLoans[currentPlayer].loanStartTile)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="modal-buttons">
+                    <button className="modal-btn cancel" onClick={() => setShowBankModal(false)}>
+                      QUIT
+                    </button>
+                    {playerLoans[currentPlayer] ? (
+                      <button className="modal-btn buy" onClick={handleRepayLoanManual}>
+                        REPAY LOAN
+                      </button>
+                    ) : (
+                      <button className="modal-btn buy" onClick={() => setBankPhase('loan')}>
+                        TAKE LOAN
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="loan-config-section">
+                    <div className="modal-details" style={{ background: 'rgba(255,255,255,0.1)', padding: '15px', borderRadius: '10px', marginBottom: '15px' }}>
+                      <div className="modal-row" style={{ fontSize: '16px' }}>
+                        <span>Repay Term:</span>
+                        <span className="modal-value">3 Laps</span>
+                      </div>
+                      <div className="modal-row" style={{ fontSize: '16px' }}>
+                        <span>Interest Rate:</span>
+                        <span className="modal-value">30%</span>
+                      </div>
+                      <div className="modal-divider"></div>
+                      <div className="modal-row">
+                        <span>Receive:</span>
+                        <span className="modal-value" style={{ color: '#4CAF50' }}>${loanSliderValue.toLocaleString()}</span>
+                      </div>
+                      <div className="modal-row">
+                        <span>Repay:</span>
+                        <span className="modal-value" style={{ color: '#f44336' }}>${Math.round(loanSliderValue * 1.3).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="deal-money-section">
+                      <div className="deal-slider-row">
+                        <button 
+                          className="deal-slider-btn" 
+                          onClick={() => setLoanSliderValue(prev => Math.max(0, prev - 100))}
+                          style={{ background: '#f44336' }}
+                        >
+                          −
+                        </button>
+                        <input 
+                          type="range" 
+                          min="0"
+                          max="3000"
+                          step="100"
+                          value={loanSliderValue}
+                          onChange={(e) => setLoanSliderValue(parseInt(e.target.value))}
+                          className="deal-money-slider"
+                          style={{ background: '#888' }}
+                        />
+                        <button 
+                          className="deal-slider-btn" 
+                          onClick={() => setLoanSliderValue(prev => Math.min(3000, prev + 100))}
+                          style={{ background: '#4CAF50' }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="modal-buttons" style={{ marginTop: '20px' }}>
+                    <button className="modal-btn cancel" onClick={() => setBankPhase('entry')}>
+                      BACK
+                    </button>
+                    <button className="modal-btn buy" onClick={handleConfirmLoan} disabled={loanSliderValue <= 0}>
+                      TAKE
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bank Debit Modal */}
+      {showBankDebitModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal bank-modal">
+            <div className="modal-heading">
+              <span className="modal-heading-text">Bank Alert</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+               <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '18px', color: '#4a2c18', marginBottom: '20px' }}>
+                 The bank has debited your loan.
+               </div>
+               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
+                 <button className="modal-btn buy" style={{ flex: 'none', minWidth: '120px' }} onClick={() => setShowBankDebitModal(false)}>
+                   OK
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bankruptcy Modal */}
+      {showBankruptcyModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal bank-modal">
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #B71C1C 0%, #7f0000 100%)' }}>
+              <span className="modal-heading-text">⚠️ BANKRUPTCY</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+               <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '18px', color: '#B71C1C', marginBottom: '10px' }}>
+                 Your balance is below $0!
+               </div>
+               <div style={{ fontSize: '14px', color: '#5D4037', marginBottom: '20px', lineHeight: '1.5' }}>
+                 You can take a loan from the Bank, or sell property upgrades to recover.
+               </div>
+               <div className="modal-buttons" style={{ gap: '10px' }}>
+                 <button 
+                   className="modal-btn" 
+                   style={{ background: '#4CAF50', color: 'white', flex: 1 }}
+                   onClick={() => setShowBankruptcyModal(false)}
+                 >
+                   NO
+                 </button>
+                 <button 
+                   className="modal-btn" 
+                   style={{ background: '#D32F2F', color: 'white', flex: 1 }}
+                   onClick={handleBankrupt}
+                 >
+                   BANKRUPT
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Build No Monopoly Modal */}
+      {buildNoMonopolyModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal bank-modal">
+            <div className="modal-heading" style={{ background: '#757575' }}>
+              <span className="modal-heading-text">Build</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+               <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '18px', color: '#4a2c18', marginBottom: '20px' }}>
+                 You have no monopoly properties to build on.
+               </div>
+               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
+                 <button 
+                    className="modal-btn cancel" 
+                    style={{ flex: 'none', minWidth: '120px' }} 
+                    onClick={() => setBuildNoMonopolyModal(false)}
+                 >
+                   CLOSE
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Build Modal (Main) */}
+      {showBuildModal && (
+        <div className="modal-overlay" style={{ pointerEvents: 'none', background: 'transparent' }}>
+          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '10vh', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%)' }}>
+              <span className="modal-heading-text">🏗️ BUILD MODE</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+               <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '28px', color: '#2E7D32', marginBottom: '5px' }}>
+                 Cost: ${buildTotalCost.toLocaleString()}
+               </div>
+               <div style={{ fontSize: '14px', color: '#5D4037', marginBottom: '15px' }}>
+                 Tap monopoly properties to build.
+               </div>
+               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
+                 <button 
+                    className="modal-btn cancel" 
+                    style={{ flex: 'none', minWidth: '120px' }} 
+                    onClick={closeBuildMode}
+                 >
+                   DONE
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Buying Modal */}
-      {(showBuyModal || (isModalClosing && buyingProperty)) && buyingProperty && (
+      {(showBuyModal || (isModalClosing && closingModal === 'buy')) && buyingProperty && (
         <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
           <div className="buy-modal">
             {/* Header */}
@@ -4002,30 +5400,8 @@ function App() {
         </div>
       )}
 
-      {/* Parking Modal */}
-      {(showParkingModal || (isModalClosing && !buyingProperty && !showBuyModal && !showRobBankModal)) && (
-        <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
-          <div className="buy-modal">
-            {/* No Pink Header */}
-            
-            {/* Body */}
-            <div className="modal-body" style={{ borderRadius: '14px', paddingTop: '32px' }}>
-              <div className="modal-city-name" style={{ fontSize: '32px', marginBottom: '16px' }}>PARKING</div>
-              <div className="modal-details" style={{ textAlign: 'center', margin: '20px auto', fontSize: '18px', fontWeight: 'bold', color: '#5a3000' }}>
-                You will skip the next turn
-              </div>
-              
-              {/* Button */}
-              <div className="modal-buttons" style={{ justifyContent: 'center' }}>
-                <button className="modal-btn buy" onClick={handleParkingConfirm} style={{ width: '120px' }}>OK</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Rob Bank Modal */}
-      {(showRobBankModal || (isModalClosing && !buyingProperty && !showBuyModal && !showParkingModal && !showPropertyModal)) && (
+      {(showRobBankModal || (isModalClosing && closingModal === 'robbank')) && (
         <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
           <div className="buy-modal">
             {/* Header */}
@@ -4119,104 +5495,10 @@ function App() {
         </div>
       )}
 
-      {/* Rob Bank Modal */}
-      {(showRobBankModal || (isModalClosing && robStatus !== 'idle')) && (
-        <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
-          <div className="buy-modal">
-            {/* Header */}
-            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #1A237E 0%, #0D47A1 100%)' }}>
-              <span className="modal-heading-text">ROB BANK</span>
-            </div>
-            
-            {/* Body */}
-            <div className="modal-body">
-              {robStatus === 'idle' && (
-                <>
-                  <div className="modal-city-name" style={{ fontSize: '20px', marginBottom: '20px' }}>
-                    RISK IT ALL?
-                  </div>
-                  <div className="modal-details" style={{ textAlign: 'center', marginBottom: '20px' }}>
-                    <div className="modal-row" style={{ justifyContent: 'center', color: '#2E7D32' }}>
-                      <span>WIN $1,000 - $10,000</span>
-                    </div>
-                    <div className="modal-row" style={{ justifyContent: 'center', fontSize: '14px', margin: '5px 0' }}>
-                      <span>OR</span>
-                    </div>
-                    <div className="modal-row" style={{ justifyContent: 'center', color: '#C62828' }}>
-                      <span>GO TO JAIL</span>
-                    </div>
-                  </div>
-                  <div className="modal-buttons">
-                    {currentPlayer === myPlayerIndex ? (
-                      <>
-                        <button className="modal-btn cancel" onClick={() => closeAllModals(() => endTurn(currentPlayer, false))}>LEAVE</button>
-                        <button className="modal-btn buy" onClick={handleRobBankAttempt} style={{ background: '#4CAF50' }}>ROB!</button>
-                      </>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...</div>
-                    )}
-                  </div>
-                </>
-              )}
 
-              {robStatus === 'processing' && (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <div className="modal-city-name" style={{ fontSize: '24px', marginBottom: '20px' }}>CRACKING SAFE...</div>
-                  
-                  <div className="cracking-progress" style={{ 
-                    width: '100%', 
-                    height: '20px', 
-                    backgroundColor: '#eee', 
-                    borderRadius: '10px', 
-                    overflow: 'hidden',
-                    border: '1px solid #ccc'
-                  }}>
-                    <div className="cracking-bar" style={{ 
-                      width: `${robProgress}%`, 
-                      height: '100%', 
-                      backgroundColor: '#D32F2F',
-                      transition: 'width 0.05s linear'
-                    }}></div>
-                  </div>
-                </div>
-              )}
-
-              {robStatus === 'success' && (
-                <>
-                  <div className="modal-city-name" style={{ color: '#2E7D32' }}>YOU STOLE</div>
-                  <div className="modal-city-name" style={{ fontSize: '40px', color: '#2E7D32', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                    ${robResult.amount.toLocaleString()}
-                  </div>
-                  <div className="modal-buttons" style={{ marginTop: '20px' }}>
-                    {currentPlayer === myPlayerIndex ? (
-                      <button className="modal-btn buy" onClick={handleRobBankComplete} style={{ width: '100%', background: '#2E7D32' }}>COLLECT</button>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...</div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {robStatus === 'caught' && (
-                <>
-                  <div className="modal-city-name" style={{ color: '#C62828' }}>POLICE CAUGHT YOU!</div>
-                  <div style={{ fontSize: '50px', textAlign: 'center', margin: '10px 0' }}>👮‍♂️</div>
-                  <div className="modal-buttons" style={{ marginTop: '20px' }}>
-                    {currentPlayer === myPlayerIndex ? (
-                      <button className="modal-btn cancel" onClick={handleRobBankComplete} style={{ width: '100%' }}>GO TO JAIL</button>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...</div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* The Audit Modal (Dice Gamble) */}
-      {showAuditModal && (
+      {(showAuditModal || (isModalClosing && closingModal === 'audit')) && (
         <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
           <div className="buy-modal">
             {/* Header */}
@@ -4335,16 +5617,29 @@ function App() {
                     ))}
                   </div>
                   
-                  <div className="modal-buttons">
+                  <div className="modal-buttons" style={{ gap: '10px' }}>
                     {(networkMode !== 'online' || myPlayerIndex === currentPlayer) ? (
-                      <button 
-                        className="modal-btn buy" 
-                        onClick={handleWarStartProgress}
-                        disabled={warParticipants.length < 2}
-                        style={{ width: '100%', background: warParticipants.length >= 2 ? '#8B0000' : '#ccc' }}
-                      >
-                        START WAR ({warParticipants.length} participants)
-                      </button>
+                      <>
+                        <button 
+                          className="modal-btn cancel" 
+                          onClick={() => {
+                            sendGameAction('war_close', {});
+                            setShowWarModal(false);
+                            setWarPhase('idle');
+                          }}
+                          style={{ flex: 1 }}
+                        >
+                          CANCEL
+                        </button>
+                        <button 
+                          className="modal-btn buy" 
+                          onClick={handleWarStartProgress}
+                          disabled={warParticipants.length < 2}
+                          style={{ flex: 2, background: warParticipants.length >= 2 ? '#8B0000' : '#ccc' }}
+                        >
+                          START WAR ({warParticipants.length})
+                        </button>
+                      </>
                     ) : (
                       <div style={{ color: '#666', fontStyle: 'italic', textAlign: 'center', width: '100%' }}>
                         Waiting for {gamePlayers[currentPlayer]?.name} to start...
@@ -4420,7 +5715,7 @@ function App() {
                   </div>
                   
                   {/* Dice Display */}
-                  <div className="dice-container" style={{ marginBottom: '15px', justifyContent: 'center' }}>
+                  <div className="dice-container" style={{ marginBottom: '15px', justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
                     <div className={`dice ${warIsRolling ? 'rolling-left' : ''}`}>
                       {renderDiceDots(warDiceValues[0])}
                     </div>
@@ -4540,7 +5835,7 @@ function App() {
       )}
 
       {/* Chance Modal */}
-      {(showChanceModal || (isModalClosing && !buyingProperty && !showBuyModal && !showParkingModal && !showRobBankModal && !showPropertyModal && !showChestModal)) && currentChanceCard && (
+      {(showChanceModal || (isModalClosing && closingModal === 'chance')) && currentChanceCard && (
         <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
           <div className="buy-modal">
             {/* Header */}
@@ -4555,13 +5850,19 @@ function App() {
               </div>
               
               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
-                <button 
-                  className="modal-btn buy" 
-                  onClick={() => handleChanceCardAction(currentChanceCard)}
-                  style={{ width: '120px', background: '#FF9800' }}
-                >
-                  OK
-                </button>
+                {(networkMode !== 'online' || myPlayerIndex === currentPlayer) ? (
+                  <button 
+                    className="modal-btn buy" 
+                    onClick={() => handleChanceCardAction(currentChanceCard)}
+                    style={{ width: '120px', background: '#FF9800' }}
+                  >
+                    OK
+                  </button>
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                    Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -4569,7 +5870,7 @@ function App() {
       )}
 
       {/* Chest Modal */}
-      {(showChestModal || (isModalClosing && !buyingProperty && !showBuyModal && !showParkingModal && !showRobBankModal && !showPropertyModal && !showChanceModal)) && currentChestCard && (
+      {(showChestModal || (isModalClosing && closingModal === 'chest')) && currentChestCard && (
         <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
           <div className="buy-modal">
             {/* Header */}
@@ -4584,15 +5885,52 @@ function App() {
               </div>
               
               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
-                <button 
-                  className="modal-btn buy" 
-                  onClick={() => handleChestCardAction(currentChestCard)}
-                  style={{ width: '120px', background: '#795548' }}
-                >
-                  OK
-                </button>
+                {(networkMode !== 'online' || myPlayerIndex === currentPlayer) ? (
+                  <button 
+                    className="modal-btn buy" 
+                    onClick={() => handleChestCardAction(currentChestCard)}
+                    style={{ width: '120px', background: '#795548' }}
+                  >
+                    OK
+                  </button>
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                    Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...
+                  </div>
+                )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Parking Modal */}
+      {(showParkingModal || (isModalClosing && closingModal === 'parking')) && (
+        <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
+          <div className="buy-modal">
+             <div className="modal-heading" style={{ background: '#2196F3' }}>
+               <span className="modal-heading-text">FREE PARKING</span>
+             </div>
+             <div className="modal-body">
+               <div className="modal-city-name" style={{ fontSize: '20px', marginBottom: '20px', textAlign: 'center' }}>
+                 Take a rest for a turn. Nothing happens.
+               </div>
+               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
+                 {(networkMode !== 'online' || myPlayerIndex === currentPlayer) ? (
+                   <button 
+                     className="modal-btn buy" 
+                     onClick={handleParkingConfirm}
+                     style={{ width: '120px', background: '#2196F3' }}
+                   >
+                     OK
+                   </button>
+                 ) : (
+                   <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                     Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...
+                   </div>
+                 )}
+               </div>
+             </div>
           </div>
         </div>
       )}
@@ -4612,7 +5950,12 @@ function App() {
               <div className="modal-buttons">
                 <button 
                   className="modal-btn cancel" 
-                  onClick={() => setShowAuctionLandingModal(false)}
+                  onClick={() => {
+                    setShowAuctionLandingModal(false);
+                    // Pass means 'End Turn' for this tile logic
+                    if (networkMode === 'online') sendGameAction('end_turn'); 
+                    else handleEndTurn();
+                  }}
                 >
                   PASS
                 </button>
@@ -4650,9 +5993,15 @@ function App() {
                <div className="modal-buttons">
                  <button 
                    className="modal-btn cancel"
-                   onClick={() => {
+                    onClick={() => {
                      setIsSelectingAuctionProperty(false);
                      setShowAuctionInstructionModal(false);
+                     if (networkMode === 'online') {
+                        sendGameAction('auction_cancel'); // Clear B&W state
+                        sendGameAction('end_turn');
+                     } else {
+                        handleEndTurn();
+                     }
                    }}
                  >
                    CANCEL
@@ -4888,7 +6237,7 @@ function App() {
       )}
 
       {/* Property Details Modal */}
-      {(showPropertyModal || (isModalClosing && selectedProperty && !showBuyModal && !showParkingModal && !showRobBankModal)) && selectedProperty && (
+      {(showPropertyModal || (isModalClosing && closingModal === 'property')) && selectedProperty && (
         <div className={`modal-overlay ${isModalClosing ? 'closing' : ''}`}>
           <div className="buy-modal">
             {/* Header */}
@@ -5017,15 +6366,16 @@ function App() {
             {gamePlayers.map((player, index) => (
               <div 
                 key={player.id}
-                className={`player-item ${index === currentPlayer ? 'active' : ''}`}
+                className={`player-item ${index === currentPlayer ? 'active' : ''} ${bankruptPlayers[index] ? 'bankrupt' : ''}`}
+                style={bankruptPlayers[index] ? { filter: 'grayscale(100%)', opacity: 0.6 } : undefined}
               >
                 <div className="player-avatar">
                   <img src={player.avatar} alt={player.name} className="avatar-img" />
                 </div>
                 <div className="player-info">
-                  <div className="player-name">{player.name}</div>
+                  <div className="player-name">{player.name}{bankruptPlayers[index] ? ' 💀' : ''}</div>
                 </div>
-                <div className="player-money">${playerMoney[index].toLocaleString()}</div>
+                <div className="player-money" style={{ color: playerMoney[index] < 0 ? '#ff4444' : undefined }}>${playerMoney[index].toLocaleString()}</div>
               </div>
             ))}
           </div>
@@ -5071,6 +6421,15 @@ function App() {
         </div>
       </div>
 
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="toast-container">
+          <div className="toast-message">
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       {/* Debug Panel */}
       <div className="debug-panel">
         <input 
@@ -5092,8 +6451,6 @@ function App() {
 
     </div>
       )}
-
-
     </>
   );
 }

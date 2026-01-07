@@ -147,6 +147,46 @@
   }
 }
 
+/* Mobile Portrait Fixes */
+@media (max-width: 600px) {
+  .war-modal .dice {
+    width: 40px !important;
+    height: 40px !important;
+    padding: 4px !important;
+    gap: 1px !important;
+    justify-items: center;
+    align-items: center;
+  }
+  .war-modal .dice .dot {
+      width: 8px !important;
+      height: 8px !important;
+  }
+  .war-modal .dice-container {
+      gap: 10px !important;
+  }
+  .war-modal .modal-city-name {
+    font-size: 16px !important;
+  }
+  
+  /* Compact Rolling List */
+  .war-rolling-list > div, .war-roll-list > div {
+    padding: 3px 6px !important;
+    margin-bottom: 2px !important;
+    font-size: 11px !important;
+    min-height: 24px;
+    align-items: center;
+  }
+  
+  .war-rolling-list img, .war-roll-list img {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  
+  .war-rolling-list, .war-roll-list {
+      gap: 2px;
+  }
+}
+
 /* Extra small screens */
 @media (max-height: 600px) {
   .war-join-list {

@@ -64,8 +64,22 @@ function createInitialGameState() {
       currentBid: 0,
       participants: [],
       winner: null
-    }
+    },
+    playerLoans: {}, // { playerIndex: { principalAmount, repayAmount, lapsRemaining, loanStartTile } }
+    bankruptPlayers: {} // { playerIndex: true }
   };
+}
+
+// Broadcast game state to all players in a room
+function broadcastState(room) {
+  if (!room || !room.roomCode) {
+    console.error('[broadcastState] Invalid room or missing roomCode');
+    return;
+  }
+  io.to(room.roomCode).emit('state_update', { 
+    gameState: room.gameState, 
+    players: room.players 
+  });
 }
 
 io.on('connection', (socket) => {
@@ -242,6 +256,31 @@ io.on('connection', (socket) => {
       case 'close_modal':
         room.gameState.modalState = { type: 'NONE', status: 'IDLE', payload: {} };
         break;
+      case 'modal_open':
+        // Generic modal broadcast (Chance, Chest, Parking)
+        if (payload && payload.type) {
+            console.log(`[SERVER] Broadcasting modal_open: ${payload.type}`);
+            room.gameState.modalState = {
+                type: payload.type,
+                status: 'ACTIVE',
+                payload: payload.payload || {}
+            };
+            broadcastState(room);
+        }
+        break;
+      case 'auction_cancel':
+        room.gameState.auctionState = {
+            status: 'idle',
+            propertyIndex: null,
+            initiator: null,
+            bids: [],
+            currentBid: 0,
+            participants: [],
+            winner: null
+        };
+        console.log(`[SERVER] Auction Cancelled by Player ${playerIndex}`);
+        broadcastState(room);
+        break;
       // Auction Actions
       case 'auction_start_selection':
         room.gameState.auctionState.status = 'thinking';
@@ -377,17 +416,74 @@ io.on('connection', (socket) => {
         if (payload.playerMoney) room.gameState.playerMoney = payload.playerMoney;
         if (payload.cashStack !== undefined) room.gameState.cashStack = payload.cashStack;
         break;
+      case 'deal_offer':
+        // Broadcast deal offer to recipient
+        console.log(`[SERVER] Deal offer from Player ${playerIndex} to Player ${payload.recipient}`);
+        const recipientSocket = room.players[payload.recipient]?.socketId;
+        if (recipientSocket) {
+          io.to(recipientSocket).emit('deal_offer', {
+            proposer: payload.proposer,
+            recipient: payload.recipient,
+            giveProperties: payload.giveProperties,
+            receiveProperties: payload.receiveProperties,
+            moneyOffer: payload.moneyOffer
+          });
+        }
+        break;
+      case 'deal_response':
+        // Handle deal accept or deny
+        const deal = payload.deal;
+        const proposerSocket = room.players[deal.proposer]?.socketId;
+        
+        if (payload.accepted) {
+          console.log(`[SERVER] Deal ACCEPTED between Player ${deal.proposer} and Player ${deal.recipient}`);
+          
+          // Transfer properties
+          deal.giveProperties.forEach(tile => {
+            room.gameState.propertyOwnership[tile] = deal.recipient;
+          });
+          deal.receiveProperties.forEach(tile => {
+            room.gameState.propertyOwnership[tile] = deal.proposer;
+          });
+          
+          // Transfer money (bidirectional: positive = proposer gives, negative = proposer receives)
+          if (deal.moneyOffer !== 0) {
+            room.gameState.playerMoney[deal.proposer] -= deal.moneyOffer;
+            room.gameState.playerMoney[deal.recipient] += deal.moneyOffer;
+            
+            // Broadcast floating prices for money transfer
+            const proposerPos = room.gameState.playerPositions[deal.proposer];
+            const recipientPos = room.gameState.playerPositions[deal.recipient];
+            const absAmount = Math.abs(deal.moneyOffer);
+            
+            if (deal.moneyOffer > 0) {
+              // Proposer GIVES money -> Red for proposer, Green for recipient
+              io.to(room.roomCode).emit('floating_price', { tileIndex: proposerPos, price: absAmount, isPositive: false, label: 'PAID' });
+              io.to(room.roomCode).emit('floating_price', { tileIndex: recipientPos, price: absAmount, isPositive: true, label: 'RECEIVED' });
+            } else {
+              // Proposer RECEIVES money -> Green for proposer, Red for recipient
+              io.to(room.roomCode).emit('floating_price', { tileIndex: proposerPos, price: absAmount, isPositive: true, label: 'RECEIVED' });
+              io.to(room.roomCode).emit('floating_price', { tileIndex: recipientPos, price: absAmount, isPositive: false, label: 'PAID' });
+            }
+          }
+          
+          // Broadcast updated state to all
+          broadcastState(room);
+          
+          // Notify proposer of success
+          if (proposerSocket) {
+            io.to(proposerSocket).emit('deal_result', { accepted: true, deal });
+          }
+        } else {
+          console.log(`[SERVER] Deal DENIED between Player ${deal.proposer} and Player ${deal.recipient}`);
+          // Notify proposer of denial
+          if (proposerSocket) {
+            io.to(proposerSocket).emit('deal_result', { accepted: false, deal });
+          }
+        }
+        break;
       case 'end_turn':
         handleEndTurn(room);
-        break;
-      case 'update_state':
-        // Direct state update from host OR current player (for complex client-side logic like Chance cards)
-        const isHost = room.players.find(p => p.socketId === socket.id)?.isHost;
-        const isCurrentPlayer = room.gameState.currentPlayer === playerIndex;
-        
-        if (isHost || isCurrentPlayer) {
-          Object.assign(room.gameState, payload);
-        }
         break;
     }
     
@@ -758,13 +854,7 @@ function handleWarClose(room) {
   broadcastState(room);
 }
 
-function broadcastState(room) {
-  if (!room.roomCode) return;
-  io.to(room.roomCode).emit('state_update', {
-    gameState: room.gameState,
-    players: room.players
-  });
-}
+
 
 function handleAttemptRobbery(room, playerIndex) {
   // 1. Start Processing
@@ -825,7 +915,16 @@ function handleAttemptRobbery(room, playerIndex) {
 
 function handleEndTurn(room) {
   const numPlayers = room.players.length;
-  room.gameState.currentPlayer = (room.gameState.currentPlayer + 1) % numPlayers;
+  let nextIdx = (room.gameState.currentPlayer + 1) % numPlayers;
+  let loopCount = 0;
+  
+  // Skip bankrupt players
+  while (room.gameState.bankruptPlayers && room.gameState.bankruptPlayers[nextIdx] && loopCount < numPlayers) {
+    nextIdx = (nextIdx + 1) % numPlayers;
+    loopCount++;
+  }
+  
+  room.gameState.currentPlayer = nextIdx;
   room.gameState.turnFinished = false;
   room.gameState.hoppingPlayer = null;
   room.gameState.history.unshift(

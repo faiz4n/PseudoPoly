@@ -33,3 +33,10 @@
   animation: hop 0.3s ease-in-out infinite;
   z-index: 100 !important; /* Keep on top while hopping */
 }
+
+/* Hide pawns during deal selection mode */
+.deal-selection-active .player-pawn {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}

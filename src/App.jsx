@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { 
   bottomRow, 
@@ -4098,6 +4098,11 @@ function App() {
 
   // Get position for floating price animation (center of tile)
   const getFloatingPosition = (tileIndex) => {
+    // Fallback for invalid indices
+    if (tileIndex === undefined || tileIndex === null || tileIndex < 0 || tileIndex > 40) {
+        return { top: 50, left: 50 };
+    }
+
     const hTileW = 8.111;
     const vTileH = 10.428;
     

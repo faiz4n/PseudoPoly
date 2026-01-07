@@ -614,6 +614,14 @@ function handleBuyProperty(room, playerIndex, payload) {
     room.gameState.history.unshift(
       `${room.players[pIndex]?.name || 'Player'} bought property for $${cost}`
     );
+    
+    // Broadcast Floating Price for Purchase cost
+    const playerPos = room.gameState.playerPositions[pIndex];
+    io.to(room.roomCode).emit('floating_price', {
+         tileIndex: playerPos,
+         price: cost,
+         isPositive: false
+    });
   } else {
     console.log(`[SERVER] Buy failed: Insufficient funds`);
   }

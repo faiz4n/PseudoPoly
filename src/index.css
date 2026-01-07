@@ -1428,6 +1428,7 @@ body {
 /* ==================== FLOATING PRICE ANIMATION ==================== */
 .floating-price {
   position: absolute;
+  z-index: 100;
   font-family: 'Junegull', sans-serif;
   font-size: 17px;
   font-weight: 500;

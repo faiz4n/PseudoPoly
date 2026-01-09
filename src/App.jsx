@@ -224,6 +224,12 @@ function App() {
   const [buildTotalCost, setBuildTotalCost] = useState(0);
   const [buildNoMonopolyModal, setBuildNoMonopolyModal] = useState(false);
   
+  // Menu System State
+  const [showMenuModal, setShowMenuModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [animationSpeed, setAnimationSpeed] = useState(1); // 0.5 to 2x speed multiplier
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  
   // Toast Notification
   const [toast, setToast] = useState({ show: false, message: '' });
   const showToast = useCallback((message) => {
@@ -433,17 +439,22 @@ function App() {
     
     socket.on('floating_price', (payload) => {
       // payload: { tileIndex, price, isPositive, label }
-      // Trigger floating price animation
-      console.log('[CLIENT] Received floating_price event:', payload);
+      console.log(`[CLIENT-DEBUG] Incoming floating_price event at ${new Date().toLocaleTimeString()}:`, payload);
       
       try {
+        if (payload.tileIndex === undefined) {
+             console.warn('[CLIENT-DEBUG] Received floating_price with undefined tileIndex!');
+        }
+
         const animKey = getUniqueKey();
         setFloatingPrices(prev => {
-          console.log('[CLIENT] Adding floating price to state:', { ...payload, key: animKey });
-          return [...prev, { ...payload, key: animKey }];
+          const newState = [...prev, { ...payload, key: animKey }];
+          console.log('[CLIENT-DEBUG] Updated floatingPrices state. New count:', newState.length);
+          return newState;
         });
         
         setTimeout(() => {
+          // console.log('[CLIENT-DEBUG] Cleaning up floating price key:', animKey);
           setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
         }, 3000);
         
@@ -451,9 +462,25 @@ function App() {
         if (payload.tileIndex === 7 && !payload.isPositive) {
            showCashStackFloatingPrice(Math.abs(payload.price));
         }
+        
+        // Play sound for received floating price
+        if (typeof Audio !== 'undefined') {
+          playBuySound();
+        }
       } catch (err) {
-        console.error('[CLIENT] Error handling floating_price:', err);
+        console.error('[CLIENT-DEBUG] Error handling floating_price:', err);
       }
+    });
+    
+    // Dice Roll Started: All clients animate and play sound together
+    socket.on('dice_roll_started', ({ roller }) => {
+      console.log(`[CLIENT] Dice roll started by Player ${roller}`);
+      // Trigger animation state
+      setIsRolling(true);
+      // Play sound for ALL players
+      playDiceRollSound();
+      // Animation will complete when state_update arrives with final dice values
+      setTimeout(() => setIsRolling(false), 800);
     });
     
     // Deal System: Handle incoming deal offers
@@ -484,6 +511,12 @@ function App() {
         }
       }
       resetDealState();
+    });
+    
+    // Player Exited: Show notification when someone leaves
+    socket.on('player_exited', ({ playerIndex: exitedIdx, playerName }) => {
+      console.log(`[CLIENT] Player ${playerName} exited the game`);
+      showToast(`🚪 ${playerName} has left the game!`);
     });
     
     socket.on('room_closed', ({ message }) => {
@@ -731,11 +764,21 @@ function App() {
       
         // Only show modals for the player whose turn it is (on their screen)
         if (myIdx === currentPlayerIdx) {
-          console.log('[applyGameState] My turn - triggering tile arrival logic');
-          // Pass server's propertyOwnership and diceValues directly to avoid stale React state
-          // Pass isOnlineOverride=true to force online mode logic (handling stale closure)
-          handleTileArrival(currentPlayerIdx, newPosition, false, state.propertyOwnership, state.diceValues, true);
-      }
+          console.log('[applyGameState] My turn - triggering landing logic');
+          
+          if (isOnline) {
+             // In online mode, we notify the server that we've landed
+             // The server is now the authority for Rent, Tax, and Audit
+             sendGameAction('landed');
+             
+             // We still run handleTileArrival for CLIENT-SIDE UI triggers (modals, toasts)
+             // But we will refactor handleTileArrival to skip logic that the server now handles
+             handleTileArrival(currentPlayerIdx, newPosition, false, state.propertyOwnership, state.diceValues, true);
+          } else {
+             // Offline mode: Full local logic
+             handleTileArrival(currentPlayerIdx, newPosition, false, state.propertyOwnership, state.diceValues, false);
+          }
+        }
     } else {
       // No position change OR initial sync - just update positions directly
       // BUT only if we're not currently animating (prevents mid-animation jumps)
@@ -1804,6 +1847,16 @@ function App() {
 
     // Forced Auction (Index 23 - next to Mobile Op)
     if (tileIndex === 23) {
+      // Check if any owned properties have buildings
+      const allOwnedProperties = Object.keys(propertyOwnership).map(Number);
+      const propertiesWithBuildings = allOwnedProperties.filter(idx => (propertyLevels[idx] || 0) > 0);
+      
+      if (propertiesWithBuildings.length === 0) {
+        showToast("No properties with buildings to auction!");
+        endTurn(playerIndex, false);
+        return;
+      }
+      
       setShowAuctionLandingModal(true);
       return; 
     }
@@ -1813,17 +1866,21 @@ function App() {
 
     // Go To Jail (Index 28)
     if (tileIndex === 28) {
+      if (effectiveIsOnline) {
+        // Server handles jail status and history.
+        // We just show the local modal for visual feedback.
+        // We don't even need to calculate duration here, but we can for UI.
+        setArrestDuration(3); 
+        setShowArrestModal(true);
+        return;
+      }
+
       // 1. Calculate random duration (2 or 3 turns)
       const duration = Math.floor(Math.random() * 2) + 2; 
       
       // 2. Set Jail Status
       const newJailStatus = { ...jailStatus, [playerIndex]: duration };
       setJailStatus(newJailStatus);
-      
-      // 3. Online Sync (Jail Status only)
-      if (networkMode === 'online') {
-         sendGameAction('update_state', { jailStatus: newJailStatus });
-      }
       
       // 4. Show Modal (Client Only)
       setArrestDuration(duration);
@@ -1844,35 +1901,22 @@ function App() {
       // Check Audit Immunity (Chest Card)
       if (activeEffects[playerIndex]?.audit_immunity) {
          setHistory(prev => [`🛡️ ${gamePlayers[playerIndex].name} used Audit Immunity! No tax paid.`, ...prev.slice(0, 9)]);
-         // Consume immunity locally
-         setActiveEffects(prev => ({
-             ...prev,
-             [playerIndex]: { ...prev[playerIndex], audit_immunity: false }
-         }));
-         // If online, we should probably tell server to consume it or just rely on local state updates if they weren't synced?
-         // Since activeEffects aren't fully synced, we just end the turn nicely.
-         // We do NOT send 'audit_show', so other players see nothing (or just history if synced).
-         // Actually, let's sync history via an update (history is local derived usually, but if we send update_state with history it overrides?)
-         // Server maintains history. We can't push history easily without a specific action.
-         // But we can send a custom notification? Or just end turn.
-         if (effectiveIsOnline) {
-             sendGameAction('end_turn'); // Just end turn immediately
-         } else {
-             endTurn(playerIndex, false);
-         }
+         setActiveEffects(prev => ({ ...prev, [playerIndex]: { ...prev[playerIndex], audit_immunity: false } }));
+         endTurn(playerIndex, false);
          return;
       }
 
       if (effectiveIsOnline) {
-        // Send audit action to server - server will broadcast to all players
-        sendGameAction('audit_show', { diceValues: [die1, die2], taxAmount: tax });
-      } else {
-        // Offline mode - just show locally
-        setAuditDiceValues([die1, die2]);
-        setAuditAmount(tax);
-        setAuditStatus('result');
-        setShowAuditModal(true);
+        // Server handles the tax and broadcast.
+        // Client just shows the modal if they want, but server processes it.
+        // For now, we'll just let the server's state_update and floating_price handle it.
+        return;
       }
+      
+      setAuditDiceValues([die1, die2]);
+      setAuditAmount(tax);
+      setAuditStatus('result');
+      setShowAuditModal(true);
       return;
     }
 
@@ -1965,6 +2009,9 @@ function App() {
           setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
         }, 3000);
         
+        // Cash register sound
+        playBuySound();
+        
         setHistory(prev => [`💰 ${gamePlayers[playerIndex].name} won the Cash Stack: $${pot}!`, ...prev.slice(0, 9)]);
       } else {
         setHistory(prev => [`${gamePlayers[playerIndex].name} landed on Cash Stack, but it's empty!`, ...prev.slice(0, 9)]);
@@ -1989,61 +2036,40 @@ function App() {
       if (currentMoney[playerIndex] >= property.price) {
         setShowBuyModal(true);
       } else {
-        // Optional: Show toast explaining why no modal appeared?
-        // showToast(`Can't afford ${property.name}! Need $${property.price}`);
-        // We probably don't want to spam toast automatically, just let them see they landed and can't buy.
-        // Actually, let's auto-end turn if they can't buy? 
-        // Standard Monopoly rules: If you land on unowned property and don't buy, it goes to auction.
-        // But for now, we just wait for them to end turn or use other buttons.
-        // If we don't show modal, they might be confused.
-        // Let's show a toast.
         showToast(`Can't afford ${property.name} ($${property.price})`);
       }
     } else if (property && ownerIndex !== undefined && Number(ownerIndex) !== playerIndex) {
       // Owned by another player - pay rent!
-      // CHECK JAIL STATUS: If owner is in jail, skip rent
-      if (jailStatus[ownerIndex] > 0) {
-          console.log(`[Rent] Owner ${ownerIndex} is in Jail. Rent Skipped.`);
-          setHistory(prev => [`${gamePlayers[playerIndex].name} pays NO rent - Owner is in Jail!`, ...prev.slice(0, 9)]);
-          // End turn normally
-          endTurn(playerIndex, isDoubles);
-          return;
-      }
-
-      // FIXED: Pass effectiveOwnership via override to avoid stale closure state in online mode
-      const rent = calculateRent(tileIndex, effectiveOwnership);
-      const ownerPosition = playerPositions[ownerIndex];
-      
-      // Deduct rent from current player
-      setPlayerMoney(prev => {
-        const updated = [...prev];
-        updated[playerIndex] -= rent;
-        updated[ownerIndex] += rent;
-        
-        // Online Sync
-        // Online Sync
-        if (networkMode === 'online') {
-          sendGameAction('update_state', { playerMoney: updated });
-          // Broadcast Floating Price (Payer)
-          sendGameAction('floating_price', { 
-             tileIndex: tileIndex, 
-             price: rent, 
-             isPositive: false 
-          });
-          // Broadcast Floating Price (Receiver)
-          sendGameAction('floating_price', { 
-             tileIndex: ownerPosition, 
-             price: rent, 
-             isPositive: true 
-          });
+      if (effectiveIsOnline) {
+        // SERVER AUTHORITY: We do nothing here.
+        // The server received 'landed' and already processed rent.
+        // It will broadcast state_update and floating_price.
+        // We just end the turn visually if needed, but server usually handles turn flow too.
+        console.log('[handleTileArrival] Online: Rent handled by server.');
+      } else {
+        // Offline mode: Full local logic
+        // CHECK JAIL STATUS: If owner is in jail, skip rent
+        if (jailStatus[ownerIndex] > 0) {
+            console.log(`[Rent] Owner ${ownerIndex} is in Jail. Rent Skipped.`);
+            setHistory(prev => [`${gamePlayers[playerIndex].name} pays NO rent - Owner is in Jail!`, ...prev.slice(0, 9)]);
+            // End turn normally
+            endTurn(playerIndex, isDoubles);
+            return;
         }
+
+        // FIXED: Pass effectiveOwnership via override to avoid stale closure state in online mode
+        const rent = calculateRent(tileIndex, effectiveOwnership);
+        const ownerPosition = playerPositions[ownerIndex];
         
-        return updated;
-      });
-      playPayRentSound(); // Play sad rent payment sound
-      
-      // Trigger floating price animations (Local only in offline mode)
-      if (networkMode !== 'online') {
+        // Deduct rent from current player
+        setPlayerMoney(prev => {
+          const updated = [...prev];
+          updated[playerIndex] -= rent;
+          updated[ownerIndex] += rent;
+          return updated;
+        });
+
+        // Local floating price animations (Offline only)
         const animKey1 = getUniqueKey();
         const animKey2 = getUniqueKey();
         setFloatingPrices(prev => [
@@ -2054,13 +2080,13 @@ function App() {
         setTimeout(() => {
           setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey1 && fp.key !== animKey2));
         }, 3000);
+
+        setHistory(historyPrev => [
+          `${gamePlayers[playerIndex].name} paid $${rent} rent to ${gamePlayers[ownerIndex].name}`,
+          ...historyPrev.slice(0, 9)
+        ]);
       }
-      
-      // Add to history
-      setHistory(historyPrev => [
-        `${gamePlayers[playerIndex].name} paid $${rent} rent to ${gamePlayers[ownerIndex].name}`,
-        ...historyPrev.slice(0, 9)
-      ]);
+      playPayRentSound(); // Play sad rent payment sound
       
       // Handle turn end
       endTurn(playerIndex, isDoubles);
@@ -2176,6 +2202,9 @@ function App() {
         setTimeout(() => {
           setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
         }, 3000);
+        
+        // Cash register sound
+        playBuySound();
       }
       
       setHistory(prev => [`💰 ${gamePlayers[playerIndex].name} robbed the bank for $${robResult.amount}!`, ...prev.slice(0, 9)]);
@@ -2298,7 +2327,8 @@ function App() {
         }, 3000);
     }
     
-    playPayRentSound();
+    // Cash register sound
+    playBuySound();
     
     setHistory(prev => [`🧾 ${gamePlayers[currentPlayer].name} was audited! Paid $${tax} in taxes.`, ...prev.slice(0, 9)]);
     
@@ -2653,6 +2683,9 @@ function App() {
               setTimeout(() => {
                 setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyAdd));
               }, 3000);
+              
+              // Cash register sound
+              playBuySound();
             }
             setHistory(prev => [`${gamePlayers[playerIndex].name} received $${card.amount}: ${card.text}`, ...prev.slice(0, 9)]);
             break;
@@ -2856,16 +2889,33 @@ function App() {
   const closeBuildMode = () => {
     // Deduct the total cost from player's money
     if (buildTotalCost > 0) {
-      setPlayerMoney(prev => {
-        const updated = [...prev];
-        updated[currentPlayer] -= buildTotalCost;
-        if (networkMode === 'online') {
-          sendGameAction('update_state', { playerMoney: updated });
+      if (networkMode === 'online') {
+        // Server handles money deduction and broadcasts floating price to all
+        sendGameAction('build_complete', { 
+          totalCost: buildTotalCost, 
+          propertyLevels: propertyLevels 
+        });
+      } else {
+        // Offline mode: local update with animation
+        setPlayerMoney(prev => {
+          const updated = [...prev];
+          updated[currentPlayer] -= buildTotalCost;
+          return updated;
+        });
+        
+        setHistory(prev => [`🏗️ ${gamePlayers[currentPlayer].name} built upgrades for $${buildTotalCost.toLocaleString()}`, ...prev.slice(0, 9)]);
+        
+        // Show red floating price animation
+        const animKey = getUniqueKey();
+        const playerPos = playerPositions[currentPlayer];
+        setFloatingPrices(prev => [...prev, { price: buildTotalCost, tileIndex: playerPos, key: animKey, isPositive: false }]);
+        setTimeout(() => setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey)), 3000);
+        
+        // Play sound
+        if (typeof Audio !== 'undefined') {
+          playBuySound();
         }
-        return updated;
-      });
-      
-      setHistory(prev => [`🏗️ ${gamePlayers[currentPlayer].name} built upgrades for $${buildTotalCost.toLocaleString()}`, ...prev.slice(0, 9)]);
+      }
     }
     
     setBuildMode(false);
@@ -2873,9 +2923,147 @@ function App() {
     setBuildTotalCost(0);
   };
 
+  // Sell System State (inline since user removed the separate state vars)
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [sellMode, setSellMode] = useState(false);
+  const [sellTotalRefund, setSellTotalRefund] = useState(0);
+  const [sellNoBuildingsModal, setSellNoBuildingsModal] = useState(false);
+  const [sellPreviewLevels, setSellPreviewLevels] = useState({});
+
   const handleSell = () => {
     if (!validateTurn()) return;
-    showToast("Selling system coming soon!");
+    
+    // Check if player owns any buildings
+    const ownedProperties = Object.keys(propertyOwnership).map(Number).filter(idx => propertyOwnership[idx] === currentPlayer);
+    const hasBuildings = ownedProperties.some(idx => (propertyLevels[idx] || 0) > 0);
+    
+    if (!hasBuildings) {
+      setSellNoBuildingsModal(true);
+      return;
+    }
+    
+    // Has buildings - enter sell mode
+    setSellTotalRefund(0);
+    setSellPreviewLevels({ ...propertyLevels });
+    setSellMode(true);
+    setShowSellModal(true);
+  };
+
+  // Handle tap on a tile during sell mode
+  const handleSellTileTap = (tileIndex) => {
+    if (!sellMode) return;
+    
+    const owner = propertyOwnership[tileIndex];
+    if (owner !== currentPlayer) return;
+    
+    const currentLevel = sellPreviewLevels[tileIndex] || 0;
+    if (currentLevel <= 0) return;
+
+    const upgradeCost = getUpgradeCost(tileIndex);
+    const refund = Math.round(upgradeCost * 0.5);
+    
+    const newLevel = currentLevel - 1;
+    
+    // Apply building removal ONLY to local preview
+    setSellPreviewLevels(prev => ({ ...prev, [tileIndex]: newLevel }));
+    setSellTotalRefund(prev => prev + refund);
+  };
+
+  const cancelSellMode = () => {
+    setSellMode(false);
+    setShowSellModal(false);
+    setSellTotalRefund(0);
+    setSellPreviewLevels({});
+  };
+
+  const closeSellMode = () => {
+    if (sellTotalRefund > 0) {
+      if (networkMode === 'online') {
+        // Server handles money addition and broadcasts floating price to all
+        sendGameAction('sell_buildings', { 
+          propertyLevels: sellPreviewLevels
+        });
+      } else {
+        // Offline mode: local update with animation
+        setPlayerMoney(prev => {
+          const updated = [...prev];
+          updated[currentPlayer] += sellTotalRefund;
+          return updated;
+        });
+        
+        setPropertyLevels({ ...sellPreviewLevels });
+        
+        setHistory(prev => [`💰 ${gamePlayers[currentPlayer].name} sold buildings for $${sellTotalRefund.toLocaleString()}`, ...prev.slice(0, 9)]);
+        
+        const animKey = getUniqueKey();
+        const playerPos = playerPositions[currentPlayer];
+        setFloatingPrices(prev => [...prev, { price: sellTotalRefund, tileIndex: playerPos, key: animKey, isPositive: true }]);
+        setTimeout(() => setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey)), 3000);
+        
+        if (typeof Audio !== 'undefined') {
+          try { new Audio('/sounds/cash.mp3').play(); } catch(e) {}
+        }
+      }
+    }
+    
+    setSellMode(false);
+    setShowSellModal(false);
+    setSellTotalRefund(0);
+    setSellPreviewLevels({});
+  };
+
+  // Menu System Handlers
+  const openMenu = () => {
+    setShowMenuModal(true);
+  };
+  
+  const closeMenu = () => {
+    setShowMenuModal(false);
+  };
+  
+  const openSettings = () => {
+    setShowMenuModal(false);
+    setShowSettingsModal(true);
+  };
+  
+  const closeSettings = () => {
+    setShowSettingsModal(false);
+    setShowMenuModal(true);
+  };
+  
+  const handleExitGame = () => {
+    // Send exit action to server (if online)
+    if (networkMode === 'online') {
+      sendGameAction('exit_game', {});
+    }
+    
+    // Close modals
+    setShowMenuModal(false);
+    setShowExitConfirm(false);
+    
+    // FULL GAME STATE RESET - so avatar selection shows all options again
+    setGamePlayers([]);
+    setConnectedPlayers([]);
+    setPlayerPositions([0, 0, 0, 0]);
+    setPlayerMoney([10000, 10000, 10000, 10000]);
+    setPropertyOwnership({});
+    setPropertyLevels({});
+    setCurrentPlayer(0);
+    setMyPlayerIndex(0);
+    setDiceValues([1, 1]);
+    setIsRolling(false);
+    setTurnFinished(false);
+    setIsProcessingTurn(false);
+    setHistory(['Game started!']);
+    setBankruptPlayers({});
+    setPlayerLoans({});
+    setCashStack(0);
+    setBattlePot(0);
+    setNetworkMode('offline');
+    setRoomCode('');
+    
+    // Go back to mode select
+    setGameStage('mode_select');
   };
 
   const handleBank = () => {
@@ -2917,6 +3105,9 @@ function App() {
       setFloatingPrices(prev => prev.filter(fp => fp.key !== loanKey));
     }, 3000);
 
+    // Cash register sound
+    playBuySound();
+
     setHistory(prev => [`🏦 ${gamePlayers[currentPlayer].name} took a $${principal.toLocaleString()} loan`, ...prev.slice(0, 9)]);
     setShowBankModal(false);
   };
@@ -2950,6 +3141,9 @@ function App() {
     setTimeout(() => {
       setFloatingPrices(prev => prev.filter(fp => fp.key !== repayKey));
     }, 3000);
+
+    // Cash register sound
+    playBuySound();
 
     setHistory(prev => [`🏦 ${gamePlayers[currentPlayer].name} repaid their loan early`, ...prev.slice(0, 9)]);
     setShowBankModal(false);
@@ -3044,11 +3238,7 @@ function App() {
       }
       
       sendGameAction('buy_property', { tileIndex, price: finalPrice });
-      sendGameAction('floating_price', { 
-           tileIndex, 
-           price: finalPrice, 
-           isPositive: false 
-      });
+      // NOTE: Removed manual floating_price send - server handles broadcast now
       
       // NOTE: Don't trigger local floating price here - server broadcast handles it
       playBuySound();
@@ -3303,6 +3493,9 @@ function App() {
     const proposerName = gamePlayers[deal.proposer]?.name || 'Player';
     const recipientName = gamePlayers[deal.recipient]?.name || 'Player';
     setHistory(prev => [`✅ ${proposerName} and ${recipientName} made a deal!`, ...prev.slice(0, 9)]);
+
+    // Cash register sound (deal involves value transfer)
+    playBuySound();
 
     if (networkMode === 'online') {
       sendGameAction('deal_response', { accepted: true, deal });
@@ -3722,6 +3915,12 @@ function App() {
     // Build Mode - Tap to upgrade
     if (buildMode) {
       handleBuildTileTap(tileIndex);
+      return;
+    }
+
+    // Sell Mode - Tap to sell
+    if (sellMode) {
+      handleSellTileTap(tileIndex);
       return;
     }
 
@@ -4290,26 +4489,9 @@ function App() {
     ));
   };
 
-  // Render Upgrades (Houses/Hotels)
+  // Render Upgrades (Houses/Hotels) - DISABLED: Levels shown in modal only
   const renderUpgrades = (tileIndex, orientation) => {
-    const level = propertyLevels[tileIndex] || 0;
-    if (level === 0) return null;
-
-    return (
-      <div className={`upgrade-container ${orientation}`}>
-        {level === 5 ? (
-          <svg viewBox="0 0 384 512" className="hotel-icon" fill="currentColor">
-            <path d="M192 0c-41.8 0-77.4 26.7-90.5 64H64C28.7 64 0 92.7 0 128V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H282.5C269.4 26.7 233.8 0 192 0zm0 64a32 32 0 1 1 0 64 32 32 0 1 1 0-64zM112 192H272v32H112V192zm0 64H272v32H112V256zm0 64H272v32H112V320zm0 64H272v32H112V384z"/>
-          </svg>
-        ) : (
-          Array.from({ length: level }).map((_, i) => (
-            <svg key={i} viewBox="0 0 576 512" className="house-icon" fill="currentColor">
-              <path d="M575.8 255.5c0 18-15 32.1-32 32.1h-32l.7 160.2c0 2.7-.2 5.4-.5 8.1V472c0 22.1-17.9 40-40 40H456c-1.1 0-2.2 0-3.3-.1c-1.4 .1-2.8 .1-4.2 .1H416 392c-22.1 0-40-17.9-40-40V448 384c0-17.7-14.3-32-32-32H256c-17.7 0-32 14.3-32 32v64 24c0 22.1-17.9 40-40 40H160 128.1c-1.5 0-3-.1-4.5-.2c-1.2 .1-2.4 .2-3.6 .2H104c-22.1 0-40-17.9-40-40V360c0-.9 0-1.9 .1-2.8V287.6H32c-18 0-32-14-32-32.1c0-9 3-17 10-24L266.4 8c7-7 16-11 25.6-11s18.7 4 25.6 11L565.8 231.5c8 7 12 15 12 24z"/>
-            </svg>
-          ))
-        )}
-      </div>
-    );
+    return null; // House icons removed - levels displayed in Build modal instead
   };
 
   // Handle landscape rotation request
@@ -5335,22 +5517,265 @@ function App() {
       {/* Build Modal (Main) */}
       {showBuildModal && (
         <div className="modal-overlay" style={{ pointerEvents: 'none', background: 'transparent' }}>
-          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '10vh', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '5vh', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', maxHeight: '80vh', overflow: 'hidden' }}>
             <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%)' }}>
               <span className="modal-heading-text">🏗️ BUILD MODE</span>
             </div>
-            <div className="modal-body" style={{ textAlign: 'center' }}>
-               <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '28px', color: '#2E7D32', marginBottom: '5px' }}>
+            <div className="modal-body" style={{ textAlign: 'center', padding: '10px' }}>
+               <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '24px', color: '#2E7D32', marginBottom: '8px' }}>
                  Cost: ${buildTotalCost.toLocaleString()}
                </div>
-               <div style={{ fontSize: '14px', color: '#5D4037', marginBottom: '15px' }}>
-                 Tap monopoly properties to build.
+               
+               {/* Compact Property List with Levels */}
+               <div style={{ 
+                 maxHeight: '100px', 
+                 overflowY: 'auto', 
+                 marginBottom: '8px',
+                 background: 'rgba(255,255,255,0.5)',
+                 borderRadius: '6px',
+                 padding: '4px',
+                 fontSize: '10px'
+               }}>
+                 {getMonopolyTiles(currentPlayer).map(tileIdx => {
+                   const prop = RENT_DATA[tileIdx];
+                   const level = propertyLevels[tileIdx] || 0;
+                   const levelText = level === 0 ? '-' : level === 5 ? '🏨' : `🏠${level}`;
+                   return (
+                     <div 
+                       key={tileIdx} 
+                       style={{ 
+                         display: 'flex', 
+                         justifyContent: 'space-between', 
+                         padding: '2px 5px',
+                         borderBottom: '1px solid rgba(0,0,0,0.05)',
+                         cursor: 'pointer'
+                       }}
+                       onClick={() => handleBuildTileTap(tileIdx)}
+                     >
+                       <span style={{ color: '#333' }}>{prop?.name || `Tile ${tileIdx}`}</span>
+                       <span style={{ 
+                         color: level > 0 ? '#2E7D32' : '#aaa',
+                         fontWeight: level > 0 ? 'bold' : 'normal'
+                       }}>{levelText}</span>
+                     </div>
+                   );
+                 })}
+               </div>
+               
+               <div style={{ fontSize: '10px', color: '#5D4037', marginBottom: '8px' }}>
+                 Tap property above or on board to build.
+               </div>
+               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
+                 <button 
+                    className="modal-btn buy" 
+                    style={{ flex: 'none', minWidth: '100px', background: 'linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%)' }} 
+                    onClick={closeBuildMode}
+                 >
+                   BUILD
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sell No Buildings Modal */}
+      {sellNoBuildingsModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '15vh' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #FF9800 0%, #F57C00 100%)' }}>
+              <span className="modal-heading-text">⚠️ SELL BUILDINGS</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+               <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '18px', color: '#4a2c18', marginBottom: '20px' }}>
+                 You don't have any buildings to sell.
                </div>
                <div className="modal-buttons" style={{ justifyContent: 'center' }}>
                  <button 
                     className="modal-btn cancel" 
                     style={{ flex: 'none', minWidth: '120px' }} 
-                    onClick={closeBuildMode}
+                    onClick={() => setSellNoBuildingsModal(false)}
+                 >
+                   CLOSE
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sell Modal (Main) */}
+      {showSellModal && (
+        <div className="modal-overlay" style={{ pointerEvents: 'none', background: 'transparent' }}>
+          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '5vh', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', maxHeight: '80vh', overflow: 'hidden' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #FF9800 0%, #F57C00 100%)' }}>
+              <span className="modal-heading-text">💰 SELL MODE</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center', padding: '10px' }}>
+               <div style={{ fontFamily: 'Junegull, sans-serif', fontSize: '24px', color: '#F57C00', marginBottom: '8px' }}>
+                 Refund: ${sellTotalRefund.toLocaleString()}
+               </div>
+               
+               {/* Compact Property List */}
+               <div style={{ 
+                 maxHeight: '100px', 
+                 overflowY: 'auto', 
+                 marginBottom: '8px',
+                 background: 'rgba(255,255,255,0.5)',
+                 borderRadius: '6px',
+                 padding: '4px',
+                 fontSize: '10px'
+               }}>
+                 {Object.keys(propertyOwnership).map(Number).filter(idx => propertyOwnership[idx] === currentPlayer && (sellPreviewLevels[idx] || 0) > 0).map(tileIdx => {
+                   const prop = RENT_DATA[tileIdx];
+                   const level = sellPreviewLevels[tileIdx] || 0;
+                   const levelText = level === 5 ? '🏨' : `🏠${level}`;
+                   return (
+                     <div 
+                       key={tileIdx} 
+                       style={{ 
+                         display: 'flex', 
+                         justifyContent: 'space-between', 
+                         padding: '2px 5px',
+                         borderBottom: '1px solid rgba(0,0,0,0.05)',
+                         cursor: 'pointer'
+                       }}
+                       onClick={() => handleSellTileTap(tileIdx)}
+                     >
+                       <span style={{ color: '#333' }}>{prop?.name || `Tile ${tileIdx}`}</span>
+                       <span style={{ color: '#F57C00', fontWeight: 'bold' }}>{levelText}</span>
+                     </div>
+                   );
+                 })}
+               </div>
+               
+               <div style={{ fontSize: '10px', color: '#5D4037', marginBottom: '8px' }}>
+                 Tap property to sell (50% refund).
+               </div>
+               <div className="modal-buttons" style={{ justifyContent: 'center', gap: '10px' }}>
+                 <button 
+                    className="modal-btn cancel" 
+                    style={{ flex: 'none', minWidth: '80px', background: '#e0e0e0', color: '#333' }} 
+                    onClick={cancelSellMode}
+                 >
+                   CANCEL
+                 </button>
+                 <button 
+                    className="modal-btn buy" 
+                    style={{ flex: 'none', minWidth: '80px', background: 'linear-gradient(to bottom, #FF9800 0%, #F57C00 100%)' }} 
+                    onClick={closeSellMode}
+                 >
+                   SELL
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Menu Modal */}
+      {showMenuModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '15vh', minWidth: '280px' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #607D8B 0%, #455A64 100%)' }}>
+              <span className="modal-heading-text">☰ MENU</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center', padding: '20px' }}>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                 <button 
+                    className="modal-btn buy" 
+                    style={{ width: '100%', background: 'linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%)' }} 
+                    onClick={closeMenu}
+                 >
+                   ▶️ RESUME
+                 </button>
+                 <button 
+                    className="modal-btn" 
+                    style={{ width: '100%', background: 'linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)', color: 'white' }} 
+                    onClick={openSettings}
+                 >
+                   ⚙️ SETTINGS
+                 </button>
+                 <button 
+                    className="modal-btn cancel" 
+                    style={{ width: '100%', background: 'linear-gradient(to bottom, #f44336 0%, #c62828 100%)', color: 'white' }} 
+                    onClick={handleExitGame}
+                 >
+                   🚪 EXIT GAME
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '20vh' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #f44336 0%, #c62828 100%)' }}>
+              <span className="modal-heading-text">⚠️ EXIT GAME</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+               <div style={{ fontSize: '14px', color: '#4a2c18', marginBottom: '15px' }}>
+                 Are you sure you want to exit?<br/>
+                 <span style={{ fontSize: '12px', color: '#888' }}>Your properties will be released and you cannot rejoin.</span>
+               </div>
+               <div className="modal-buttons" style={{ justifyContent: 'center', gap: '15px' }}>
+                 <button 
+                    className="modal-btn" 
+                    style={{ flex: 'none', minWidth: '100px', background: '#e0e0e0', color: '#333' }} 
+                    onClick={() => setShowExitConfirm(false)}
+                 >
+                   CANCEL
+                 </button>
+                 <button 
+                    className="modal-btn cancel" 
+                    style={{ flex: 'none', minWidth: '100px', background: 'linear-gradient(to bottom, #f44336 0%, #c62828 100%)', color: 'white' }} 
+                    onClick={handleExitGame}
+                 >
+                   EXIT
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="modal-overlay">
+          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '15vh', minWidth: '300px' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)' }}>
+              <span className="modal-heading-text">⚙️ SETTINGS</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center', padding: '20px' }}>
+               <div style={{ marginBottom: '20px' }}>
+                 <div style={{ fontSize: '14px', color: '#4a2c18', marginBottom: '10px', fontWeight: 'bold' }}>
+                   Player Hopping Animation Speed
+                 </div>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                   <span style={{ fontSize: '12px' }}>Slow</span>
+                   <input 
+                     type="range" 
+                     min="0.5" 
+                     max="2" 
+                     step="0.1" 
+                     value={animationSpeed}
+                     onChange={(e) => setAnimationSpeed(parseFloat(e.target.value))}
+                     style={{ flex: 1 }}
+                   />
+                   <span style={{ fontSize: '12px' }}>Fast</span>
+                 </div>
+                 <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                   Speed: {animationSpeed.toFixed(1)}x
+                 </div>
+               </div>
+               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
+                 <button 
+                    className="modal-btn buy" 
+                    style={{ flex: 'none', minWidth: '120px', background: 'linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)' }} 
+                    onClick={closeSettings}
                  >
                    DONE
                  </button>
@@ -6360,10 +6785,9 @@ function App() {
         <div className="sidebar-top-section">
           {/* Top Controls (Blue Icons) */}
           <div className="top-controls">
-            <button className="control-btn settings">⚙️</button>
             <button className="control-btn sound">🔊</button>
             <button className="control-btn help">❓</button>
-            <button className="control-btn menu">☰</button>
+            <button className="control-btn menu" onClick={openMenu}>☰</button>
           </div>
 
           {/* Player Panel (Blue) */}

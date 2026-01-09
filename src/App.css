@@ -98,8 +98,8 @@
 }
 
 .war-modal .dice {
-  width: 45px !important; /* Smaller dice */
-  height: 45px !important;
+  width: 40px !important; /* Smaller dice */
+  height: 40px !important;
 }
 
 /* Modal Buttons - Ensure visibility */
@@ -148,7 +148,7 @@
 }
 
 /* Mobile Portrait Fixes */
-@media (max-width: 600px) {
+@media (max-width: 1024px) {
   .war-modal .dice {
     width: 40px !important;
     height: 40px !important;

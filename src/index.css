@@ -636,12 +636,18 @@ body {
 /* Tablet sizing */
 @media (max-width: 1024px) {
   .btn-icon-img {
-    height: 80px;
+    height: 70px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .btn-icon-img {
+    height: 70px;
   }
 }
 
 /* Mobile sizing */
-@media (max-width: 768px) {
+@media (max-width: 900px) and (max-height: 400px) {
   .btn-icon-img {
     height: 50px;
   }
@@ -1830,7 +1836,7 @@ body {
   }
 
   .modal-btn {
-    padding: 0 !important;
+    padding: 10 !important;
     height: 28px !important;
     font-size: 11px !important; /* Reduced 13->11 */
     border-radius: 6px !important;

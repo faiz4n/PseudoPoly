@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import { RENT_DATA, TRAIN_RENT, TRAIN_TILES, COLOR_GROUPS } from './gameData.js';
 
 const app = express();
 app.use(cors());
@@ -66,7 +67,8 @@ function createInitialGameState() {
       winner: null
     },
     playerLoans: {}, // { playerIndex: { principalAmount, repayAmount, lapsRemaining, loanStartTile } }
-    bankruptPlayers: {} // { playerIndex: true }
+    bankruptPlayers: {}, // { playerIndex: true }
+    landingResolved: false // Per-turn guard: prevents duplicate landing processing
   };
 }
 
@@ -229,7 +231,8 @@ io.on('connection', (socket) => {
     
     const playerIndex = socket.playerIndex;
     
-    console.log(`Action from player ${playerIndex} in room ${socket.roomCode}:`, action);
+    console.log(`[SERVER] Action: ${action} from P${playerIndex} in room ${socket.roomCode}. Host? ${room.players[playerIndex]?.isHost}`);
+    console.log(`[SERVER] Current socket rooms:`, Array.from(socket.rooms));
     
     // Validate it's this player's turn for certain actions
     if (['roll_dice', 'buy_property', 'end_turn'].includes(action)) {
@@ -330,6 +333,71 @@ io.on('connection', (socket) => {
              broadcastState(room);
         }
         break;
+      case 'build_complete':
+        // Authoritative building completion with broadcast
+        if (payload.totalCost > 0) {
+          console.log(`[SERVER] Player ${playerIndex} built for $${payload.totalCost}`);
+          
+          room.gameState.playerMoney[playerIndex] -= payload.totalCost;
+          if (payload.propertyLevels) {
+            room.gameState.propertyLevels = payload.propertyLevels;
+          }
+          
+          const buildPlayerName = room.players[playerIndex]?.name || `Player ${playerIndex}`;
+          room.gameState.history.unshift(`🏗️ ${buildPlayerName} built upgrades for $${payload.totalCost.toLocaleString()}`);
+          
+          // Broadcast floating price (Red/Negative) to ALL players
+          const buildPlayerPos = room.gameState.playerPositions[playerIndex];
+          io.to(room.roomCode).emit('floating_price', { 
+            tileIndex: buildPlayerPos, 
+            price: payload.totalCost, 
+            isPositive: false 
+          });
+          
+          broadcastState(room);
+        }
+        break;
+      case 'sell_buildings':
+        // Authoritative building sale
+        if (payload.propertyLevels) {
+          console.log(`[SERVER] Player ${playerIndex} requested building sale`);
+          
+          let sellTotalRefund = 0;
+          const oldLevels = room.gameState.propertyLevels || {};
+          const newLevels = payload.propertyLevels;
+          
+          // Calculate refund based on level differences
+          Object.keys(newLevels).forEach(tileIdx => {
+             const oldL = oldLevels[tileIdx] || 0;
+             const newL = newLevels[tileIdx] || 0;
+             if (newL < oldL) {
+                const propData = RENT_DATA[tileIdx];
+                if (propData && propData.upgradeCost) {
+                   const count = oldL - newL;
+                   sellTotalRefund += Math.round(propData.upgradeCost * 0.5) * count;
+                }
+             }
+          });
+
+          if (sellTotalRefund > 0) {
+            room.gameState.propertyLevels = newLevels;
+            room.gameState.playerMoney[playerIndex] += sellTotalRefund;
+            
+            const sellPlayerName = room.players[playerIndex]?.name || `Player ${playerIndex}`;
+            room.gameState.history.unshift(`💰 ${sellPlayerName} sold buildings for $${sellTotalRefund.toLocaleString()}`);
+            
+            // Broadcast floating price (Green/Positive) to ALL players
+            const sellPlayerPos = room.gameState.playerPositions[playerIndex];
+            io.to(room.roomCode).emit('floating_price', { 
+              tileIndex: sellPlayerPos, 
+              price: sellTotalRefund, 
+              isPositive: true 
+            });
+            
+            broadcastState(room);
+          }
+        }
+        break;
       case 'cash_stack_claim':
         // Handle claiming the pot
         const pot = room.gameState.cashStack;
@@ -394,9 +462,17 @@ io.on('connection', (socket) => {
       case 'auction_complete':
         handleAuctionComplete(room, payload);
         break;
-      case 'floating_price':
-        // Broadcast floating price animation to all players
-        io.to(room.roomCode).emit('floating_price', payload);
+      case 'landed':
+        // GUARD: Prevent duplicate landing processing this turn
+        if (room.gameState.landingResolved) {
+          console.log(`[SERVER] Landing ignored - already resolved this turn`);
+          break;
+        }
+        room.gameState.landingResolved = true;
+        
+        // Authoritative landing processing
+        handleLanding(room, playerIndex, room.gameState.playerPositions[playerIndex]);
+        broadcastState(room);
         break;
       case 'audit_show':
         console.log('[SERVER] Received audit_show. Broadcasting AUDIT modal.');
@@ -482,6 +558,46 @@ io.on('connection', (socket) => {
           }
         }
         break;
+      case 'exit_game':
+        // Player voluntarily exits (like bankruptcy but manual)
+        console.log(`[SERVER] Player ${playerIndex} exiting game voluntarily`);
+        
+        // Clear all properties owned by this player
+        Object.keys(room.gameState.propertyOwnership).forEach(tileIdx => {
+          if (room.gameState.propertyOwnership[tileIdx] === playerIndex) {
+            delete room.gameState.propertyOwnership[tileIdx];
+            // Also clear any buildings on these properties
+            if (room.gameState.propertyLevels[tileIdx]) {
+              delete room.gameState.propertyLevels[tileIdx];
+            }
+          }
+        });
+        
+        // Mark player as "bankrupt" (exits turn rotation)
+        room.gameState.bankruptPlayers[playerIndex] = true;
+        
+        // Mark player as disconnected/exited
+        if (room.players[playerIndex]) {
+          room.players[playerIndex].connected = false;
+          room.players[playerIndex].exited = true;
+        }
+        
+        const exitingPlayerName = room.players[playerIndex]?.name || `Player ${playerIndex}`;
+        room.gameState.history.unshift(`🚪 ${exitingPlayerName} has left the game!`);
+        
+        // Notify all players
+        io.to(room.roomCode).emit('player_exited', { 
+          playerIndex, 
+          playerName: exitingPlayerName 
+        });
+        
+        // If it was their turn, end it
+        if (room.gameState.currentPlayer === playerIndex) {
+          handleEndTurn(room);
+        }
+        
+        broadcastState(room);
+        break;
       case 'end_turn':
         handleEndTurn(room);
         break;
@@ -536,61 +652,181 @@ io.on('connection', (socket) => {
 
 });
 
+// Helper: Check for Monopoly on Server
+function hasMonopoly(room, tileIndex, ownerIndex) {
+  const property = RENT_DATA[tileIndex];
+  if (!property) return false;
+  
+  const groupId = property.groupId;
+  const groupTiles = Object.keys(RENT_DATA).filter(key => RENT_DATA[key].groupId === groupId);
+  
+  return groupTiles.every(tIndex => room.gameState.propertyOwnership[tIndex] === ownerIndex);
+}
+
+// Helper: Calculate Rent on Server
+function calculateRent(room, tileIndex) {
+  const ownership = room.gameState.propertyOwnership;
+  const levels = room.gameState.propertyLevels;
+  
+  // 1. Check if it's a Train
+  if (TRAIN_TILES.includes(tileIndex)) {
+    const ownerIndex = ownership[tileIndex];
+    if (ownerIndex === undefined) return 0;
+    
+    const ownedTrains = TRAIN_TILES.filter(t => ownership[t] === ownerIndex).length;
+    return TRAIN_RENT[ownedTrains - 1] || 0;
+  }
+  
+  // 2. Regular Property
+  const property = RENT_DATA[tileIndex];
+  if (!property) return 0;
+  
+  const ownerIndex = ownership[tileIndex];
+  const level = levels[tileIndex] || 0;
+  
+  if (level === 0 && hasMonopoly(room, tileIndex, ownerIndex)) {
+    return property.rentLevels[0] * 2;
+  }
+  
+  return property.rentLevels[level] || property.rentLevels[0];
+}
+
+// Authoritative Landing Logic
+function handleLanding(room, playerIndex, tileIndex) {
+  const property = RENT_DATA[tileIndex];
+  const ownership = room.gameState.propertyOwnership;
+  const ownerIndex = ownership[tileIndex];
+
+  console.log(`[SERVER] Processing Landing for P${playerIndex} on Tile ${tileIndex}`);
+
+  if (property && ownerIndex !== undefined && Number(ownerIndex) !== playerIndex) {
+    // 1. RENT PROCESSING
+    const jailStatus = room.gameState.jailStatus || {};
+    if (jailStatus[ownerIndex] > 0) {
+      room.gameState.history.unshift(`${room.players[playerIndex].name} pays NO rent - Owner is in Jail!`);
+    } else {
+      const rent = calculateRent(room, tileIndex);
+      const ownerPos = room.gameState.playerPositions[ownerIndex];
+
+      // Deduct rent
+      room.gameState.playerMoney[playerIndex] -= rent;
+      room.gameState.playerMoney[ownerIndex] += rent;
+      
+      room.gameState.history.unshift(`${room.players[playerIndex].name} paid $${rent} rent to ${room.players[ownerIndex].name}`);
+
+      // Broadcast Floating Prices
+      io.to(room.roomCode).emit('floating_price', { tileIndex: tileIndex, price: rent, isPositive: false });
+      io.to(room.roomCode).emit('floating_price', { tileIndex: ownerPos, price: rent, isPositive: true });
+    }
+  } else if (tileIndex === 7) {
+    // 2. THE AUDIT (TAX)
+    const dice = room.gameState.diceValues || [1, 1];
+    const tax = (dice[0] + dice[1]) * 300;
+    
+    room.gameState.playerMoney[playerIndex] -= tax;
+    room.gameState.cashStack = (room.gameState.cashStack || 0) + tax;
+    
+    room.gameState.history.unshift(`🧾 ${room.players[playerIndex].name} paid $${tax} in THE AUDIT!`);
+    
+    io.to(room.roomCode).emit('floating_price', { tileIndex: 7, price: tax, isPositive: false });
+  } else if (tileIndex === 28) {
+    // 3. GO TO JAIL
+    const duration = Math.floor(Math.random() * 2) + 2; 
+    if (!room.gameState.jailStatus) room.gameState.jailStatus = {};
+    room.gameState.jailStatus[playerIndex] = duration;
+    
+    room.gameState.history.unshift(`👮 ${room.players[playerIndex].name} is arrested for ${duration} turns!`);
+  } else if (tileIndex === 3) {
+    // 4. CASH STACK (Server processed immediately upon landing if not handled by dedicated claim action)
+    // Actually, App.jsx sends 'cash_stack_claim', so we can keep that or handle it here.
+    // Let's handle it here for consistency if we want "Server detects landing".
+    const pot = room.gameState.cashStack || 0;
+    if (pot > 0) {
+       room.gameState.playerMoney[playerIndex] += pot;
+       room.gameState.cashStack = 0;
+       room.gameState.history.unshift(`💰 ${room.players[playerIndex].name} won the Cash Stack: $${pot}!`);
+       
+       io.to(room.roomCode).emit('floating_price', { tileIndex: 3, price: pot, isPositive: true });
+    }
+  }
+}
+
 // Game logic handlers
 function handleRollDice(room, playerIndex, payload = {}) {
   if (room.gameState.isRolling || room.gameState.isProcessingTurn) return;
   
   room.gameState.isRolling = true;
   room.gameState.isProcessingTurn = true;
+  room.gameState.landingResolved = false; // Reset for this roll
   
-  // Generate dice values (or use forced value for debug)
-  let die1, die2;
-  if (payload.forcedValue) {
-    die1 = Math.floor(payload.forcedValue / 2);
-    die2 = payload.forcedValue - die1;
-  } else {
-    die1 = Math.floor(Math.random() * 6) + 1;
-    die2 = Math.floor(Math.random() * 6) + 1;
-  }
-  const moveAmount = die1 + die2;
-  const isDoubles = die1 === die2;
+  // BROADCAST: Dice roll started - so ALL players animate and play sound
+  console.log(`[SERVER-DEBUG] Broadcasting dice_roll_started to room ${room.roomCode} for roller ${playerIndex}`);
+  io.to(room.roomCode).emit('dice_roll_started', { roller: playerIndex });
   
-  room.gameState.diceValues = [die1, die2];
-  
-  // Update position
-  const currentPos = room.gameState.playerPositions[playerIndex];
-  const newPos = (currentPos + moveAmount) % 36;
-  room.gameState.playerPositions[playerIndex] = newPos;
-  
-  // Check for passing GO
-  if (newPos < currentPos) {
-    room.gameState.playerMoney[playerIndex] += 1000;
-    room.gameState.history.unshift(`${room.players[playerIndex]?.name || 'Player'} passed GO! +$1000`);
-  }
-  
-  room.gameState.history.unshift(
-    `${room.players[playerIndex]?.name || 'Player'} rolled ${moveAmount}${isDoubles ? ' (DOUBLES!)' : ''}`
-  );
-  
-  room.gameState.hoppingPlayer = playerIndex;
-  room.gameState.isRolling = false;
-  // Only finish turn if NOT doubles
-  room.gameState.turnFinished = !isDoubles;
-  
-  // Broadcast intermediate state for animation
-  io.to(Object.keys(io.sockets.adapter.rooms).find(r => rooms[r] === room) || '').emit('state_update', {
-    gameState: room.gameState,
-    players: room.players
-  });
-  
-  // Clear hopping after a delay and broadcast the update
+  // Sync "isRolling" state immediately so clients know we are busy
+  broadcastState(room);
+
+  // MANDATORY DELAY: Wait 1s for animation to play on all clients
   setTimeout(() => {
-    room.gameState.hoppingPlayer = null;
-    room.gameState.isProcessingTurn = false;
-    
-    // Broadcast the updated state so clients know processing is complete
-    broadcastState(room);
-  }, 500);
+      // 1. Generate Dice
+      let die1, die2;
+      if (payload.forcedValue) {
+        die1 = Math.floor(payload.forcedValue / 2);
+        die2 = payload.forcedValue - die1;
+      } else {
+        die1 = Math.floor(Math.random() * 6) + 1;
+        die2 = Math.floor(Math.random() * 6) + 1;
+      }
+      const moveAmount = die1 + die2;
+      const isDoubles = die1 === die2;
+      
+      room.gameState.diceValues = [die1, die2];
+      
+      // 2. Update Position
+      const currentPos = room.gameState.playerPositions[playerIndex];
+      const newPos = (currentPos + moveAmount) % 36;
+      room.gameState.playerPositions[playerIndex] = newPos;
+      
+      // 3. Check specific landing overrides (Go To Jail)
+      // Actually, standard landing handles 'Go To Jail' tile, but moving TO jail happens there.
+      // Passing GO logic:
+      if (newPos < currentPos) {
+        room.gameState.playerMoney[playerIndex] += 1000;
+        room.gameState.history.unshift(`${room.players[playerIndex]?.name || 'Player'} passed GO! +$1000`);
+      }
+      
+      room.gameState.history.unshift(
+        `${room.players[playerIndex]?.name || 'Player'} rolled ${moveAmount}${isDoubles ? ' (DOUBLES!)' : ''}`
+      );
+      
+      room.gameState.hoppingPlayer = playerIndex;
+      room.gameState.isRolling = false;
+      // Only finish turn if NOT doubles
+      room.gameState.turnFinished = !isDoubles;
+      
+      // 4. Broadcast Final Result (stops animation)
+      broadcastState(room);
+      
+      // 5. Handle Landing Logic (delayed slightly for visual sync)
+      setTimeout(() => {
+          handleLanding(room, playerIndex, newPos);
+          
+          // Clear hopping player visual after landing processed
+          setTimeout(() => {
+             room.gameState.hoppingPlayer = null;
+             // Don't clear isProcessingTurn yet if we are in a modal (landing might open modal)
+             // But if landing resolved immediately, we might want to clear.
+             // safest is to let landing logic or end turn handle processing state.
+             // But for simple moves:
+             if (!room.gameState.modalState.type || room.gameState.modalState.type === 'NONE') {
+                 // If no modal opened, we are essentially done processing unless we wait for user.
+                 // Actually, user needs to click 'End Turn'.
+             }
+             broadcastState(room);
+          }, 1000);
+      }, 500); 
+      
+  }, 1000);
 }
 
 function handleBuyProperty(room, playerIndex, payload) {
@@ -641,6 +877,49 @@ function handleUpgradeProperty(room, playerIndex, payload) {
       `${room.players[playerIndex]?.name || 'Player'} upgraded property for $${price}`
     );
   }
+}
+
+function handlePayRent(room, playerIndex, payload) {
+  const { payerIndex, ownerIndex, rent, tileIndex } = payload || {};
+  console.log(`[SERVER] Rent Payment: Payer ${payerIndex} -> Owner ${ownerIndex}, Amount ${rent}, Tile ${tileIndex}`);
+  
+  if (payerIndex === undefined || ownerIndex === undefined || rent === undefined || tileIndex === undefined) {
+    console.error('[SERVER] PayRent failed: Missing required fields in payload');
+    return;
+  }
+
+  const pIdx = Number(payerIndex);
+  const oIdx = Number(ownerIndex);
+  const amount = Number(rent);
+  const tIdx = Number(tileIndex);
+
+  // Update money
+  room.gameState.playerMoney[pIdx] -= amount;
+  room.gameState.playerMoney[oIdx] += amount;
+
+  // Add history
+  const payerName = room.players[pIdx]?.name || `Player ${pIdx}`;
+  const ownerName = room.players[oIdx]?.name || `Player ${oIdx}`;
+  room.gameState.history.unshift(`${payerName} paid $${amount} rent to ${ownerName}`);
+
+  // Broadcast Floating Prices
+  // 1. Payer (Red/Negative)
+  io.to(room.roomCode).emit('floating_price', {
+    tileIndex: tIdx,
+    price: amount,
+    isPositive: false
+  });
+
+  // 2. Owner (Green/Positive) - Use owner's current position for the green animation
+  const ownerPos = room.gameState.playerPositions[oIdx];
+  io.to(room.roomCode).emit('floating_price', {
+    tileIndex: ownerPos,
+    price: amount,
+    isPositive: true
+  });
+
+  // Broadcast final state
+  broadcastState(room);
 }
 
 function handleWarInit(room, { mode }) {
@@ -935,6 +1214,7 @@ function handleEndTurn(room) {
   room.gameState.currentPlayer = nextIdx;
   room.gameState.turnFinished = false;
   room.gameState.hoppingPlayer = null;
+  room.gameState.landingResolved = false; // Reset for new turn
   room.gameState.history.unshift(
     `${room.players[room.gameState.currentPlayer]?.name || 'Player'}'s turn`
   );
@@ -963,6 +1243,7 @@ function handleAuctionSelect(room, playerIndex, payload) {
   
   // Set initial participants (all player indices: 0, 1, 2, 3...)
   room.gameState.auctionState.participants = room.players.map((_, idx) => idx);
+  room.gameState.auctionState.foldedPlayers = []; // NEW: Track distinct folded players
   room.gameState.auctionState.bids = [];
   room.gameState.auctionState.currentBid = 0;
   room.gameState.auctionState.winner = null;
@@ -985,38 +1266,41 @@ function handleAuctionSelect(room, playerIndex, payload) {
 }
 
 function handleAuctionBid(room, playerIndex, payload) {
-  const { participants, currentBidder, currentBid } = room.gameState.auctionState;
+  const { bidAmount } = payload;
+  const { participants, currentBidder, currentBid, status, foldedPlayers } = room.gameState.auctionState;
   
-  // Only current bidder can bid
+  if (status !== 'active') return;
+  if (!participants.includes(playerIndex)) return;
+  if (foldedPlayers && foldedPlayers.includes(playerIndex)) return; // Double protection
   if (playerIndex !== currentBidder) {
     console.log(`[SERVER] Bid rejected: Not your turn (${playerIndex} != ${currentBidder})`);
     return;
   }
   
   // Get bid amount from payload (slider value) - must be at least currentBid + 10
-  const bidAmount = payload.bidAmount || (currentBid + 10);
+  const finalBidAmount = bidAmount || (currentBid + 10);
   const minBid = currentBid + 10;
   
-  if (bidAmount < minBid) {
-    console.log(`[SERVER] Bid rejected: $${bidAmount} is below minimum $${minBid}`);
+  if (finalBidAmount < minBid) {
+    console.log(`[SERVER] Bid rejected: $${finalBidAmount} is below minimum $${minBid}`);
     return;
   }
   
   // Check if player can afford
-  if (room.gameState.playerMoney[playerIndex] < bidAmount) {
+  if (room.gameState.playerMoney[playerIndex] < finalBidAmount) {
     console.log(`[SERVER] Bid rejected: Insufficient funds`);
     return;
   }
 
   // Record the bid
-  room.gameState.auctionState.currentBid = bidAmount;
-  room.gameState.auctionState.bids.unshift({ player: playerIndex, amount: bidAmount });
+  room.gameState.auctionState.currentBid = finalBidAmount;
+  room.gameState.auctionState.bids.unshift({ player: playerIndex, amount: finalBidAmount });
   room.gameState.auctionState.winner = playerIndex; // Highest bidder so far
   
-  console.log(`[SERVER] Bid placed: $${bidAmount} by Player ${playerIndex}`);
+  console.log(`[SERVER] Bid placed: $${finalBidAmount} by Player ${playerIndex}`);
   
   // Auto-fold players who can't afford next bid (currentBid + 10)
-  const nextMinBid = bidAmount + 10;
+  const nextMinBid = finalBidAmount + 10;
   room.gameState.auctionState.participants = participants.filter(pIdx => {
     if (pIdx === playerIndex) return true; // Bidder stays
     const canAfford = room.gameState.playerMoney[pIdx] >= nextMinBid;
@@ -1043,7 +1327,26 @@ function handleAuctionBid(room, playerIndex, payload) {
 }
 
 function handleAuctionFold(room, playerIndex) {
-  const { participants, currentBidder } = room.gameState.auctionState;
+  const auctionState = room.gameState.auctionState;
+  const { participants, currentBidder, status } = auctionState;
+  
+  // GUARD 1: Auction resolution lock
+  if (status === 'complete' || status === 'idle') {
+    console.log(`[SERVER] Fold ignored - auction already ${status}`);
+    return;
+  }
+  
+  // Initialize foldedPlayers if missing
+  if (!auctionState.foldedPlayers) auctionState.foldedPlayers = [];
+  
+  // GUARD 2: Irreversible Fold Check
+  if (auctionState.foldedPlayers.includes(playerIndex)) {
+     console.log(`[SERVER] Fold ignored - Player ${playerIndex} already folded (Spam protection)`);
+     return;
+  }
+  
+  // Mark as folded
+  auctionState.foldedPlayers.push(playerIndex);
   
   // Remove player from participants
   const newParticipants = participants.filter(p => p !== playerIndex);
@@ -1074,6 +1377,12 @@ function handleAuctionFold(room, playerIndex) {
 }
 
 function endAuction(room, winnerIndex) {
+  // CRITICAL GUARD: Prevent Double Charge
+  if (room.gameState.auctionState.status === 'complete') {
+      console.log(`[SERVER-GUARD] endAuction ignored - already complete`);
+      return;
+  }
+
   const { propertyIndex, currentBid, originalOwner } = room.gameState.auctionState;
   const finalAmount = currentBid || 10; // Minimum $10 if no bids
   
@@ -1119,27 +1428,25 @@ function endAuction(room, winnerIndex) {
 }
 
 function handleAuctionComplete(room, payload) {
+    // This handler is triggered by client "auction_complete" action
+    // BUT server logic (endAuction) should be authoritative.
+    // We only use this if somehow server logic failed or for legacy syncing.
+    // GUARD: If status is already complete, DO NOT CHARGE AGAIN.
+    if (room.gameState.auctionState.status === 'complete') {
+         console.log(`[SERVER] handleAuctionComplete ignored - already resolved`);
+         return;
+    }
+
     const { winner, bidAmount, propertyIndex, originalOwner } = payload || {};
     
     if (winner !== undefined && bidAmount && propertyIndex) {
-        const wIdx = Number(winner);
-        const ownerIdx = Number(originalOwner);
-        const amount = Number(bidAmount);
-        
-        // Deduct from Winner
-        room.gameState.playerMoney[wIdx] -= amount;
-        
-        if (wIdx === ownerIdx) {
-            // Scenario A: Self-Defense
-            room.gameState.cashStack += amount;
-            room.gameState.history.unshift(`${room.players[wIdx].name} defended their property for $${amount}!`);
-        } else {
-            // Scenario B: Takeover
-            room.gameState.playerMoney[ownerIdx] += amount;
-            // Update ownership
-            room.gameState.propertyOwnership[propertyIndex] = wIdx;
-            room.gameState.history.unshift(`${room.players[wIdx].name} won the auction for $${amount}! Transferring property...`);
-        }
+        // ... Logic duplicated from endAuction ...
+        // Better to just call endAuction if valid?
+        // But endAuction relies on gameState. 
+        // Let's just trust endAuction to have run.
+        // If we represent a "Force Complete" from client (admin?), okay.
+        // But for safety:
+        endAuction(room, Number(winner));
     }
 
     // Reset State

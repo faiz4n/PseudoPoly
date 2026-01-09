@@ -1,0 +1,41 @@
+export const RENT_DATA = {
+  1: { id: 1, name: "Shop", groupId: 1, price: 400, baseRent: 40, upgradeCost: 200, rentLevels: [40, 160, 600, 1400, 1720, 2000] },
+  2: { id: 2, name: "Super market", groupId: 1, price: 500, baseRent: 50, upgradeCost: 250, rentLevels: [50, 200, 750, 1750, 2150, 2500] },
+  4: { id: 4, name: "Train", groupId: 10, price: 1000, baseRent: 125, rentLevels: [125, 250, 500, 1000], isTrain: true },
+  5: { id: 3, name: "Service station", groupId: 1, price: 600, baseRent: 60, upgradeCost: 300, rentLevels: [60, 240, 900, 2100, 2580, 3000] },
+  6: { id: 4, name: "Swim. pool", groupId: 2, price: 700, baseRent: 70, upgradeCost: 350, rentLevels: [70, 280, 1050, 2450, 3010, 3500] },
+  8: { id: 5, name: "Zoo", groupId: 2, price: 800, baseRent: 80, upgradeCost: 400, rentLevels: [80, 320, 1200, 2800, 3440, 4000] },
+  9: { id: 6, name: "Ice-rink", groupId: 2, price: 900, baseRent: 90, upgradeCost: 450, rentLevels: [90, 360, 1350, 3150, 3870, 4500] },
+  11: { id: 7, name: "Pizzeria", groupId: 3, price: 1000, baseRent: 100, upgradeCost: 500, rentLevels: [100, 400, 1500, 3500, 4300, 5000] },
+  12: { id: 8, name: "Cinema", groupId: 3, price: 1100, baseRent: 110, upgradeCost: 550, rentLevels: [110, 440, 1650, 3850, 4730, 5500] },
+  13: { id: 13, name: "Train", groupId: 10, price: 1000, baseRent: 125, rentLevels: [125, 250, 500, 1000], isTrain: true },
+  14: { id: 9, name: "Night club", groupId: 3, price: 1200, baseRent: 120, upgradeCost: 600, rentLevels: [120, 480, 1800, 4200, 5160, 6000] },
+  15: { id: 10, name: "Airport", groupId: 4, price: 1300, baseRent: 130, upgradeCost: 650, rentLevels: [130, 520, 1950, 4550, 5590, 6500] },
+  16: { id: 11, name: "Car salon", groupId: 4, price: 1400, baseRent: 140, upgradeCost: 700, rentLevels: [140, 560, 2100, 4900, 6020, 7000] },
+  17: { id: 12, name: "Harbor", groupId: 4, price: 1500, baseRent: 150, upgradeCost: 750, rentLevels: [150, 600, 2250, 5250, 6450, 7500] },
+  19: { id: 13, name: "News paper", groupId: 5, price: 1600, baseRent: 160, upgradeCost: 800, rentLevels: [160, 640, 2400, 5600, 6880, 8000] },
+  20: { id: 14, name: "TV channel", groupId: 5, price: 1700, baseRent: 170, upgradeCost: 850, rentLevels: [170, 680, 2550, 5950, 7310, 8500] },
+  21: { id: 21, name: "Train", groupId: 10, price: 1000, baseRent: 125, rentLevels: [125, 250, 500, 1000], isTrain: true },
+  22: { id: 15, name: "Mobile op.", groupId: 5, price: 1800, baseRent: 180, upgradeCost: 900, rentLevels: [180, 720, 2700, 6300, 7740, 9000] },
+  24: { id: 16, name: "Toy factory", groupId: 6, price: 1900, baseRent: 190, upgradeCost: 950, rentLevels: [190, 760, 2850, 6650, 8170, 9500] },
+  25: { id: 17, name: "Candy factory", groupId: 6, price: 2000, baseRent: 200, upgradeCost: 1000, rentLevels: [200, 800, 3000, 7000, 8600, 10000] },
+  27: { id: 18, name: "Organic farm", groupId: 6, price: 2100, baseRent: 210, upgradeCost: 1050, rentLevels: [210, 840, 3150, 7350, 9030, 10500] },
+  29: { id: 19, name: "Oil well", groupId: 7, price: 2200, baseRent: 220, upgradeCost: 1100, rentLevels: [220, 880, 3300, 7700, 9460, 11000] },
+  30: { id: 20, name: "Diamond mine", groupId: 7, price: 2300, baseRent: 230, upgradeCost: 1150, rentLevels: [230, 920, 3450, 8050, 9890, 11500] },
+  32: { id: 32, name: "Train", groupId: 10, price: 1000, baseRent: 125, rentLevels: [125, 250, 500, 1000], isTrain: true },
+  34: { id: 21, name: "Hollywood", groupId: 8, price: 2400, baseRent: 240, upgradeCost: 1200, rentLevels: [240, 960, 3600, 8400, 10320, 12000] },
+  35: { id: 22, name: "Electronics factory", groupId: 8, price: 2500, baseRent: 250, upgradeCost: 1250, rentLevels: [250, 1000, 3750, 8750, 10750, 12500] }
+};
+
+export const TRAIN_RENT = [125, 250, 500, 1000];
+export const TRAIN_TILES = [4, 13, 21, 32];
+export const COLOR_GROUPS = {
+  '#ffb900': [1, 2, 5],
+  '#fc1d1e': [6, 8, 9],
+  '#fe4c9a': [11, 12, 14],
+  '#ff9800': [15, 16, 17],
+  '#8bc34a': [19, 20, 22],
+  '#9c27b0': [24, 25, 27],
+  '#4caf50': [29, 30],
+  '#cddc39': [34, 35],
+};

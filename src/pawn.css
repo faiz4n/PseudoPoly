@@ -23,17 +23,73 @@
   pointer-events: none;
 }
 
-/* Smooth, physics-based hop */
-@keyframes hop {
-  0% { transform: translateY(0) scale(1, 1); }
-  40% { transform: translateY(-2.8vh) scale(1.08, 1.08); }
-  75% { transform: translateY(-0.3vh) scale(1.02, 0.98); }
-  100% { transform: translateY(0) scale(1, 1); }
+/* Physics-based Hop: Jump, Land, and Rest firmly on tile */
+@keyframes pawnHopAnimA {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  18% {
+    transform: translateY(-2.2vh) scale(1.05, 1.05);
+  }
+  36% {
+    transform: translateY(-3.4vh) scale(1.08, 1.08); /* Mid-flight jump apex */
+  }
+  52% {
+    transform: translateY(-1.0vh) scale(1.03, 1.02);
+  }
+  60% {
+    transform: translateY(0) scale(1.05, 0.94); /* Touchdown contact squash */
+  }
+  68% {
+    transform: translateY(0) scale(1, 1); /* Elastic rebound to resting scale */
+  }
+  100% {
+    transform: translateY(0) scale(1, 1); /* RESTING STOP ON TILE: Completely motionless */
+  }
 }
 
+@keyframes pawnHopAnimB {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  18% {
+    transform: translateY(-2.2vh) scale(1.05, 1.05);
+  }
+  36% {
+    transform: translateY(-3.4vh) scale(1.08, 1.08); /* Mid-flight jump apex */
+  }
+  52% {
+    transform: translateY(-1.0vh) scale(1.03, 1.02);
+  }
+  60% {
+    transform: translateY(0) scale(1.05, 0.94); /* Touchdown contact squash */
+  }
+  68% {
+    transform: translateY(0) scale(1, 1); /* Elastic rebound to resting scale */
+  }
+  100% {
+    transform: translateY(0) scale(1, 1); /* RESTING STOP ON TILE: Completely motionless */
+  }
+}
+
+.pawn-hop-odd {
+  animation-name: pawnHopAnimA;
+  animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation-fill-mode: forwards;
+  z-index: 100 !important;
+}
+
+.pawn-hop-even {
+  animation-name: pawnHopAnimB;
+  animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation-fill-mode: forwards;
+  z-index: 100 !important;
+}
+
+/* Fallback for legacy class if referenced elsewhere */
 .pawn-hopping {
-  animation: hop 0.28s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
-  z-index: 100 !important; /* Keep on top while hopping */
+  animation: pawnHopAnimA 0.34s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  z-index: 100 !important;
 }
 
 /* Hide pawns during deal selection mode */

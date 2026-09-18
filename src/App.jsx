@@ -42,7 +42,9 @@ function App() {
   const [history, setHistory] = useState(['Player 3 starts turn']);
   const [playerPositions, setPlayerPositions] = useState([0, 0, 0, 0]);
   const [hoppingPlayer, setHoppingPlayer] = useState(null);
-  const [pawnTransitionDuration, setPawnTransitionDuration] = useState(300);
+  const [pawnTransitionDuration, setPawnTransitionDuration] = useState(210);
+  const [pawnStepDelay, setPawnStepDelay] = useState(350);
+  const [pawnHopStep, setPawnHopStep] = useState(0);
   
   // Game Players State (Dynamic)
   const [gamePlayers, setGamePlayers] = useState(players); // Initialize with default
@@ -1028,7 +1030,7 @@ function App() {
       if (playerAnimationEnabledRef.current) {
         setHoppingPlayer(currentPlayerIdx);
       }
-      await movePlayerToken(currentPlayerIdx, moveAmount, 300, oldPosition);
+      await movePlayerToken(currentPlayerIdx, moveAmount, 350, oldPosition);
       setHoppingPlayer(null);
       isAnimatingRef.current = false; // Clear animation lock when done
       
@@ -1607,19 +1609,20 @@ function App() {
   };
 
   // Async function to move pawn step-by-step
-  const movePlayerToken = async (playerIdx, steps, delay = 300, startPosOverride = null) => {
+  const movePlayerToken = async (playerIdx, steps, delay = 350, startPosOverride = null) => {
     const startPos = startPosOverride ?? playerPositions[playerIdx];
     const direction = steps > 0 ? 1 : -1;
     const count = Math.abs(steps);
     
     const isAnimEnabled = playerAnimationEnabledRef.current;
     const speed = animationSpeedRef.current || 1;
-    // Smooth step delay with comfortable floor to prevent frame dropping
-    const stepDelay = isAnimEnabled ? Math.max(180, Math.round(delay / speed)) : 0;
-    // Transition duration is tuned to complete cleanly just before next step
-    const transitionDuration = Math.round(stepDelay * 0.92);
+    // Step delay with comfortable floor to prevent frame dropping
+    const stepDelay = isAnimEnabled ? Math.max(220, Math.round(delay / speed)) : 0;
+    // Hop movement duration is ~60% of step interval, leaving ~40% for the stationary stop on the tile
+    const transitionDuration = Math.round(stepDelay * 0.60);
     
     setPawnTransitionDuration(transitionDuration);
+    setPawnStepDelay(stepDelay);
     setIsLocalMoving(true); // Start movement lock
     if (isAnimEnabled) {
       setHoppingPlayer(playerIdx); // Enable hop animation
@@ -1629,6 +1632,10 @@ function App() {
       // 1. Calculate and update position
       const currentNextPos = (startPos + (i * direction) + 36) % 36;
       
+      if (isAnimEnabled) {
+        setPawnHopStep(i);
+      }
+
       setPlayerPositions(prev => {
         const result = [...prev];
         result[playerIdx] = currentNextPos;
@@ -1709,7 +1716,7 @@ function App() {
         // 2. Play hop sound
         playHopSound();
 
-        // 3. Wait for animation to complete
+        // 3. Wait for animation and tile pause to complete
         await wait(stepDelay); 
       }
     }
@@ -1719,8 +1726,9 @@ function App() {
       await wait(60);
     }
     setHoppingPlayer(null); // Disable hop animation
+    setPawnHopStep(0);
     setIsLocalMoving(false); // End movement lock
-    setPawnTransitionDuration(280); // Reset to smooth 280ms
+    setPawnTransitionDuration(240); // Reset
   };
 
   // Auto-skip logic (Optimized)
@@ -7130,19 +7138,25 @@ function App() {
 
         {/* Player Pawns */}
         <div className="pawns-container">
-          {gamePlayers.map((player, index) => (
-            <div 
-              key={player.id} 
-              className={`player-pawn ${playerAnimationEnabled && hoppingPlayer === index ? 'pawn-hopping' : ''}`}
-              style={{
-                ...getPawnStyle(playerPositions[index], index),
-                transition: playerAnimationEnabled ? `top ${pawnTransitionDuration}ms linear, left ${pawnTransitionDuration}ms linear` : 'none',
-                animationDuration: `${pawnTransitionDuration}ms`
-              }}
-            >
-              <img src={player.avatar} alt={player.name} className="pawn-img" />
-            </div>
-          ))}
+          {gamePlayers.map((player, index) => {
+            const isHopping = playerAnimationEnabled && hoppingPlayer === index;
+            const hopClass = isHopping ? (pawnHopStep % 2 === 0 ? 'pawn-hop-even' : 'pawn-hop-odd') : '';
+            return (
+              <div 
+                key={player.id} 
+                className={`player-pawn ${hopClass}`}
+                style={{
+                  ...getPawnStyle(playerPositions[index], index),
+                  transition: playerAnimationEnabled 
+                    ? `top ${pawnTransitionDuration}ms cubic-bezier(0.25, 0.9, 0.35, 1), left ${pawnTransitionDuration}ms cubic-bezier(0.25, 0.9, 0.35, 1)` 
+                    : 'none',
+                  animationDuration: `${pawnStepDelay}ms`
+                }}
+              >
+                <img src={player.avatar} alt={player.name} className="pawn-img" />
+              </div>
+            );
+          })}
         </div>
 
         {/* Floating Price Animations */}

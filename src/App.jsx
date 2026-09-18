@@ -1038,6 +1038,17 @@ function App() {
 
   // Create a new room (Host)
   const createRoom = () => {
+    // If running on Android device, launch native embedded Hotspot server!
+    if (typeof window !== 'undefined' && window.AndroidHostServer && window.AndroidHostServer.startHotspotServer) {
+      try {
+        console.log('[App] Starting native embedded Hotspot server on device...');
+        window.AndroidHostServer.startHotspotServer(3001);
+        updateServerUrl('http://localhost:3001');
+      } catch (e) {
+        console.warn('[App] Native server start error:', e);
+      }
+    }
+
     const socket = connectSocket();
     setNetworkMode('online');
     
@@ -1047,7 +1058,7 @@ function App() {
         avatar: myIdentity.avatar
       });
     } else {
-      showToast(`Connecting to game host (${serverUrl})...`);
+      showToast(`Creating room on this device...`);
       socket.once('connect', () => {
         socket.emit('create_room', {
           name: myIdentity.name,

@@ -10,10 +10,67 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private HotspotGameServer hotspotServer = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         hideSystemUI();
+        setupHotspotBridge();
+    }
+
+    private void setupHotspotBridge() {
+        if (bridge != null && bridge.getWebView() != null) {
+            bridge.getWebView().addJavascriptInterface(new Object() {
+                @android.webkit.JavascriptInterface
+                public boolean startHotspotServer(int port) {
+                    try {
+                        if (hotspotServer != null) {
+                            try { hotspotServer.stop(); } catch (Exception ignored) {}
+                        }
+                        hotspotServer = new HotspotGameServer(port > 0 ? port : 3001);
+                        hotspotServer.start();
+                        return true;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return false;
+                    }
+                }
+
+                @android.webkit.JavascriptInterface
+                public boolean stopHotspotServer() {
+                    try {
+                        if (hotspotServer != null) {
+                            hotspotServer.stop();
+                            hotspotServer = null;
+                        }
+                        return true;
+                    } catch (Exception e) {
+                        return false;
+                    }
+                }
+
+                @android.webkit.JavascriptInterface
+                public boolean isServerRunning() {
+                    return hotspotServer != null;
+                }
+
+                @android.webkit.JavascriptInterface
+                public String getHotspotGatewayIp() {
+                    return "192.168.43.1";
+                }
+            }, "AndroidHostServer");
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (hotspotServer != null) {
+            try {
+                hotspotServer.stop();
+            } catch (Exception ignored) {}
+        }
     }
 
     @Override

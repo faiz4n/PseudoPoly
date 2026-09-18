@@ -297,10 +297,11 @@ export default function MatchmakingView({
               </div>
 
               {/* Local Wi-Fi Multiplayer */}
+              {/* Hotspot Multiplayer (Mini Militia Style) */}
               <div 
                 className="mm-mode-card wifi"
                 onClick={() => {
-                  setNetworkType('wifi');
+                  setNetworkType('hotspot');
                   setNetworkMode('online');
                   setGameStage('online_menu');
                 }}
@@ -310,10 +311,10 @@ export default function MatchmakingView({
                 </div>
                 <div className="mm-mode-info">
                   <span className="mm-mode-badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24' }}>
-                    LOCAL WI-FI
+                    HOTSPOT MULTIPLAYER
                   </span>
-                  <div className="mm-mode-title">Wi-Fi Multiplayer</div>
-                  <p className="mm-mode-desc">Play with friends on the same Wi-Fi or mobile hotspot.</p>
+                  <div className="mm-mode-title">Hotspot Multiplayer</div>
+                  <p className="mm-mode-desc">Mini Militia style: Host directly on your phone hotspot. No PC or internet needed!</p>
                 </div>
                 <div className="mm-mode-arrow">→</div>
               </div>
@@ -355,7 +356,7 @@ export default function MatchmakingView({
                 ←
               </button>
               <h2 className="mm-header-title">
-                {networkType === 'wifi' ? 'LOCAL WI-FI ROOMS' : 'ONLINE ROOMS'}
+                {networkType === 'hotspot' ? 'HOTSPOT MULTIPLAYER' : (networkType === 'wifi' ? 'LOCAL WI-FI ROOMS' : 'ONLINE ROOMS')}
               </h2>
               <div className="mm-header-spacer" />
             </div>
@@ -367,7 +368,7 @@ export default function MatchmakingView({
                 <span className="mm-wifi-label">
                   {socketConnected ? 'Host Connected:' : 'Host Server:'}
                 </span>
-                <span className="mm-wifi-host">{serverUrl || 'localhost:3001'}</span>
+                <span className="mm-wifi-host">{serverUrl || '192.168.43.1:3001'}</span>
               </div>
               <button 
                 className="mm-wifi-cfg-btn"
@@ -381,15 +382,15 @@ export default function MatchmakingView({
             {/* Inline Host IP Config Card */}
             {showServerModal && (
               <div className="mm-wifi-card">
-                <div className="mm-wifi-card-title">Wi-Fi Host Address</div>
+                <div className="mm-wifi-card-title">Multiplayer Host Address</div>
                 <p className="mm-wifi-card-desc">
-                  Enter the IP address of the device hosting the game (e.g. computer on this Wi-Fi running the server).
+                  If connected to a friend's hotspot, select <b>Hotspot Host (192.168.43.1)</b>. If hosting on this phone, tap Host Room.
                 </p>
                 <div className="mm-wifi-input-row">
                   <input
                     type="text"
                     className="mm-wifi-input"
-                    placeholder="e.g. 192.168.1.43:3001"
+                    placeholder="e.g. 192.168.43.1:3001"
                     value={ipInput}
                     onChange={(e) => setIpInput(e.target.value)}
                   />
@@ -399,6 +400,14 @@ export default function MatchmakingView({
                 </div>
                 <div className="mm-wifi-presets">
                   <span className="mm-wifi-preset-label">Presets:</span>
+                  <button 
+                    type="button"
+                    className="mm-wifi-preset-chip" 
+                    style={{ background: 'rgba(251, 191, 36, 0.25)', borderColor: '#fbbf24', fontWeight: 'bold' }}
+                    onClick={() => { setIpInput('192.168.43.1:3001'); updateServerUrl('192.168.43.1:3001'); setShowServerModal(false); }}
+                  >
+                    📱 Hotspot Host (192.168.43.1)
+                  </button>
                   <button 
                     type="button"
                     className="mm-wifi-preset-chip" 
@@ -514,7 +523,7 @@ export default function MatchmakingView({
                   className="mm-primary-btn pulse"
                   onClick={initializeHost}
                 >
-                  <span>CREATE ROOM</span>
+                  <span>{typeof window !== 'undefined' && window.AndroidHostServer ? 'HOST GAME ON THIS PHONE' : 'CREATE ROOM'}</span>
                   <span>✨</span>
                 </button>
               </div>

@@ -120,9 +120,49 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('players_updated', { players: rooms[roomCode].players });
   });
 
+  // Query info for LAN / Wi-Fi discovery
+  socket.on('query_info', () => {
+    const activeCode = Object.keys(rooms)[0];
+    if (activeCode && rooms[activeCode]) {
+      const room = rooms[activeCode];
+      socket.emit('room_info', {
+        roomCode: activeCode,
+        hostName: room.players[0]?.name || 'Host',
+        players: room.players.length,
+        maxPlayers: 4,
+        status: 'lobby'
+      });
+    } else {
+      socket.emit('room_info', {
+        roomCode: '',
+        hostName: 'Ready to Host',
+        players: 0,
+        maxPlayers: 4,
+        status: 'open'
+      });
+    }
+  });
+
+  // Client toggles Ready state in lobby
+  socket.on('toggle_ready', () => {
+    const roomCode = socket.roomCode;
+    const room = rooms[roomCode];
+    if (room && socket.playerIndex !== undefined) {
+      const p = room.players[socket.playerIndex];
+      if (p && !p.isHost) {
+        p.isReady = !p.isReady;
+        io.to(roomCode).emit('players_updated', { players: room.players });
+      }
+    }
+  });
+
   // Client joins an existing room
   socket.on('join_room', ({ roomCode, name, avatar }) => {
-    const cleanRoomCode = String(roomCode || '').trim();
+    let cleanRoomCode = String(roomCode || '').trim();
+    if (!cleanRoomCode) {
+      // Auto-pick first available room (Mini Militia 1-tap join)
+      cleanRoomCode = Object.keys(rooms)[0] || '';
+    }
     const room = rooms[cleanRoomCode];
     
     if (!room) {

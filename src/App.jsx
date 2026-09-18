@@ -4984,7 +4984,7 @@ function App() {
             setRoomCode('');
             setConnectedPlayers([]);
             setMyPlayerIndex(null);
-            setGameStage('online_menu');
+            setGameStage('menu');
             setNetworkMode('offline');
           }}
           showToast={showToast}
@@ -4999,6 +4999,11 @@ function App() {
           serverUrl={serverUrl}
           updateServerUrl={updateServerUrl}
           socketConnected={socketConnected}
+          onToggleReady={() => {
+            if (socketRef.current) {
+              socketRef.current.emit('toggle_ready');
+            }
+          }}
         />
       )}
 

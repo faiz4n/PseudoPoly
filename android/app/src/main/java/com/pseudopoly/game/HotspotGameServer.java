@@ -25,6 +25,7 @@ public class HotspotGameServer extends WebSocketServer {
         public WebSocket conn;
         public boolean isHost;
         public boolean connected;
+        public boolean isReady = false;
 
         public Player(int id, String name, String avatar, WebSocket conn, boolean isHost) {
             this.id = id;
@@ -33,6 +34,7 @@ public class HotspotGameServer extends WebSocketServer {
             this.conn = conn;
             this.isHost = isHost;
             this.connected = true;
+            this.isReady = isHost; // Host is ready by default
         }
 
         public JSONObject toJson() {
@@ -43,6 +45,7 @@ public class HotspotGameServer extends WebSocketServer {
                 json.put("avatar", avatar);
                 json.put("isHost", isHost);
                 json.put("connected", connected);
+                json.put("isReady", isReady);
                 return json;
             } catch (Exception e) {
                 return new JSONObject();
@@ -175,8 +178,54 @@ public class HotspotGameServer extends WebSocketServer {
                     break;
                 }
 
+                case "query_info": {
+                    // Return info of active room for LAN/Hotspot discovery
+                    if (!rooms.isEmpty()) {
+                        GameRoom room = rooms.values().iterator().next();
+                        JSONObject info = new JSONObject();
+                        info.put("roomCode", room.roomCode);
+                        info.put("hostName", room.players.isEmpty() ? "Host" : room.players.get(0).name);
+                        info.put("players", room.players.size());
+                        info.put("maxPlayers", 4);
+                        info.put("status", "lobby");
+                        conn.send("42[\"room_info\"," + info.toString() + "]");
+                    } else {
+                        JSONObject info = new JSONObject();
+                        info.put("roomCode", "");
+                        info.put("hostName", "Ready to Host");
+                        info.put("players", 0);
+                        info.put("maxPlayers", 4);
+                        info.put("status", "open");
+                        conn.send("42[\"room_info\"," + info.toString() + "]");
+                    }
+                    break;
+                }
+
+                case "toggle_ready": {
+                    String roomCode = connectionRoomMap.get(conn);
+                    Integer playerIndex = connectionPlayerMap.get(conn);
+                    if (roomCode != null && rooms.containsKey(roomCode) && playerIndex != null) {
+                        GameRoom room = rooms.get(roomCode);
+                        if (room != null && playerIndex < room.players.size()) {
+                            Player p = room.players.get(playerIndex);
+                            if (!p.isHost) {
+                                p.isReady = !p.isReady;
+                                broadcastToRoom(room, "42[\"players_updated\",{\"players\":" + room.getPlayersJson().toString() + "}]", null);
+                                Log.i(TAG, "Player " + p.name + " ready state: " + p.isReady);
+                            }
+                        }
+                    }
+                    break;
+                }
+
                 case "join_room": {
                     String roomCode = String.valueOf(data.opt("roomCode")).trim();
+                    if (roomCode.isEmpty() || roomCode.equals("null") || roomCode.equals("undefined")) {
+                        // Auto-select first active room if no code passed (Mini Militia 1-tap join)
+                        if (!rooms.isEmpty()) {
+                            roomCode = rooms.keySet().iterator().next();
+                        }
+                    }
                     String name = data.optString("name", "Player");
                     String avatar = data.optString("avatar", "");
 

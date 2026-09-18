@@ -1,0 +1,238 @@
+/**
+ * lanDiscovery.js - Local Area Network (Wi-Fi / Hotspot) Game Discovery Service
+ * 
+ * Conceptually mimics classic Mini Militia LAN discovery:
+ * - Scans Android hotspot gateway (192.168.43.1:3001) and local subnets.
+ * - Bridges to native Android UDP broadcast listener if available.
+ * - Detects active Pseudo Poly game rooms automatically.
+ * - Yields discovered games to the UI without requiring manual IP entry or room codes.
+ */
+
+class LanDiscoveryService {
+  constructor() {
+    this.isScanning = false;
+    this.scanInterval = null;
+    this.discoveredGames = new Map();
+    this.onGameFoundCallback = null;
+    this.onStatusCallback = null;
+  }
+
+  /**
+   * Start scanning for nearby game rooms
+   * @param {Function} onGameFound - called whenever a game is found/updated
+   * @param {Function} onStatus - called with scanning status updates
+   */
+  startScan(onGameFound, onStatus) {
+    this.stopScan();
+    this.isScanning = true;
+    this.discoveredGames.clear();
+    this.onGameFoundCallback = onGameFound;
+    this.onStatusCallback = onStatus;
+
+    if (this.onStatusCallback) {
+      this.onStatusCallback('Searching for nearby games...');
+    }
+
+    // Run immediate scan cycle
+    this.runScanCycle();
+
+    // Repeat scan probe every 3.5 seconds while active
+    this.scanInterval = setInterval(() => {
+      if (this.isScanning) {
+        this.runScanCycle();
+      }
+    }, 3500);
+  }
+
+  /**
+   * Stop scanning
+   */
+  stopScan() {
+    this.isScanning = false;
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval);
+      this.scanInterval = null;
+    }
+    if (typeof window !== 'undefined' && window.AndroidHostServer?.stopUdpListener) {
+      try {
+        window.AndroidHostServer.stopUdpListener();
+      } catch (e) {
+        console.warn('[lanDiscovery] stopUdpListener error:', e);
+      }
+    }
+  }
+
+  /**
+   * Execute a single round of probing
+   */
+  async runScanCycle() {
+    // 1. Query Android Native UDP Listener if available
+    if (typeof window !== 'undefined' && window.AndroidHostServer?.getDiscoveredUdpGames) {
+      try {
+        const rawJson = window.AndroidHostServer.getDiscoveredUdpGames();
+        if (rawJson) {
+          const list = JSON.parse(rawJson);
+          if (Array.isArray(list)) {
+            list.forEach(game => this.registerDiscoveredGame(game));
+          }
+        }
+      } catch (e) {
+        console.warn('[lanDiscovery] Native UDP discovery parse error:', e);
+      }
+    }
+
+    // 2. Candidate targets to probe
+    const candidateHosts = [
+      '192.168.43.1:3001', // Standard Android Hotspot Gateway
+      'localhost:3001',    // Local phone or emulator
+    ];
+
+    // Add current origin hostname if running in browser
+    if (typeof window !== 'undefined' && window.location?.hostname) {
+      const h = window.location.hostname;
+      if (h && h !== 'localhost' && h !== '127.0.0.1' && h !== '192.168.43.1') {
+        candidateHosts.push(`${h}:3001`);
+      }
+    }
+
+    // Add any previously configured host from localStorage
+    try {
+      const savedHost = localStorage.getItem('pseudopoly_server_url');
+      if (savedHost) {
+        const clean = savedHost.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+        if (!candidateHosts.includes(clean)) {
+          candidateHosts.push(clean);
+        }
+      }
+    } catch {}
+
+    // Probe candidate targets concurrently
+    await Promise.all(candidateHosts.map(target => this.probeTarget(target)));
+  }
+
+  /**
+   * Probe a specific target address via quick WebSocket handshake
+   */
+  probeTarget(targetAddress) {
+    return new Promise((resolve) => {
+      const cleanAddr = targetAddress.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+      const wsUrl = `ws://${cleanAddr}/socket.io/?EIO=4&transport=websocket`;
+
+      let socket;
+      const startTime = Date.now();
+      let resolved = false;
+
+      const finish = () => {
+        if (!resolved) {
+          resolved = true;
+          try {
+            if (socket) {
+              socket.onopen = null;
+              socket.onmessage = null;
+              socket.onerror = null;
+              socket.onclose = null;
+              socket.close();
+            }
+          } catch {}
+          resolve();
+        }
+      };
+
+      const timer = setTimeout(finish, 1800);
+
+      try {
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+          try {
+            socket.send('40'); // Connect to default namespace
+            socket.send('42["query_info",{}]');
+          } catch {}
+        };
+
+        socket.onmessage = (event) => {
+          const latency = Date.now() - startTime;
+          const msg = event.data;
+
+          if (typeof msg === 'string') {
+            // Check for room info packet: 42["room_info", {...}]
+            if (msg.startsWith('42')) {
+              try {
+                const parsed = JSON.parse(msg.substring(2));
+                if (parsed[0] === 'room_info' && parsed[1]) {
+                  const info = parsed[1];
+                  this.registerDiscoveredGame({
+                    id: cleanAddr,
+                    ip: cleanAddr.split(':')[0],
+                    port: cleanAddr.split(':')[1] || '3001',
+                    hostName: info.hostName || 'Nearby Host',
+                    roomCode: info.roomCode || '',
+                    players: info.players || 1,
+                    maxPlayers: info.maxPlayers || 4,
+                    latency: latency,
+                    targetUrl: `http://${cleanAddr}`,
+                    networkType: cleanAddr.includes('192.168.43.1') ? 'hotspot' : 'wifi',
+                  });
+                  clearTimeout(timer);
+                  finish();
+                  return;
+                }
+              } catch {}
+            }
+
+            // If we got an Engine.IO handshake "0{...}", the server is alive!
+            if (msg.startsWith('0')) {
+              this.registerDiscoveredGame({
+                id: cleanAddr,
+                ip: cleanAddr.split(':')[0],
+                port: cleanAddr.split(':')[1] || '3001',
+                hostName: cleanAddr.includes('192.168.43.1') ? 'Hotspot Host' : 'Nearby Host',
+                roomCode: '',
+                players: 1,
+                maxPlayers: 4,
+                latency: latency,
+                targetUrl: `http://${cleanAddr}`,
+                networkType: cleanAddr.includes('192.168.43.1') ? 'hotspot' : 'wifi',
+              });
+              clearTimeout(timer);
+              finish();
+            }
+          }
+        };
+
+        socket.onerror = finish;
+        socket.onclose = finish;
+      } catch (err) {
+        clearTimeout(timer);
+        finish();
+      }
+    });
+  }
+
+  /**
+   * Register or update a discovered game
+   */
+  registerDiscoveredGame(game) {
+    if (!game || !game.id) return;
+
+    this.discoveredGames.set(game.id, {
+      ...game,
+      lastSeen: Date.now(),
+    });
+
+    if (this.onGameFoundCallback) {
+      const allGames = Array.from(this.discoveredGames.values());
+      this.onGameFoundCallback(allGames);
+    }
+  }
+
+  /**
+   * Get list of currently discovered games
+   */
+  getDiscoveredGames() {
+    return Array.from(this.discoveredGames.values());
+  }
+}
+
+export const lanDiscovery = new LanDiscoveryService();
+export default lanDiscovery;

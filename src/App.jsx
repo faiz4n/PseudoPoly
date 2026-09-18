@@ -24,6 +24,7 @@ import bankIcon from './assets/bank.png';
 import './pawn.css';
 import './safe_animation.css';
 import './upgrades.css';
+import './propertyWar.css';
 import { RENT_DATA, TRAIN_RENT, TRAIN_TILES } from './data/rentData';
 import { CHANCE_CARDS } from './data/chanceCards';
 import { CHEST_CARDS } from './data/chestCards';
@@ -2180,12 +2181,21 @@ function App() {
 
     // Forced Auction (Index 31 - right column)
     if (tileIndex === 31) {
-      // Check if any owned properties have buildings
-      const allOwnedProperties = Object.keys(propertyOwnership).map(Number);
-      const propertiesWithBuildings = allOwnedProperties.filter(idx => (propertyLevels[idx] || 0) > 0);
+      // Rule: Only auctions single, owned property of other players.
+      // Not built houses, cannot break monopoly.
+      const allProperties = Object.keys(RENT_DATA).map(Number);
+      const eligibleProperties = allProperties.filter(tIdx => {
+        if (TRAIN_TILES.includes(tIdx)) return false;
+        const owner = effectiveOwnership[tIdx];
+        if (owner === undefined || owner === null) return false;
+        if (Number(owner) === playerIndex) return false; // Must be owned by other players
+        if ((propertyLevels[tIdx] || 0) > 0) return false; // Not built houses
+        if (hasMonopoly(tIdx, owner, effectiveOwnership)) return false; // Cannot break monopoly
+        return true;
+      });
       
-      if (propertiesWithBuildings.length === 0) {
-        showToast("No properties with buildings to auction!");
+      if (eligibleProperties.length === 0) {
+        showToast("No eligible properties to auction (cannot break monopolies or auction built houses)!");
         endTurn(playerIndex, false);
         return;
       }
@@ -3320,9 +3330,7 @@ function App() {
   
   const closeSettings = () => {
     setShowSettingsModal(false);
-    if (gameStage === 'playing') {
-      setShowMenuModal(true);
-    }
+    setShowMenuModal(false);
   };
   
   const handleExitGame = () => {
@@ -3863,6 +3871,77 @@ function App() {
   };
 
   // --- Property War Handlers ---
+  const handleWarLoanAndJoin = (playerIdx) => {
+    const fee = warMode === 'A' ? 3000 : 2000;
+    if (playerLoans[playerIdx]) {
+      showToast("Already have an active loan! Cannot take another.");
+      return;
+    }
+
+    const principal = fee;
+    const repay = Math.round(fee * 1.1); // 10% interest
+    const startTile = playerPositions[playerIdx] || 0;
+
+    const newLoan = {
+      principalAmount: principal,
+      repayAmount: repay,
+      lapsRemaining: 3,
+      loanStartTile: startTile
+    };
+
+    setPlayerLoans(prev => {
+      const updated = { ...prev, [playerIdx]: newLoan };
+      if (networkMode === 'online') sendGameAction('update_state', { playerLoans: updated });
+      return updated;
+    });
+
+    setPlayerMoney(prev => {
+      const updated = [...prev];
+      updated[playerIdx] += principal;
+      if (networkMode === 'online') sendGameAction('update_state', { playerMoney: updated });
+      return updated;
+    });
+
+    playBuySound();
+    setHistory(prev => [`🏦 ${gamePlayers[playerIdx].name} took a $${principal.toLocaleString()} loan to enter war!`, ...prev.slice(0, 9)]);
+
+    setTimeout(() => {
+      handleWarJoin(playerIdx);
+    }, 100);
+  };
+
+  const handleWarSkip = () => {
+    const fee = warMode === 'A' ? 3000 : 2000;
+    // Refund any players who already paid to join
+    if (warParticipants.length > 0) {
+      setPlayerMoney(prev => {
+        const updated = [...prev];
+        warParticipants.forEach(pIdx => {
+          updated[pIdx] += fee;
+        });
+        if (networkMode === 'online') sendGameAction('update_state', { playerMoney: updated });
+        return updated;
+      });
+
+      if (warMode === 'A') {
+        setCashStack(prev => Math.max(0, prev - (fee * warParticipants.length)));
+      } else {
+        setBattlePot(prev => Math.max(0, prev - (fee * warParticipants.length)));
+      }
+    }
+
+    setShowWarModal(false);
+    setWarPhase('idle');
+    setWarParticipants([]);
+    setWarRolls({});
+    setWarProperty(null);
+    setHistory(prev => [`🏳️ Property War concluded peacefully (skipped/cancelled).`, ...prev.slice(0, 9)]);
+    if (networkMode === 'online') {
+      sendGameAction('war_close', {});
+    }
+    endTurn(currentPlayer, false);
+  };
+
   const handleWarJoin = (playerIdx) => {
     const fee = warMode === 'A' ? 3000 : 2000;
     
@@ -4265,20 +4344,25 @@ function App() {
       if (tileIndex === 31) return; // Ignore self (Forced Auction tile)
       
       const property = RENT_DATA[tileIndex];
-      // Must be a valid property
       if (!property) return;
       
-      // Must be owned by SOMEONE
       const owner = propertyOwnership[tileIndex];
-      if (owner === undefined || owner === null) {
-         // Optional: Alert user "Must be an owned property"
-         return; 
+      if (owner === undefined || owner === null) return;
+      
+      const activeSelector = networkMode === 'online' ? myPlayerIndex : currentPlayer;
+      if (Number(owner) === activeSelector) {
+        showToast("You cannot auction your own property!");
+        return;
       }
       
-      // Must NOT be owned by me
-      if (Number(owner) === myPlayerIndex) {
-         // Optional: Alert user "You can't auction your own property!"
-         return;
+      if ((propertyLevels[tileIndex] || 0) > 0) {
+        showToast("Cannot auction this property: it has houses built!");
+        return;
+      }
+      
+      if (hasMonopoly(tileIndex, owner, propertyOwnership)) {
+        showToast("Cannot auction this property: cannot break a monopoly set!");
+        return;
       }
       
       // Valid selection
@@ -4331,7 +4415,7 @@ function App() {
   };
 
 
-  // Helper: Check if tile is selectable for auction (opponent-owned property)
+  // Helper: Check if tile is selectable for auction (single, owned property of other players, not built, cannot break monopoly)
   const isAuctionSelectable = (tileIndex) => {
     if (!isSelectingAuctionProperty) return false;
     
@@ -4342,8 +4426,13 @@ function App() {
     if (!property) return false; // Not a property
     const owner = propertyOwnership[tileIndex];
     if (owner === undefined || owner === null) return false; // Unowned
-    if (Number(owner) === myPlayerIndex) return false; // My property
-    return true; // Opponent's property - selectable!
+    
+    const activeSelector = networkMode === 'online' ? myPlayerIndex : currentPlayer;
+    if (Number(owner) === activeSelector) return false; // Cannot auction own property
+    if ((propertyLevels[tileIndex] || 0) > 0) return false; // Cannot auction built houses
+    if (hasMonopoly(tileIndex, owner, propertyOwnership)) return false; // Cannot break monopoly
+    
+    return true; // Single, unbuilt opponent property outside monopoly - selectable!
   };
   
   // Helper: Get style for auction selection mode (greyscale non-selectable tiles)
@@ -5035,13 +5124,10 @@ function App() {
         </div>
         
         <div className="corner robbank" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
-          <span className="rob-text">ROB</span>
           <img src={robBankIcon} alt="Rob Bank" className="corner-icon-center" />
-          <span className="bank-text">BANK</span>
         </div>
         
         <div className="corner jail" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
-          <span className="jail-text">JAIL</span>
           <img src={jailIcon} alt="Jail" className="corner-icon-center" />
         </div>
 
@@ -6290,356 +6376,240 @@ function App() {
         </div>
       )}
 
-      {/* Property War Modal */}
+      {/* Property War Modal - Rebuilt from Scratch */}
       {showWarModal && (
-        <div className="modal-overlay">
-          <div className="buy-modal war-modal">
+        <div className="war-square-overlay">
+          <div className="war-square-card">
             {/* Header */}
-            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #E91E63 0%, #C2185B 100%)' }}>
-              <span className="modal-heading-text">⚔️ PROPERTY WAR ⚔️</span>
+            <div className="war-square-header">
+              <div className="war-header-title">
+                <span>⚔️</span>
+                <span>PROPERTY WAR</span>
+              </div>
+              <div className="war-header-badge">
+                {warMode === 'A' ? '🏠 STANDARD' : '💰 CASH BATTLE'}
+              </div>
             </div>
-            
+
             {/* Body */}
-            <div className="modal-body">
-              {/* Join Phase */}
+            <div className="war-square-body">
+              {/* Top Info Strip */}
+              <div className="war-info-strip">
+                <span>
+                  {warMode === 'A'
+                    ? (warProperty ? `Prize: ${warProperty.name}` : 'Fee: $3,000 / entry')
+                    : 'Fee: $2,000 / entry'}
+                </span>
+                <span className="war-pot-val">
+                  {warMode === 'A'
+                    ? (warProperty ? `$${warProperty.price?.toLocaleString()}` : `Pot: $${cashStack.toLocaleString()}`)
+                    : `Battle Pot: $${battlePot.toLocaleString()}`}
+                </span>
+              </div>
+
+              {/* Phase 1: Join Phase */}
               {warPhase === 'join' && (
                 <>
-                  <div className="modal-city-name" style={{ fontSize: '18px', marginBottom: '10px' }}>
-                    {warMode === 'A' ? '🏠 STANDARD WAR' : '💰 CASH BATTLE'}
-                  </div>
-                  <div style={{ fontSize: '14px', marginBottom: '15px', color: '#5D4037', fontWeight: 'bold' }}>
-                    {warMode === 'A' 
-                      ? 'Pay $3,000 to compete for a random property!' 
-                      : 'All properties sold! Pay $2,000 to compete for the Battle Pot!'}
-                  </div>
-                  
-                  {/* Player Join Buttons */}
-                  <div className="war-join-list" style={{ marginBottom: '15px' }}>
-                    {gamePlayers.map((player, idx) => (
-                      <div key={idx} style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        padding: '8px',
-                        marginBottom: '6px',
-                        background: warParticipants.includes(idx) ? '#e8f5e9' : '#f5f5f5',
-                        borderRadius: '6px',
-                        border: warParticipants.includes(idx) ? '2px solid #4CAF50' : '1px solid #ddd'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <img src={player.avatar} alt={player.name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                          <span style={{ fontWeight: 'bold' }}>{player.name}</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {/* Join/Withdraw Button Logic */}
-                          {(networkMode !== 'online' || idx === myPlayerIndex) ? (
-                            !warParticipants.includes(idx) ? (
-                              <button 
-                                className="modal-btn buy" 
-                                style={{ padding: '6px 12px', fontSize: '12px' }}
-                                onClick={() => handleWarJoin(idx)}
-                                disabled={playerMoney[idx] < (warMode === 'A' ? 3000 : 2000)}
-                              >
-                                JOIN (${warMode === 'A' ? '3,000' : '2,000'})
-                              </button>
+                  {/* Combatant Roster Grid */}
+                  <div className="war-combatant-grid">
+                    {gamePlayers.map((player, idx) => {
+                      if (bankruptPlayers[idx]) return null;
+                      const isJoined = warParticipants.includes(idx);
+                      const fee = warMode === 'A' ? 3000 : 2000;
+                      const hasCash = playerMoney[idx] >= fee;
+                      const canTakeLoan = !playerLoans[idx];
+                      const isMyAction = networkMode !== 'online' || idx === myPlayerIndex;
+
+                      return (
+                        <div key={idx} className={`war-player-pill ${isJoined ? 'joined' : ''}`}>
+                          <div className="war-player-info">
+                            <img src={player.avatar} alt={player.name} className="war-avatar" />
+                            <div className="war-names">
+                              <span className="war-name">{player.name}</span>
+                              <span className="war-balance">${playerMoney[idx].toLocaleString()}</span>
+                            </div>
+                          </div>
+
+                          <div className="war-player-actions">
+                            {isJoined ? (
+                              isMyAction ? (
+                                <button className="war-btn-mini war-btn-withdraw" onClick={() => handleWarWithdraw(idx)}>
+                                  LEAVE
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: '10px', color: '#81c784', fontWeight: 800 }}>READY ✓</span>
+                              )
                             ) : (
-                              <button 
-                                className="modal-btn cancel" 
-                                style={{ padding: '6px 12px', fontSize: '12px' }}
-                                onClick={() => handleWarWithdraw(idx)}
-                              >
-                                WITHDRAW
-                              </button>
-                            )
-                          ) : (
-                            <span style={{ fontSize: '12px', color: '#5D4037', fontWeight: 'bold', fontStyle: 'italic' }}>
-                              {warParticipants.includes(idx) ? 'Joined' : 'Thinking...'}
-                            </span>
-                          )}
+                              isMyAction ? (
+                                hasCash ? (
+                                  <button className="war-btn-mini war-btn-join" onClick={() => handleWarJoin(idx)}>
+                                    JOIN (${(fee / 1000)}k)
+                                  </button>
+                                ) : canTakeLoan ? (
+                                  <button className="war-btn-mini war-btn-loan" onClick={() => handleWarLoanAndJoin(idx)} title="Take $3k Bank Loan & Join">
+                                    LOAN & JOIN
+                                  </button>
+                                ) : (
+                                  <button className="war-btn-mini war-btn-deal" onClick={() => { setShowWarModal(false); setShowDealModal(true); }} title="Trade properties for cash">
+                                    DEAL
+                                  </button>
+                                )
+                              ) : (
+                                <span style={{ fontSize: '9px', color: '#aaa', fontStyle: 'italic' }}>Pending</span>
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                  
-                  <div className="modal-buttons" style={{ gap: '10px' }}>
+
+                  {/* Footer Controls */}
+                  <div className="war-footer-bar">
                     {(networkMode !== 'online' || myPlayerIndex === currentPlayer) ? (
                       <>
-                        <button 
-                          className="modal-btn cancel" 
-                          onClick={() => {
-                            sendGameAction('war_close', {});
-                            setShowWarModal(false);
-                            setWarPhase('idle');
-                          }}
-                          style={{ flex: 1 }}
-                        >
-                          CANCEL
+                        <button className="war-btn-main war-btn-skip" onClick={handleWarSkip}>
+                          {warParticipants.length === 0 ? 'SKIP WAR' : 'CANCEL WAR'}
                         </button>
-                        <button 
-                          className="modal-btn buy" 
+                        <button
+                          className="war-btn-main war-btn-start"
                           onClick={handleWarStartProgress}
                           disabled={warParticipants.length < 2}
-                          style={{ flex: 2, background: warParticipants.length >= 2 ? '#8B0000' : '#ccc' }}
                         >
-                          START WAR ({warParticipants.length})
+                          {warParticipants.length < 2
+                            ? `NEED 2 PLAYERS (${warParticipants.length}/2)`
+                            : `START WAR (${warParticipants.length}) ⚔️`}
                         </button>
                       </>
                     ) : (
-                      <div style={{ color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic', textAlign: 'center', width: '100%' }}>
+                      <div style={{ textAlign: 'center', width: '100%', fontSize: '11px', color: '#ffcc80', fontWeight: 700 }}>
                         Waiting for {gamePlayers[currentPlayer]?.name} to start...
                       </div>
                     )}
                   </div>
                 </>
               )}
-              
-              {/* Progress Phase (Mode A only) */}
+
+              {/* Phase 2: Selection / Roulette (Mode A) */}
               {warPhase === 'progress' && (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <div className="modal-city-name" style={{ fontSize: '20px', marginBottom: '20px' }}>SELECTING PROPERTY...</div>
-                  <div style={{ 
-                    width: '100%', 
-                    height: '20px', 
-                    backgroundColor: '#eee', 
-                    borderRadius: '10px', 
-                    overflow: 'hidden'
-                  }}>
-                    <div 
-                      className="war-progress-bar"
-                      style={{ 
-                        width: '0%',
-                        height: '100%', 
-                        backgroundColor: '#E91E63',
-                        borderRadius: '10px',
-                        animation: 'warProgressFill 3s ease-out forwards'
-                      }}
-                    ></div>
+                <div className="war-roulette-container">
+                  <div style={{ fontSize: '12px', color: '#ffb300', fontWeight: 800, marginBottom: '6px' }}>
+                    🎰 SELECTING WAR PRIZE PROPERTY...
                   </div>
-                  <style>{`
-                    @keyframes warProgressFill {
-                      from { width: 0%; }
-                      to { width: 100%; }
-                    }
-                  `}</style>
+                  <div className="war-prize-card">
+                    <span style={{ fontSize: '24px' }}>🏆</span>
+                    <span className="war-prize-name">RANDOMLY CHOOSING...</span>
+                    <span className="war-prize-price">Prize worth up to $2,500</span>
+                  </div>
                 </div>
               )}
-              
-              {/* Reveal Phase */}
+
+              {/* Phase 3: Reveal Prize Property */}
               {warPhase === 'reveal' && warProperty && (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <div style={{ fontSize: '16px', color: '#5D4037', fontWeight: 'bold', marginBottom: '10px' }}>The war is for...</div>
-                  <div className="modal-city-name" style={{ fontSize: '28px', color: '#8B0000' }}>
-                    {warProperty.name}
+                <div className="war-roulette-container">
+                  <div style={{ fontSize: '11px', color: '#ffca28', fontWeight: 800, marginBottom: '4px' }}>
+                    ⚔️ FIGHTING FOR PROPERTY ⚔️
                   </div>
-                  <div style={{ fontSize: '14px', color: '#5D4037', fontWeight: 'bold', marginTop: '10px' }}>
-                    (Worth ${warProperty.price?.toLocaleString()})
+                  <div className="war-prize-card">
+                    <span style={{ fontSize: '24px' }}>🏠</span>
+                    <span className="war-prize-name">{warProperty.name}</span>
+                    <span className="war-prize-price">Value: ${warProperty.price?.toLocaleString()}</span>
                   </div>
                 </div>
               )}
-              
-              {/* Roll Phase - Ready to start */}
-              {/* Tie Phase */}
+
+              {/* Phase 4: Tie Rematch Banner */}
               {warPhase === 'tie' && (
-                <div className="war-tie-container">
-                  <div style={{ fontSize: '32px', marginBottom: '2px' }}>⚔️</div>
-                  <div className="war-tie-banner">
-                    {warTieMessage || "IT'S A TIE!"}
+                <div className="war-tie-alert">
+                  <span style={{ fontSize: '20px' }}>⚔️ TIE! ⚔️</span>
+                  <div style={{ fontSize: '13px', fontWeight: 900, color: '#fff' }}>
+                    {warTieMessage || "SUDDEN-DEATH REMATCH!"}
                   </div>
-                  
-                  {/* Highlighted Tied Players Cards */}
-                  {(() => {
-                    const tiedList = (warTiedPlayers && warTiedPlayers.length > 0)
-                      ? warTiedPlayers
-                      : (() => {
-                          if (!warRolls || Object.keys(warRolls).length === 0) return [];
-                          const max = Math.max(...Object.values(warRolls));
-                          return Object.entries(warRolls).filter(([_, r]) => r === max).map(([p]) => parseInt(p));
-                        })();
-                    return (
-                      <div className="war-tied-players-row">
-                        {tiedList.map((pIdx, index) => {
-                          const player = gamePlayers[pIdx];
-                          if (!player) return null;
-                          const score = warTieRoll || warRolls[pIdx];
-                          return (
-                            <div key={pIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {index > 0 && <span className="war-tie-vs">VS</span>}
-                              <div className="war-tied-player-card">
-                                <img src={player.avatar} alt={player.name} className="avatar-ring" />
-                                <span className="player-name">{player.name}</span>
-                                {score !== undefined && score !== null && (
-                                  <span className="tied-score">🎲 {score}</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-
-                  <div className="war-tie-subtitle" style={{ marginTop: '4px' }}>
-                    ⚡ Sudden-death rematch starting...
+                  <div style={{ fontSize: '11px', color: '#ffe082' }}>
+                    Rolling again between tied warriors...
                   </div>
                 </div>
               )}
 
-              {/* Roll Phase & Evaluating Phase (Combined) */}
+              {/* Phase 5: Live Dice Rolling */}
               {(warPhase === 'roll' || warPhase === 'rolling' || warPhase === 'evaluating') && (
-                <div style={{ textAlign: 'center', padding: '4px 0' }}>
-                  <div className="modal-city-name" style={{ fontSize: '16px', marginBottom: '6px' }}>
+                <div className="war-roll-stage">
+                  <div className="war-turn-callout">
                     {warPhase === 'evaluating'
-                      ? '⏳ Calculating Result...'
+                      ? '⏳ Calculating Winner...'
                       : (warCurrentRoller !== null && gamePlayers[warParticipants[warCurrentRoller]])
-                        ? `${gamePlayers[warParticipants[warCurrentRoller]]?.name}'s Turn`
-                        : '🎲 Roll Dice'}
+                        ? `🎲 ${gamePlayers[warParticipants[warCurrentRoller]]?.name}'s Turn to Roll`
+                        : '🎲 Roll to Win!'}
                   </div>
-                  
-                  {/* Dice Display */}
-                  <div className="dice-container" style={{ margin: '4px 0', justifyContent: 'center' }}>
-                    <div className={`dice ${warIsRolling ? 'rolling-left' : ''}`}>
+
+                  {/* Dice Arena */}
+                  <div className="war-dice-arena">
+                    <div className={`war-die ${warIsRolling ? 'rolling' : ''}`}>
                       {renderDiceDots(warDiceValues[0])}
                     </div>
-                    <div className={`dice ${warIsRolling ? 'rolling-right' : ''}`}>
+                    <div className={`war-die ${warIsRolling ? 'rolling' : ''}`}>
                       {renderDiceDots(warDiceValues[1])}
                     </div>
                   </div>
-                  
-                  {/* Previous Rolls */}
-                  {Object.keys(warRolls).length > 0 && (
-                    <div className="war-rolling-list" style={{ margin: '4px 0' }}>
-                      {Object.entries(warRolls).map(([idx, roll]) => (
-                        <div key={idx} style={{ 
-                          padding: '4px 8px', 
-                          marginBottom: '3px',
-                          background: '#f0f0f0',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          fontWeight: 'bold',
-                          fontSize: '13px'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <img src={gamePlayers[parseInt(idx)]?.avatar} alt={gamePlayers[parseInt(idx)]?.name} style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
-                            <span>{gamePlayers[parseInt(idx)]?.name}</span>
-                          </div>
-                          <span>🎲 {roll}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  <div className="modal-buttons" style={{ marginTop: '4px' }}>
-                    {warPhase === 'evaluating' ? (
-                      <div className="war-evaluating-notice">
-                        ⏳ All rolls in! Determining winner...
-                      </div>
-                    ) : warCurrentRoller !== null ? (
-                      <button 
-                        className="modal-btn buy" 
-                        onClick={handleWarDoRoll}
-                        disabled={warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)}
-                        style={{ 
-                          width: '100%', 
-                          background: (warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)) ? '#ccc' : '#8B0000',
-                          cursor: (warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)) ? 'not-allowed' : 'pointer',
-                          padding: '8px 12px',
-                          fontSize: '14px'
-                        }}
-                      >
-                        {warIsRolling ? 'ROLLING...' : (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex) ? `Waiting for ${gamePlayers[warParticipants[warCurrentRoller]]?.name}...` : '🎲 ROLL!'}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              )}
-              
-              {/* Result Phase */}
-              {warPhase === 'result' && (
-                <div className="war-result-container">
-                  {/* Winner Announcement */}
-                  {(() => {
-                    const calculatedWinner = (warWinner !== null && warWinner !== undefined)
-                      ? warWinner
-                      : (Object.keys(warRolls).length > 0 ? parseInt(Object.entries(warRolls).reduce((a, b) => b[1] > a[1] ? b : a)[0]) : null);
-                    if (calculatedWinner === null || calculatedWinner === undefined || !gamePlayers[calculatedWinner]) return null;
-                    const winnerPlayer = gamePlayers[calculatedWinner];
-                    return (
-                      <div className="war-winner-section">
-                        <div style={{ fontSize: '32px', marginBottom: '4px' }}>🏆</div>
-                        <div className="modal-city-name" style={{ 
-                          fontSize: '18px', 
-                          color: '#E91E63', 
-                          marginBottom: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px'
-                        }}>
-                          {winnerPlayer.avatar && (
-                            <img 
-                              src={winnerPlayer.avatar} 
-                              alt={winnerPlayer.name} 
-                              style={{ 
-                                width: '32px', 
-                                height: '32px', 
-                                borderRadius: '50%',
-                                border: '2px solid #FFD700',
-                                boxShadow: '0 0 10px rgba(255, 215, 0, 0.7)'
-                              }} 
-                            />
-                          )}
-                          <span>{winnerPlayer.name} WINS!</span>
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#5D4037', fontWeight: 'bold', marginBottom: '8px' }}>
-                          {warMode === 'A' && warProperty 
-                            ? `Won "${warProperty.name}"` 
-                            : `Won $${battlePot.toLocaleString()}`}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  
-                  {/* Show all rolls */}
-                  <div className="war-roll-list">
-                    {Object.entries(warRolls).map(([playerIdx, roll]) => {
-                      const isWinner = roll === Math.max(...Object.values(warRolls));
+
+                  {/* Live Roll Scoreboard */}
+                  <div className="war-score-strip">
+                    {warParticipants.map(pIdx => {
+                      const p = gamePlayers[pIdx];
+                      const roll = warRolls[pIdx];
+                      const isCurrent = warCurrentRoller !== null && warParticipants[warCurrentRoller] === pIdx;
                       return (
-                        <div key={playerIdx} style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between',
-                          padding: '6px 10px',
-                          marginBottom: '3px',
-                          background: isWinner 
-                            ? 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)' 
-                            : 'linear-gradient(135deg, #FFB74D 0%, #FF9800 100%)',
-                          borderRadius: '6px',
-                          color: '#fff',
-                          fontWeight: 'bold',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                          fontSize: '13px'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <img src={gamePlayers[parseInt(playerIdx)]?.avatar} alt={gamePlayers[parseInt(playerIdx)]?.name} style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
-                            <span>
-                              {gamePlayers[parseInt(playerIdx)]?.name}{isWinner && ' 👑'}
-                            </span>
-                          </div>
-                          <span>
-                            🎲 {roll}
-                          </span>
+                        <div key={pIdx} className={`war-score-item ${roll !== undefined ? 'rolled' : ''} ${isCurrent ? 'active' : ''}`}>
+                          <img src={p?.avatar} alt={p?.name} style={{ width: '18px', height: '18px', borderRadius: '50%' }} />
+                          <span style={{ fontSize: '9px', fontWeight: 800, color: '#ddd' }}>{p?.name?.split(' ')[0]}</span>
+                          <span className="war-score-val">{roll !== undefined ? `🎲 ${roll}` : (isCurrent ? '...' : '-')}</span>
                         </div>
                       );
                     })}
                   </div>
-                  
-                  <div className="modal-buttons" style={{ marginTop: '6px' }}>
-                    <button 
-                      className="modal-btn buy" 
-                      onClick={handleWarComplete}
-                      style={{ width: '100%', background: '#4CAF50', padding: '8px 12px', fontSize: '14px' }}
-                    >
-                      CONFIRM
+
+                  {/* Action Button */}
+                  <div className="war-footer-bar" style={{ width: '100%', marginTop: '6px' }}>
+                    {warPhase === 'evaluating' ? (
+                      <div style={{ width: '100%', textAlign: 'center', color: '#ffe082', fontWeight: 800, fontSize: '12px' }}>
+                        All rolls in! Finalizing...
+                      </div>
+                    ) : warCurrentRoller !== null && (
+                      <button
+                        className="war-btn-main war-btn-start"
+                        onClick={handleWarDoRoll}
+                        disabled={warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)}
+                      >
+                        {warIsRolling ? 'ROLLING...' : (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex) ? `Waiting for ${gamePlayers[warParticipants[warCurrentRoller]]?.name}...` : '🎲 ROLL DICE!'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Phase 6: Result / Victory */}
+              {warPhase === 'result' && (
+                <div className="war-victory-card">
+                  <div className="war-trophy">🏆</div>
+                  {(() => {
+                    const winnerIdx = warWinner !== null ? warWinner : (warParticipants[0] ?? 0);
+                    const winnerPlayer = gamePlayers[winnerIdx];
+                    return (
+                      <>
+                        <div className="war-winner-name">
+                          {winnerPlayer?.name} WINS!
+                        </div>
+                        <div className="war-reward-text">
+                          {warMode === 'A' && warProperty
+                            ? `Awarded "${warProperty.name}" (Free Property!)`
+                            : `Claimed $${battlePot.toLocaleString()} Battle Pot!`}
+                        </div>
+                      </>
+                    );
+                  })()}
+                  <div className="war-footer-bar" style={{ width: '100%', marginTop: '10px' }}>
+                    <button className="war-btn-main war-btn-start" onClick={handleWarComplete} style={{ background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)', border: '2px solid #81c784' }}>
+                      COLLECT & CONTINUE ✓
                     </button>
                   </div>
                 </div>
@@ -6802,8 +6772,9 @@ function App() {
                <span className="modal-heading-text">INSTRUCTION</span>
              </div>
              <div className="modal-body">
-               <div style={{ textAlign: 'center', margin: '20px 0', fontSize: '16px' }}>
-                 Tap any opponent's property to auction it!
+               <div style={{ textAlign: 'center', margin: '20px 0', fontSize: '15px', lineHeight: '1.4' }}>
+                 Tap any single, unbuilt opponent property to auction it!<br/>
+                 <span style={{ fontSize: '12px', color: '#666' }}>(Cannot auction built houses or break monopolies)</span>
                </div>
                <div className="modal-buttons">
                  <button 

@@ -1185,6 +1185,25 @@ function handleWarJoin(room, playerIndex) {
   // Check if already joined
   if (room.gameState.warState.participants.includes(playerIndex)) return;
   
+  // Check funds or allow auto war loan if eligible
+  if (room.gameState.playerMoney[playerIndex] < fee) {
+    if (!room.gameState.playerLoans || !room.gameState.playerLoans[playerIndex]) {
+      if (!room.gameState.playerLoans) room.gameState.playerLoans = {};
+      room.gameState.playerLoans[playerIndex] = {
+        principalAmount: fee,
+        repayAmount: Math.round(fee * 1.1),
+        lapsRemaining: 3,
+        loanStartTile: room.gameState.playerPositions[playerIndex] || 0
+      };
+      room.gameState.playerMoney[playerIndex] += fee;
+      room.gameState.history.unshift(
+        `🏦 ${room.players[playerIndex]?.name || 'Player'} took a $${fee.toLocaleString()} war loan!`
+      );
+    } else {
+      return; // Cannot afford and already has an active loan
+    }
+  }
+
   // Deduct fee
   room.gameState.playerMoney[playerIndex] -= fee;
   
@@ -1393,6 +1412,18 @@ function handleWarRoll(room) {
 }
 
 function handleWarClose(room) {
+  if (room.gameState.warState && room.gameState.warState.participants && room.gameState.warState.participants.length > 0 && room.gameState.warState.phase === 'join') {
+    const fee = room.gameState.warState.mode === 'A' ? 3000 : 2000;
+    room.gameState.warState.participants.forEach(pIdx => {
+      room.gameState.playerMoney[pIdx] += fee;
+    });
+    if (room.gameState.warState.mode === 'A') {
+      room.gameState.cashStack = Math.max(0, room.gameState.cashStack - (fee * room.gameState.warState.participants.length));
+    } else {
+      room.gameState.battlePot = Math.max(0, room.gameState.battlePot - (fee * room.gameState.warState.participants.length));
+    }
+  }
+
   room.gameState.warState = {
     active: false,
     mode: 'A',

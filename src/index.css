@@ -196,8 +196,9 @@ body {
 .corner.jail {
   top: 0;
   right: 0;
-  justify-content: flex-start;
-  padding-top: 6px;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
 }
 
 .corner.jail .jail-text {
@@ -1770,20 +1771,18 @@ body {
   }
 
   .tile .tile-name {
-    font-size: clamp(6.5px, 1.8vh, 8.5px) !important;
-    line-height: 1.05 !important;
-    max-height: 2.15em !important;
+    font-size: clamp(7.5px, 2vh, 10px) !important;
+    line-height: 1.1 !important;
+    max-height: 2.5em !important;
     -webkit-text-stroke: 0px !important;
-    letter-spacing: 0.1px !important;
-    padding: 1px 1px 0 !important;
+    letter-spacing: 0.15px !important;
+    padding: 1px 2px 0 !important;
     text-align: center !important;
     width: 100% !important;
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
+    white-space: normal !important;
     overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    word-break: break-word !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
   }
 
   .tile .tile-price {
@@ -1799,12 +1798,12 @@ body {
   }
 
   .tile .tile-icon {
-    width: clamp(13px, 3.5vh, 17px) !important;
-    height: clamp(13px, 3.5vh, 17px) !important;
+    width: clamp(12px, 3.2vh, 16px) !important;
+    height: clamp(12px, 3.2vh, 16px) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    top: 48% !important;
+    top: 50% !important;
   }
 
   .tile .tile-icon svg {
@@ -1813,11 +1812,15 @@ body {
   }
 
   .tile.vertical .tile-name {
-    font-size: clamp(7px, 1.9vh, 8.5px) !important;
-    line-height: 1.05 !important;
-    max-height: 2.15em !important;
-    max-width: 96% !important;
+    font-size: clamp(7.5px, 2vh, 10px) !important;
+    line-height: 1.1 !important;
+    max-height: 2.5em !important;
+    max-width: 98% !important;
     padding: 1px 2px 0 !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
   }
 
   /* Corner fonts - match tile size */

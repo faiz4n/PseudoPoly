@@ -5015,8 +5015,15 @@ function App() {
           startGame={startGame}
           onLeaveRoom={() => {
             if (socketRef.current) {
+              try { socketRef.current.emit('leave_room'); } catch {}
               socketRef.current.disconnect();
               socketRef.current = null;
+            }
+            if (typeof window !== 'undefined' && window.AndroidHostServer) {
+              try {
+                window.AndroidHostServer.updateRoomInfo('', '', 0);
+                window.AndroidHostServer.stopHotspotServer();
+              } catch (e) {}
             }
             setRoomCode('');
             setConnectedPlayers([]);

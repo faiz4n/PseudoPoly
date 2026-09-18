@@ -89,10 +89,19 @@ io.on('connection', (socket) => {
 
   // Host creates a new room
   socket.on('create_room', ({ name, avatar }) => {
+    // Clean up any old rooms where no players are connected
+    for (const code of Object.keys(rooms)) {
+      if (!rooms[code].players || !rooms[code].players.some(p => p.connected)) {
+        console.log(`[SERVER] Purging stale room ${code}`);
+        delete rooms[code];
+      }
+    }
+
     const roomCode = generateRoomCode();
     
     rooms[roomCode] = {
       roomCode: roomCode, // Store roomCode for reliable broadcasts
+      createdAt: Date.now(),
       gameState: createInitialGameState(),
       players: [{
         id: 0,
@@ -122,13 +131,18 @@ io.on('connection', (socket) => {
 
   // Query info for LAN / Wi-Fi discovery
   socket.on('query_info', () => {
-    const activeCode = Object.keys(rooms)[0];
+    // Find latest room that actually has active connected players
+    const activeCode = Object.keys(rooms).reverse().find(code => {
+      const r = rooms[code];
+      return r && r.players && r.players.some(p => p.connected);
+    });
+
     if (activeCode && rooms[activeCode]) {
       const room = rooms[activeCode];
       socket.emit('room_info', {
         roomCode: activeCode,
         hostName: room.players[0]?.name || 'Host',
-        players: room.players.length,
+        players: room.players.filter(p => p.connected).length,
         maxPlayers: 4,
         status: 'lobby'
       });
@@ -160,8 +174,11 @@ io.on('connection', (socket) => {
   socket.on('join_room', ({ roomCode, name, avatar }) => {
     let cleanRoomCode = String(roomCode || '').trim();
     if (!cleanRoomCode) {
-      // Auto-pick first available room (Mini Militia 1-tap join)
-      cleanRoomCode = Object.keys(rooms)[0] || '';
+      // Auto-pick latest active room with connected players (Mini Militia 1-tap join)
+      cleanRoomCode = Object.keys(rooms).reverse().find(code => {
+        const r = rooms[code];
+        return r && r.players && r.players.some(p => p.connected);
+      }) || '';
     }
     const room = rooms[cleanRoomCode];
     

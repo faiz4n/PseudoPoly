@@ -150,6 +150,10 @@ public class HotspotGameServer extends WebSocketServer {
         try {
             switch (event) {
                 case "create_room": {
+                    rooms.clear();
+                    connectionRoomMap.clear();
+                    connectionPlayerMap.clear();
+
                     String name = data.optString("name", "Host");
                     String avatar = data.optString("avatar", "");
 

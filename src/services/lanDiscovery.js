@@ -122,8 +122,29 @@ class LanDiscoveryService {
       }
     } catch {}
 
+    // Clean any games not seen in the last 4.5 seconds
+    this.cleanStaleGames();
+
     // Probe candidate targets concurrently
     await Promise.all(candidateHosts.map(target => this.probeTarget(target)));
+    this.cleanStaleGames();
+  }
+
+  /**
+   * Remove games that haven't been detected in the last 4.5 seconds
+   */
+  cleanStaleGames() {
+    const now = Date.now();
+    let changed = false;
+    for (const [id, game] of this.discoveredGames.entries()) {
+      if (now - (game.lastSeen || 0) > 4500) {
+        this.discoveredGames.delete(id);
+        changed = true;
+      }
+    }
+    if (changed && this.onGameFoundCallback) {
+      this.onGameFoundCallback(Array.from(this.discoveredGames.values()));
+    }
   }
 
   /**
@@ -144,12 +165,12 @@ class LanDiscoveryService {
           try {
             if (socket) {
               socket.onmessage = null;
+              socket.onerror = null;
+              socket.onclose = null;
               if (socket.readyState === WebSocket.OPEN) {
                 try { socket.close(); } catch {}
               } else if (socket.readyState === WebSocket.CONNECTING) {
                 socket.onopen = () => { try { socket.close(); } catch {} };
-                socket.onerror = () => {};
-                socket.onclose = () => {};
               }
             }
           } catch {}
@@ -157,7 +178,7 @@ class LanDiscoveryService {
         }
       };
 
-      const timer = setTimeout(finish, 2500);
+      const timer = setTimeout(finish, 2000);
 
       try {
         socket = new WebSocket(wsUrl);
@@ -201,7 +222,6 @@ class LanDiscoveryService {
                 }
               } catch {}
             }
-            // Note: msg.startsWith('0') is the Engine.IO handshake, wait for room_info
           }
         };
 
@@ -218,7 +238,7 @@ class LanDiscoveryService {
    * Register or update a discovered game
    */
   registerDiscoveredGame(game) {
-    if (!game || !game.id) return;
+    if (!game || !game.id || !game.roomCode) return;
 
     this.discoveredGames.set(game.id, {
       ...game,

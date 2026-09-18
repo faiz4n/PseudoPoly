@@ -130,6 +130,7 @@ public class MainActivity extends BridgeActivity {
                             gameObj.put("ip", senderIp);
                             gameObj.put("targetUrl", "http://" + senderIp + ":" + port);
                             gameObj.put("id", senderIp + ":" + port);
+                            gameObj.put("timestamp", System.currentTimeMillis());
                             
                             discoveredUdpGames.put(senderIp + ":" + port, gameObj);
                         } catch (Exception ignored) {}
@@ -177,6 +178,9 @@ public class MainActivity extends BridgeActivity {
                 public boolean stopHotspotServer() {
                     try {
                         stopUdpBeacon();
+                        currentRoomCode = "";
+                        currentHostName = "PseudoPoly Host";
+                        currentPlayersCount = 1;
                         if (hotspotServer != null) {
                             hotspotServer.stop();
                             hotspotServer = null;
@@ -189,7 +193,11 @@ public class MainActivity extends BridgeActivity {
 
                 @android.webkit.JavascriptInterface
                 public void updateRoomInfo(String roomCode, String hostName, int players) {
-                    if (roomCode != null && !roomCode.isEmpty()) currentRoomCode = roomCode;
+                    if (roomCode != null && !roomCode.isEmpty()) {
+                        currentRoomCode = roomCode;
+                    } else {
+                        currentRoomCode = "";
+                    }
                     if (hostName != null && !hostName.isEmpty()) currentHostName = hostName;
                     if (players > 0) currentPlayersCount = players;
                 }
@@ -221,9 +229,19 @@ public class MainActivity extends BridgeActivity {
                 @android.webkit.JavascriptInterface
                 public String getDiscoveredUdpGames() {
                     startUdpListener();
+                    long now = System.currentTimeMillis();
                     org.json.JSONArray arr = new org.json.JSONArray();
-                    for (org.json.JSONObject obj : discoveredUdpGames.values()) {
-                        arr.put(obj);
+                    java.util.Iterator<java.util.Map.Entry<String, org.json.JSONObject>> it = discoveredUdpGames.entrySet().iterator();
+                    while (it.hasNext()) {
+                        java.util.Map.Entry<String, org.json.JSONObject> entry = it.next();
+                        org.json.JSONObject obj = entry.getValue();
+                        long ts = obj.optLong("timestamp", 0);
+                        // Filter out beacons older than 4 seconds
+                        if (now - ts > 4000) {
+                            it.remove();
+                        } else {
+                            arr.put(obj);
+                        }
                     }
                     return arr.toString();
                 }

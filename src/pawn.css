@@ -1,18 +1,18 @@
 /* Player Pawn Tokens on Board */
 .player-pawn {
   position: absolute;
-  width: 5vh;
-  height: 5vh;
+  width: 4.8vh;
+  height: 4.8vh;
   border-radius: 50%;
-  border: 2px solid white;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  /* Use linear transition for position to avoid stop-start feel during rapid updates */
-  transition: top 0.3s linear, left 0.3s linear;
+  will-change: top, left, transform;
+  transition: top 0.28s cubic-bezier(0.25, 1, 0.5, 1), left 0.28s cubic-bezier(0.25, 1, 0.5, 1);
   z-index: 20;
 }
 
@@ -20,17 +20,19 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  pointer-events: none;
 }
 
-/* Hopping Animation */
+/* Smooth, physics-based hop */
 @keyframes hop {
-  0% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-4vh) scale(1.1); }
-  100% { transform: translateY(0) scale(1); }
+  0% { transform: translateY(0) scale(1, 1); }
+  40% { transform: translateY(-2.8vh) scale(1.08, 1.08); }
+  75% { transform: translateY(-0.3vh) scale(1.02, 0.98); }
+  100% { transform: translateY(0) scale(1, 1); }
 }
 
 .pawn-hopping {
-  animation: hop 0.3s ease-in-out infinite;
+  animation: hop 0.28s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
   z-index: 100 !important; /* Keep on top while hopping */
 }
 

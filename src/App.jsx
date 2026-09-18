@@ -1614,9 +1614,12 @@ function App() {
     
     const isAnimEnabled = playerAnimationEnabledRef.current;
     const speed = animationSpeedRef.current || 1;
-    const stepDelay = isAnimEnabled ? Math.max(30, Math.round(delay / speed)) : 0;
+    // Smooth step delay with comfortable floor to prevent frame dropping
+    const stepDelay = isAnimEnabled ? Math.max(180, Math.round(delay / speed)) : 0;
+    // Transition duration is tuned to complete cleanly just before next step
+    const transitionDuration = Math.round(stepDelay * 0.92);
     
-    setPawnTransitionDuration(stepDelay); // Synchronize CSS transition duration with step delay!
+    setPawnTransitionDuration(transitionDuration);
     setIsLocalMoving(true); // Start movement lock
     if (isAnimEnabled) {
       setHoppingPlayer(playerIdx); // Enable hop animation
@@ -1711,9 +1714,13 @@ function App() {
       }
     }
     
+    if (isAnimEnabled) {
+      // Gentle settle pause so pawn is fully on the tile before ending hop state
+      await wait(60);
+    }
     setHoppingPlayer(null); // Disable hop animation
     setIsLocalMoving(false); // End movement lock
-    setPawnTransitionDuration(300); // Reset to default 300ms
+    setPawnTransitionDuration(280); // Reset to smooth 280ms
   };
 
   // Auto-skip logic (Optimized)
@@ -4450,19 +4457,7 @@ function App() {
       }
     }
 
-    // 2. Buying Modal: Property currently up for purchase
-    if (showBuyModal && buyingProperty?.tileIndex !== undefined && buyingProperty?.tileIndex !== null) {
-      if (Number(buyingProperty.tileIndex) === Number(tileIndex)) {
-        return {
-          filter: 'brightness(1.25) drop-shadow(0 0 18px #FFD700)',
-          zIndex: 120,
-          boxShadow: '0 0 22px #FFD700, inset 0 0 12px #FFF9C4',
-          border: '3px solid #FFD700',
-          animation: 'buyTilePulse 1.4s ease-in-out infinite',
-          transition: 'all 0.3s ease'
-        };
-      }
-    }
+    // 2. Buying Modal: Highlight disabled as requested
 
     // 3. Property Details Modal: Property being inspected
     if (showPropertyModal && selectedProperty?.tileIndex !== undefined && selectedProperty?.tileIndex !== null) {
@@ -4796,116 +4791,82 @@ function App() {
     return { top: 13.5 + (offset * vTileH) + (vTileH / 2), left: 93 };
   };
 
+  // Get exact center of any tile (0-35) on the 100vh x 100vh board
+  const getTileCenter = (tileIndex) => {
+    const hTileW = 8.111;
+    const vTileH = 10.428;
+
+    // Corner 0: Start (Bottom-Right)
+    if (tileIndex === 0) return { x: 93.25, y: 93.25 };
+
+    // Bottom Row: Tiles 1 to 9 (Right to Left)
+    if (tileIndex >= 1 && tileIndex <= 9) {
+      const idx = tileIndex - 1;
+      return { x: 86.5 - (idx + 0.5) * hTileW, y: 93.25 };
+    }
+
+    // Corner 10: Parking (Bottom-Left)
+    if (tileIndex === 10) return { x: 6.75, y: 93.25 };
+
+    // Left Column: Tiles 11 to 17 (Bottom to Top)
+    if (tileIndex >= 11 && tileIndex <= 17) {
+      const idx = tileIndex - 11;
+      return { x: 6.75, y: 86.5 - (idx + 0.5) * vTileH };
+    }
+
+    // Corner 18: Rob Bank (Top-Left)
+    if (tileIndex === 18) return { x: 6.75, y: 6.75 };
+
+    // Top Row: Tiles 19 to 27 (Left to Right)
+    if (tileIndex >= 19 && tileIndex <= 27) {
+      const idx = tileIndex - 19;
+      return { x: 13.5 + (idx + 0.5) * hTileW, y: 6.75 };
+    }
+
+    // Corner 28: Jail (Top-Right)
+    if (tileIndex === 28) return { x: 93.25, y: 6.75 };
+
+    // Right Column: Tiles 29 to 35 (Top to Bottom)
+    if (tileIndex >= 29 && tileIndex <= 35) {
+      const idx = tileIndex - 29;
+      return { x: 93.25, y: 13.5 + (idx + 0.5) * vTileH };
+    }
+
+    return { x: 50, y: 50 };
+  };
+
   // Calculate generic tile position for any index (0-35)
   // ALL UNITS IN VH relative to 100vh board
   const getPawnStyle = (tileIndex, playerIndex) => {
-    // Board Layout Constants
-    const hTileW = 8.111;
-    const vTileH = 10.428;
-    const pawnSize = 5;
-    const overlapAmount = 2; // How much pawns overlap each other (vh)
-    
-    // Depth alignment (Cross-axis) - "Upper/Inner" side of tiles (away from price)
-    // Horizontal tiles: Prices at outer edge, so pawns go near inner edge
-    const topVal_BottomRow = 87;  // Near 86.5 (inner edge)
-    const topVal_TopRow = 1;      // Near 0 (outer edge, but above price which is at bottom for top row)
-    
-    // Vertical tiles: Prices often at outer edge. Pawns toward inner (board center).
-    // Left Column (0-13.5 X): Inner side = RIGHT side = higher X values -> 9vh
-    // Right Column (86.5-100 X): Inner side = LEFT side = lower X values -> 87vh
-    const leftVal_LeftCol = 9;    // Inner (right) side of left column tiles
-    const leftVal_RightCol = 87;  // Inner (left) side of right column tiles
-    
-    // --- Dynamic Group Centering ---
-    // Find all gamePlayers on the same tile
-    const gamePlayersOnThisTile = playerPositions.reduce((acc, pos, idx) => {
+    const center = getTileCenter(tileIndex);
+    const pawnSize = 4.8; // vh
+
+    // Find all players currently on this same tile
+    const playersOnTile = playerPositions.reduce((acc, pos, idx) => {
       if (pos === tileIndex) acc.push(idx);
       return acc;
     }, []);
-    
-    const numOnTile = gamePlayersOnThisTile.length;
-    const myIndexInGroup = gamePlayersOnThisTile.indexOf(playerIndex);
-    
-    // Combined group width: First pawn is full width, subsequent pawns add (pawnSize - overlap)
-    const effectiveAdd = pawnSize - overlapAmount; // 3vh per additional pawn
-    const groupWidth = pawnSize + (numOnTile - 1) * effectiveAdd;
-    
-    // Offset of this pawn from the group's left edge
-    const myOffsetInGroup = myIndexInGroup * effectiveAdd;
-    
-    // Offset to center the group on the tile center
-    const groupCenterOffset = -groupWidth / 2;
 
-    let pos = { top: 0, left: 0 };
+    let offsetX = 0;
+    let offsetY = 0;
 
-    // 0: Start (Bottom Right) - 2x2 Grid
-    if (tileIndex === 0) {
-      pos.top = 90 + (Math.floor(myIndexInGroup / 2) * 3);
-      pos.left = 90 + (myIndexInGroup % 2) * 3;
-    }
-    // 1-9: Bottom Row (Right to Left)
-    else if (tileIndex <= 9) {
-      const tileOffset = tileIndex - 1;
-      const startRight = 86.5; 
-      const trackCenter = startRight - (tileOffset * hTileW) - (hTileW / 2);
-      
-      pos.top = topVal_BottomRow;
-      pos.left = trackCenter + groupCenterOffset + myOffsetInGroup;
-    }
-    // 10: Parking (Bottom Left) - 2x2 Grid
-    else if (tileIndex === 10) {
-      pos.top = 90 + (Math.floor(myIndexInGroup / 2) * 3);
-      pos.left = 5 + (myIndexInGroup % 2) * 3;
-    }
-    // 11-17: Left Column (Bottom to Top)
-    else if (tileIndex <= 17) {
-      const tileOffset = tileIndex - 11;
-      // Top edge of this tile (visually "upward" = lower Y value)
-      const tileTopEdge = 86.5 - (tileOffset + 1) * vTileH;
-      
-      // Fixed top at upper edge of tile (like horizontal tiles)
-      pos.top = tileTopEdge + 1;
-      
-      // Center group horizontally on depth axis (X: 0-13.5, center at ~7)
-      const depthCenter = 7;
-      pos.left = depthCenter + groupCenterOffset + myOffsetInGroup;
-    }
-    // 18: Rob Bank (Top Left) - 2x2 Grid
-    else if (tileIndex === 18) {
-      pos.top = 5 + (Math.floor(myIndexInGroup / 2) * 3);
-      pos.left = 5 + (myIndexInGroup % 2) * 3;
-    }
-    // 19-27: Top Row (Left to Right)
-    else if (tileIndex <= 27) {
-      const tileOffset = tileIndex - 19;
-      const startLeft = 13.5;
-      const trackCenter = startLeft + (tileOffset * hTileW) + (hTileW / 2);
-      
-      pos.top = topVal_TopRow;
-      pos.left = trackCenter + groupCenterOffset + myOffsetInGroup;
-    }
-    // 28: Jail (Top Right) - 2x2 Grid
-    else if (tileIndex === 28) {
-      pos.top = 5 + (Math.floor(myIndexInGroup / 2) * 3);
-      pos.left = 90 + (myIndexInGroup % 2) * 3;
-    }
-    // 29-35: Right Column (Top to Bottom)
-    else {
-      const tileOffset = tileIndex - 29;
-      // Top edge of this tile (first tile starts at 13.5)
-      const tileTopEdge = 13.5 + tileOffset * vTileH;
-      
-      // Fixed top at upper edge of tile
-      pos.top = tileTopEdge + 1;
-      
-      // Center group horizontally on depth axis (X: 86.5-100, center at ~93)
-      const depthCenter = 93;
-      pos.left = depthCenter + groupCenterOffset + myOffsetInGroup;
+    // Neat 2x2 offset if multiple players share the tile
+    if (playersOnTile.length > 1) {
+      const slot = playersOnTile.indexOf(playerIndex);
+      const offsets = [
+        { x: -1.1, y: -1.1 },
+        { x: 1.1, y: -1.1 },
+        { x: -1.1, y: 1.1 },
+        { x: 1.1, y: 1.1 },
+      ];
+      const off = offsets[slot % 4];
+      offsetX = off.x;
+      offsetY = off.y;
     }
 
     return {
-      top: `${pos.top}vh`,
-      left: `${pos.left}vh`,
+      top: `${center.y - pawnSize / 2 + offsetY}vh`,
+      left: `${center.x - pawnSize / 2 + offsetX}vh`,
       zIndex: 20 + playerIndex
     };
   };

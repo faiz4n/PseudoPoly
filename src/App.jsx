@@ -30,7 +30,7 @@ import { CHEST_CARDS } from './data/chestCards';
 import cashRegisterSound from './sounds/cash_register.mp3';
 import './matchmaking.css';
 import MatchmakingView from './components/MatchmakingView';
-import BoardIcon, { YachtIcon } from './components/BoardIcons';
+import BoardIcon, { YachtIcon, RollDieIcon } from './components/BoardIcons';
 import './App.css';
 
 function App() {
@@ -93,6 +93,12 @@ function App() {
 
   // Property Details/Upgrade Modal state
   const [showPropertyModal, setShowPropertyModal] = useState(false);
+  
+  // Game Menu, Rules, History and Audio Controls
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [sfxMuted, setSfxMuted] = useState(false);
   
   // Train Travel state
   const [travelMode, setTravelMode] = useState(false);
@@ -485,16 +491,35 @@ function App() {
   }, []);
 
   // Connect to Socket.IO server and set up event handlers
-  const connectSocket = () => {
-    if (socketRef.current && socketRef.current.connected) return socketRef.current;
+  const connectSocket = (urlOverride) => {
+    const targetUrl = urlOverride || serverUrl || getInitialServerUrl();
+    if (urlOverride && urlOverride !== serverUrl) {
+      updateServerUrl(urlOverride);
+    }
+
     if (socketRef.current) {
-      if (!socketRef.current.connected) {
+      const currentUrl = socketRef.current.io?.uri || socketRef.current.uri || '';
+      const cleanTarget = targetUrl.replace(/\/$/, '');
+      const cleanCurrent = currentUrl.replace(/\/$/, '');
+
+      // If switching to a different server URL, disconnect old socket
+      if (cleanTarget && cleanCurrent && cleanTarget !== cleanCurrent) {
+        console.log('[connectSocket] Switching server URL from', cleanCurrent, 'to', cleanTarget);
+        try {
+          socketRef.current.removeAllListeners();
+          socketRef.current.disconnect();
+        } catch (e) {
+          console.warn('Error disconnecting old socket:', e);
+        }
+        socketRef.current = null;
+      } else if (socketRef.current.connected) {
+        return socketRef.current;
+      } else {
         socketRef.current.connect();
+        return socketRef.current;
       }
-      return socketRef.current;
     }
     
-    const targetUrl = serverUrl || getInitialServerUrl();
     console.log('[connectSocket] Connecting to server at:', targetUrl);
     const socket = io(targetUrl, {
       reconnectionAttempts: 10,
@@ -523,6 +548,13 @@ function App() {
       setRoomCode(code);
       setMyPlayerIndex(playerIndex);
       setConnectedPlayers(players);
+      if (typeof window !== 'undefined' && window.AndroidHostServer?.updateRoomInfo) {
+        try {
+          window.AndroidHostServer.updateRoomInfo(code, myIdentity.name, players ? players.length : 1);
+        } catch (e) {
+          console.warn('[App] Error calling AndroidHostServer.updateRoomInfo:', e);
+        }
+      }
       if (players) {
         setGamePlayers(players.map((p, i) => ({
           id: i,
@@ -563,6 +595,13 @@ function App() {
     socket.on('players_updated', ({ players }) => {
       console.log('Players updated:', players);
       setConnectedPlayers(players);
+      if (typeof window !== 'undefined' && window.AndroidHostServer?.updateRoomInfo) {
+        try {
+          window.AndroidHostServer.updateRoomInfo(roomCode || '', myIdentity.name, players ? players.length : 1);
+        } catch (e) {
+          console.warn('[App] Error calling AndroidHostServer.updateRoomInfo:', e);
+        }
+      }
       if (players) {
         setGamePlayers(players.map((p, i) => ({
           id: i,
@@ -1069,31 +1108,33 @@ function App() {
   };
 
   // Join an existing room
-  const joinRoom = () => {
-    const cleanCode = (joinCode || '').trim();
-    if (!cleanCode || !/^\d{4}$/.test(cleanCode)) {
+  const joinRoom = (codeOverride, targetServerUrl) => {
+    const codeToUse = (codeOverride !== undefined ? codeOverride : joinCode) || '';
+    const cleanCode = codeToUse.trim();
+    
+    // If not joining via targetServerUrl (Hotspot/LAN 1-tap join), validate 4-digit code
+    if (!targetServerUrl && (!cleanCode || !/^\d{4}$/.test(cleanCode))) {
       showToast('Please enter a valid 4-digit code.');
       return;
     }
     
-    const socket = connectSocket();
+    const socket = connectSocket(targetServerUrl);
     setNetworkMode('online');
     
-    if (socket.connected) {
+    const emitJoin = () => {
       socket.emit('join_room', {
         roomCode: cleanCode,
         name: myIdentity.name,
         avatar: myIdentity.avatar
       });
+    };
+
+    if (socket.connected) {
+      emitJoin();
     } else {
-      showToast(`Connecting to game host (${serverUrl})...`);
-      socket.once('connect', () => {
-        socket.emit('join_room', {
-          roomCode: cleanCode,
-          name: myIdentity.name,
-          avatar: myIdentity.avatar
-        });
-      });
+      const displayHost = targetServerUrl || serverUrl || 'game host';
+      showToast(`Connecting to ${displayHost}...`);
+      socket.once('connect', emitJoin);
     }
   };
 
@@ -1310,11 +1351,12 @@ function App() {
   
   // Initialize AudioContext lazily
   const getAudioContext = () => {
+    if (isMuted || sfxMuted) return null;
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     const ctx = audioContextRef.current;
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
     return ctx;
   };
   
@@ -1419,6 +1461,7 @@ function App() {
   
   // Custom Cash Register Sound (File)
   const playBuySound = () => {
+    if (isMuted || sfxMuted) return;
     try {
       const audio = new Audio(cashRegisterSound);
       audio.volume = 0.5;
@@ -1428,6 +1471,7 @@ function App() {
   
   // Custom Cash Register Sound (Rent/Deducting)
   const playPayRentSound = () => {
+    if (isMuted || sfxMuted) return;
     try {
       const audio = new Audio(cashRegisterSound);
       audio.volume = 0.5;
@@ -5012,24 +5056,24 @@ function App() {
         <div className="game-container">
         {/* Game Board */}
       <div className={`board ${dealSelectionMode || buildMode ? 'deal-selection-active' : ''}`}>
-        {/* Corner Spaces */}
+        {/* Corner Spaces - Clean White background matching Screenshot 2 */}
         <div className="corner start" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
-          <img src={startIcon} alt="Start" className="corner-icon" />
+          <div className="corner-title">Start</div>
+          <img src={startIcon} alt="Start" className="corner-icon-start" />
         </div>
         
         <div className="corner parking" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
-          <img src={parkingIcon} alt="Free Parking" className="corner-icon" />
+          <img src={parkingIcon} alt="Free Parking" className="corner-icon-parking" />
         </div>
         
         <div className="corner robbank" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
-          <span className="rob-text">ROB</span>
-          <img src={robBankIcon} alt="Rob Bank" className="corner-icon-center" />
-          <span className="bank-text">BANK</span>
+          <div className="corner-title">Bank robbing</div>
+          <img src={robBankIcon} alt="Rob Bank" className="corner-icon-revolver" />
         </div>
         
         <div className="corner jail" style={(isSelectingAuctionProperty || (networkMode==='online' && ['thinking', 'announcing'].includes(auctionState?.status))) ? {filter: 'grayscale(100%) brightness(0.6)', transition: 'filter 0.3s'} : {transition: 'filter 0.3s'}}>
-          <span className="jail-text">JAIL</span>
-          <img src={jailIcon} alt="Jail" className="corner-icon-center" />
+          <div className="corner-title">Jail</div>
+          <img src={jailIcon} alt="Jail" className="corner-icon-handcuffs" />
         </div>
 
         {/* Bottom Row */}
@@ -5172,9 +5216,19 @@ function App() {
 
         {/* Center Area */}
         <div className="board-center">
-          {/* Decorative Elements */}
-          <div className="center-decorations">
-            <div className="yacht"><YachtIcon size={36} /></div>
+          {/* Cash Stack (Pot) in Center Board */}
+          <div className="board-cash-pot">
+            <span className="pot-title">💵 POT</span>
+            <span className="pot-val">${cashStack.toLocaleString()}</span>
+            {cashStackFloatingPrices.map(fp => (
+              <div 
+                key={fp.key} 
+                className="floating-price-stack"
+                style={{ color: fp.amount >= 0 ? '#00FF00' : '#FF5252' }}
+              >
+                {fp.amount >= 0 ? '+' : ''}{fp.amount.toLocaleString()}
+              </div>
+            ))}
           </div>
 
           {/* Jail Arrest Modal (Placed in local center scope) */}
@@ -5363,7 +5417,12 @@ function App() {
                         tabIndex="-1" 
                         disabled={isLocalMoving || (!turnFinished && !skippedTurns[currentPlayer] && (isRolling || isProcessingTurn))}
                       >
-                        {isLocalMoving ? 'MOVING...' : skippedTurns[currentPlayer] ? 'SKIP TURN' : turnFinished ? 'DONE' : 'ROLL'}
+                        {!turnFinished && !isLocalMoving && !skippedTurns[currentPlayer] && (
+                          <RollDieIcon size={24} className="roll-btn-die-icon" />
+                        )}
+                        <span className="roll-btn-text">
+                          {isLocalMoving ? 'MOVING...' : skippedTurns[currentPlayer] ? 'SKIP TURN' : turnFinished ? 'DONE' : 'ROLL'}
+                        </span>
                       </button>
                     </>
                   )}
@@ -7155,91 +7214,101 @@ function App() {
         ))}
       </div>
 
-      {/* Sidebar */}
+      {/* Sidebar - Matching Screenshot 2: Two Distinct Golden-Orange Cards */}
       <div className="sidebar">
-        {/* Unified Top Section (Orange) */}
-        <div className="sidebar-top-section">
-          {/* Top Controls (Blue Icons) */}
+        {/* Card 1: Player Panel */}
+        <div className="sidebar-player-card">
+          {/* Top Controls: 4 Square Buttons (Mute, Sound, Help, Menu) */}
           <div className="top-controls">
-            <button className="control-btn sound">🔊</button>
-            <button className="control-btn help">❓</button>
-            <button className="control-btn menu" onClick={openMenu}>☰</button>
+            <button 
+              className={`control-btn mute-btn ${isMuted ? 'active-mute' : ''}`}
+              onClick={() => setIsMuted(prev => !prev)}
+              title={isMuted ? "Unmute Master Sound" : "Mute Master Sound"}
+            >
+              🔇
+            </button>
+            <button 
+              className={`control-btn sound-btn ${sfxMuted ? 'muted' : ''}`}
+              onClick={() => setSfxMuted(prev => !prev)}
+              title={sfxMuted ? "Enable SFX" : "Mute SFX"}
+            >
+              🔊
+            </button>
+            <button 
+              className="control-btn help-btn"
+              onClick={() => setShowRulesModal(true)}
+              title="How to Play"
+            >
+              ❓
+            </button>
+            <button 
+              className="control-btn menu-btn"
+              onClick={openMenu}
+              title="Game Menu"
+            >
+              ☰
+            </button>
           </div>
 
-          {/* Player Panel (Blue) */}
+          {/* Player Panel Container (Deep Blue) */}
           <div className="player-panel">
-            {gamePlayers.map((player, index) => (
-              <div 
-                key={player.id}
-                className={`player-item ${index === currentPlayer ? 'active' : ''} ${bankruptPlayers[index] || player.kicked ? 'bankrupt' : ''}`}
-                style={bankruptPlayers[index] || player.kicked ? { filter: 'grayscale(100%)', opacity: 0.6 } : (!player.connected && networkMode === 'online') ? { opacity: 0.75 } : undefined}
-              >
-                <div className="player-avatar">
-                  <img src={player.avatar} alt={player.name} className="avatar-img" />
-                </div>
-                <div className="player-info" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                  <div className="player-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.name}</span>
-                    {bankruptPlayers[index] && <span>💀</span>}
-                    {player.kicked && <span style={{ fontSize: '9px', background: '#e11d48', color: '#fff', padding: '1px 3px', borderRadius: '3px' }}>Kicked</span>}
-                    {networkMode === 'online' && !player.connected && !player.kicked && (
-                      <span style={{ fontSize: '8px', background: '#ea580c', color: '#fff', padding: '1px 3px', borderRadius: '3px' }}>Offline</span>
+            {gamePlayers.map((player, index) => {
+              const isActive = index === currentPlayer;
+              const isBankrupt = bankruptPlayers[index] || player.kicked;
+              return (
+                <div 
+                  key={player.id}
+                  className={`player-item ${isActive ? 'active' : 'inactive'} ${isBankrupt ? 'bankrupt' : ''}`}
+                  style={isBankrupt ? { filter: 'grayscale(100%)', opacity: 0.6 } : (!player.connected && networkMode === 'online') ? { opacity: 0.75 } : undefined}
+                >
+                  <div className="player-avatar">
+                    <img src={player.avatar} alt={player.name} className="avatar-img" />
+                  </div>
+                  <div className="player-info">
+                    <div className="player-name">
+                      <span>{player.name}</span>
+                      {bankruptPlayers[index] && <span>💀</span>}
+                      {player.kicked && <span className="player-status-badge kicked">Kicked</span>}
+                      {networkMode === 'online' && !player.connected && !player.kicked && (
+                        <span className="player-status-badge offline">Offline</span>
+                      )}
+                    </div>
+                    {/* Host Kick Option for Disconnected Players */}
+                    {networkMode === 'online' && myPlayerIndex === 0 && index !== 0 && !player.kicked && !player.connected && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Kick ${player.name} from the game?`)) {
+                            sendGameAction('kick_player', { targetIndex: index });
+                          }
+                        }}
+                        className="host-kick-btn"
+                        title={player.canBeKicked ? "1 minute elapsed. Host can kick this player." : "Player offline. Host can kick."}
+                      >
+                        Kick {player.canBeKicked ? '(1m+)' : ''}
+                      </button>
                     )}
                   </div>
-                  {/* Host Kick Option for Disconnected Players */}
-                  {networkMode === 'online' && myPlayerIndex === 0 && index !== 0 && !player.kicked && !player.connected && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`Kick ${player.name} from the game?`)) {
-                          sendGameAction('kick_player', { targetIndex: index });
-                        }
-                      }}
-                      style={{
-                        alignSelf: 'flex-start',
-                        marginTop: '2px',
-                        background: '#dc2626',
-                        border: 'none',
-                        color: 'white',
-                        fontSize: '9px',
-                        fontWeight: 'bold',
-                        padding: '1px 5px',
-                        borderRadius: '3px',
-                        cursor: 'pointer'
-                      }}
-                      title={player.canBeKicked ? "1 minute elapsed. Host can kick this player." : "Player offline. Host can kick."}
-                    >
-                      Kick {player.canBeKicked ? '(1m+)' : ''}
-                    </button>
-                  )}
+                  <div className={`player-money ${playerMoney[index] < 0 ? 'negative' : ''}`}>
+                    {playerMoney[index].toLocaleString()}
+                  </div>
                 </div>
-                <div className="player-money" style={{ color: playerMoney[index] < 0 ? '#ff4444' : undefined }}>${playerMoney[index].toLocaleString()}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* Cash Stack (The Pot) */}
-        <div className="cash-stack-panel">
-          <div className="cash-stack-title">💵 CASH STACK</div>
-          <div className="cash-stack-amount">${cashStack.toLocaleString()}</div>
-          
-          {/* Floating Prices for Cash Stack */}
-          {cashStackFloatingPrices.map(fp => (
-            <div 
-              key={fp.key} 
-              className="floating-price-stack"
-              style={{ color: fp.amount >= 0 ? '#00FF00' : '#FF5252' }}
-            >
-              {fp.amount >= 0 ? '+' : ''}{fp.amount.toLocaleString()}
-            </div>
-          ))}
-        </div>
-
-        {/* History Panel */}
-        <div className="history-panel">
+        {/* Card 2: History Panel */}
+        <div className="sidebar-history-card">
           <div className="history-header">
-            <h2>HISTORY</h2>
+            <span className="history-title">HISTORY</span>
+            <button 
+              className="history-expand-btn" 
+              onClick={() => setShowHistoryModal(true)}
+              title="Expand Game History"
+            >
+              ⛶
+            </button>
           </div>
           <div className="history-content">
             {history.map((item, index) => (
@@ -7282,6 +7351,108 @@ function App() {
 
 
     </div>
+      )}
+
+      {/* In-Game Menu Modal */}
+      {showMenuModal && (
+        <div className="modal-overlay" style={{ zIndex: 99998 }}>
+          <div className="buy-modal" style={{ maxWidth: '340px' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(180deg, #1E88E5 0%, #0D47A1 100%)' }}>
+              <span className="modal-heading-text">GAME MENU</span>
+            </div>
+            <div className="modal-body" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                className="modal-btn" 
+                style={{ background: 'linear-gradient(180deg, #43A047, #2E7D32)', color: '#fff', padding: '10px', fontSize: '15px' }}
+                onClick={() => setShowMenuModal(false)}
+              >
+                ▶ RESUME GAME
+              </button>
+              <button 
+                className="modal-btn" 
+                style={{ background: 'linear-gradient(180deg, #1E88E5, #1565C0)', color: '#fff', padding: '10px', fontSize: '15px' }}
+                onClick={openSettings}
+              >
+                ⚙️ SETTINGS
+              </button>
+              <button 
+                className="modal-btn" 
+                style={{ background: 'linear-gradient(180deg, #FF9800, #F57C00)', color: '#fff', padding: '10px', fontSize: '15px' }}
+                onClick={() => { setShowRulesModal(true); setShowMenuModal(false); }}
+              >
+                ❓ HOW TO PLAY
+              </button>
+              <button 
+                className="modal-btn" 
+                style={{ background: 'linear-gradient(180deg, #E53935, #C62828)', color: '#fff', padding: '10px', fontSize: '15px' }}
+                onClick={() => {
+                  if (window.confirm("Exit current game and return to main menu?")) {
+                    setShowMenuModal(false);
+                    setGameStage('menu');
+                    if (socketRef.current) socketRef.current.disconnect();
+                  }
+                }}
+              >
+                🚪 EXIT TO MAIN MENU
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rules / Help Modal */}
+      {showRulesModal && (
+        <div className="modal-overlay" style={{ zIndex: 99998 }}>
+          <div className="buy-modal" style={{ maxWidth: '420px', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(180deg, #FFB300 0%, #FF8F00 100%)' }}>
+              <span className="modal-heading-text">HOW TO PLAY</span>
+            </div>
+            <div className="modal-body" style={{ padding: '14px 18px', overflowY: 'auto', textAlign: 'left', fontSize: '13px', lineHeight: 1.4, color: '#333' }}>
+              <p style={{ marginBottom: '8px' }}><strong>🎲 Roll & Move:</strong> Tap <strong>ROLL</strong> to roll the dice and advance around the board.</p>
+              <p style={{ marginBottom: '8px' }}><strong>🏢 Buy Properties:</strong> Land on unowned properties to buy them and collect rent from other players.</p>
+              <p style={{ marginBottom: '8px' }}><strong>🏗️ Build Upgrades:</strong> Tap <strong>BUILD</strong> on your turn to build houses and hotels on your property sets.</p>
+              <p style={{ marginBottom: '8px' }}><strong>🤝 Make Deals:</strong> Tap <strong>DEAL</strong> to trade properties and cash with opponents.</p>
+              <p style={{ marginBottom: '8px' }}><strong>🏦 Bank Loans:</strong> Tap <strong>BANK</strong> to take emergency loans or manage mortgage.</p>
+              <p style={{ marginBottom: '8px' }}><strong>🏆 Goal:</strong> Avoid bankruptcy and force all opponents into bankruptcy to win!</p>
+            </div>
+            <div className="modal-buttons" style={{ padding: '10px', justifyContent: 'center' }}>
+              <button 
+                className="modal-btn buy" 
+                style={{ minWidth: '120px', background: 'linear-gradient(180deg, #1E88E5 0%, #0D47A1 100%)' }}
+                onClick={() => setShowRulesModal(false)}
+              >
+                GOT IT!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Expanded History Modal */}
+      {showHistoryModal && (
+        <div className="modal-overlay" style={{ zIndex: 99998 }}>
+          <div className="buy-modal" style={{ maxWidth: '440px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(180deg, #FFB300 0%, #FF8F00 100%)' }}>
+              <span className="modal-heading-text">GAME HISTORY</span>
+            </div>
+            <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', background: '#0D47A1', color: '#fff', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {history.map((item, idx) => (
+                <div key={idx} style={{ padding: '4px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }}>
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="modal-buttons" style={{ padding: '10px', justifyContent: 'center' }}>
+              <button 
+                className="modal-btn buy" 
+                style={{ minWidth: '120px', background: 'linear-gradient(180deg, #1E88E5 0%, #0D47A1 100%)' }}
+                onClick={() => setShowHistoryModal(false)}
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Universal Settings Modal (Accessible both in Welcome Screen and during Game) */}

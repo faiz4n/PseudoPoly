@@ -167,7 +167,7 @@ export default function MatchmakingView({
       updateServerUrl(game.targetUrl);
     }
     setJoinCode(game.roomCode || '');
-    joinRoom();
+    joinRoom(game.roomCode || '', game.targetUrl);
   };
 
   const handleCopyCode = async () => {

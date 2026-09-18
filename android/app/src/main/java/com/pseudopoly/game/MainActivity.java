@@ -17,11 +17,31 @@ public class MainActivity extends BridgeActivity {
     private volatile boolean isListeningUdp = false;
     private final java.util.Map<String, org.json.JSONObject> discoveredUdpGames = new java.util.concurrent.ConcurrentHashMap<>();
 
+    private volatile String currentRoomCode = "";
+    private volatile String currentHostName = "Hotspot Host";
+    private volatile int currentPlayersCount = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         hideSystemUI();
         setupHotspotBridge();
+    }
+
+    private String getLocalIpAddress() {
+        try {
+            java.util.List<java.net.NetworkInterface> interfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces());
+            for (java.net.NetworkInterface intf : interfaces) {
+                if (intf.isLoopback() || !intf.isUp()) continue;
+                java.util.List<java.net.InetAddress> addrs = java.util.Collections.list(intf.getInetAddresses());
+                for (java.net.InetAddress addr : addrs) {
+                    if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "192.168.43.1";
     }
 
     private void startUdpBeacon(final int gamePort) {
@@ -36,23 +56,35 @@ public class MainActivity extends BridgeActivity {
                     socket.setBroadcast(true);
                     while (isBroadcastingBeacon) {
                         try {
+                            String hostIp = getLocalIpAddress();
                             org.json.JSONObject obj = new org.json.JSONObject();
-                            obj.put("id", "192.168.43.1:" + gamePort);
-                            obj.put("hostName", "Hotspot Host");
-                            obj.put("ip", "192.168.43.1");
+                            obj.put("id", hostIp + ":" + gamePort);
+                            obj.put("roomCode", currentRoomCode);
+                            obj.put("hostName", currentHostName);
+                            obj.put("ip", hostIp);
                             obj.put("port", gamePort);
-                            obj.put("players", 1);
+                            obj.put("players", currentPlayersCount);
                             obj.put("maxPlayers", 4);
                             obj.put("networkType", "hotspot");
-                            obj.put("targetUrl", "http://192.168.43.1:" + gamePort);
+                            obj.put("targetUrl", "http://" + hostIp + ":" + gamePort);
 
                             byte[] data = obj.toString().getBytes("UTF-8");
+                            
+                            // Broadcast to 255.255.255.255
                             java.net.DatagramPacket packet = new java.net.DatagramPacket(
                                 data, data.length, java.net.InetAddress.getByName("255.255.255.255"), 3002
                             );
                             socket.send(packet);
+
+                            // Also try directed subnet broadcast if hotspot default
+                            try {
+                                java.net.DatagramPacket subPacket = new java.net.DatagramPacket(
+                                    data, data.length, java.net.InetAddress.getByName("192.168.43.255"), 3002
+                                );
+                                socket.send(subPacket);
+                            } catch (Exception ignored) {}
                         } catch (Exception ignored) {}
-                        Thread.sleep(1200);
+                        Thread.sleep(1000);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -89,12 +121,17 @@ public class MainActivity extends BridgeActivity {
                         try {
                             java.net.DatagramPacket packet = new java.net.DatagramPacket(buf, buf.length);
                             socket.receive(packet);
+                            String senderIp = packet.getAddress().getHostAddress();
                             String jsonStr = new String(packet.getData(), 0, packet.getLength(), "UTF-8");
                             org.json.JSONObject gameObj = new org.json.JSONObject(jsonStr);
-                            String id = gameObj.optString("id");
-                            if (!id.isEmpty()) {
-                                discoveredUdpGames.put(id, gameObj);
-                            }
+                            
+                            // Use actual physical sender IP address
+                            int port = gameObj.optInt("port", 3001);
+                            gameObj.put("ip", senderIp);
+                            gameObj.put("targetUrl", "http://" + senderIp + ":" + port);
+                            gameObj.put("id", senderIp + ":" + port);
+                            
+                            discoveredUdpGames.put(senderIp + ":" + port, gameObj);
                         } catch (Exception ignored) {}
                     }
                 } catch (Exception e) {
@@ -151,12 +188,33 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @android.webkit.JavascriptInterface
+                public void updateRoomInfo(String roomCode, String hostName, int players) {
+                    if (roomCode != null && !roomCode.isEmpty()) currentRoomCode = roomCode;
+                    if (hostName != null && !hostName.isEmpty()) currentHostName = hostName;
+                    if (players > 0) currentPlayersCount = players;
+                }
+
+                @android.webkit.JavascriptInterface
                 public boolean isServerRunning() {
                     return hotspotServer != null;
                 }
 
                 @android.webkit.JavascriptInterface
                 public String getHotspotGatewayIp() {
+                    try {
+                        android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
+                        if (wm != null) {
+                            android.net.DhcpInfo dhcp = wm.getDhcpInfo();
+                            if (dhcp != null && dhcp.gateway != 0) {
+                                int ip = dhcp.gateway;
+                                return String.format(java.util.Locale.US, "%d.%d.%d.%d",
+                                    (ip & 0xff),
+                                    (ip >> 8 & 0xff),
+                                    (ip >> 16 & 0xff),
+                                    (ip >> 24 & 0xff));
+                            }
+                        }
+                    } catch (Exception ignored) {}
                     return "192.168.43.1";
                 }
 

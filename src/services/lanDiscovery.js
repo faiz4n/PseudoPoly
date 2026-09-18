@@ -83,14 +83,25 @@ class LanDiscoveryService {
 
     // 2. Candidate targets to probe
     const candidateHosts = [
-      '192.168.43.1:3001', // Standard Android Hotspot Gateway
       'localhost:3001',    // Local phone or emulator
     ];
+
+    // Ask Android native for actual DHCP Hotspot/WiFi gateway IP
+    if (typeof window !== 'undefined' && window.AndroidHostServer?.getHotspotGatewayIp) {
+      try {
+        const gw = window.AndroidHostServer.getHotspotGatewayIp();
+        if (gw && !candidateHosts.includes(`${gw}:3001`)) {
+          candidateHosts.unshift(`${gw}:3001`);
+        }
+      } catch (e) {}
+    } else {
+      candidateHosts.push('192.168.43.1:3001');
+    }
 
     // Add current origin hostname if running in browser
     if (typeof window !== 'undefined' && window.location?.hostname) {
       const h = window.location.hostname;
-      if (h && h !== 'localhost' && h !== '127.0.0.1' && h !== '192.168.43.1') {
+      if (h && h !== 'localhost' && h !== '127.0.0.1' && !candidateHosts.includes(`${h}:3001`)) {
         candidateHosts.push(`${h}:3001`);
       }
     }
@@ -127,18 +138,21 @@ class LanDiscoveryService {
           resolved = true;
           try {
             if (socket) {
-              socket.onopen = null;
               socket.onmessage = null;
-              socket.onerror = null;
-              socket.onclose = null;
-              socket.close();
+              if (socket.readyState === WebSocket.OPEN) {
+                try { socket.close(); } catch {}
+              } else if (socket.readyState === WebSocket.CONNECTING) {
+                socket.onopen = () => { try { socket.close(); } catch {} };
+                socket.onerror = () => {};
+                socket.onclose = () => {};
+              }
             }
           } catch {}
           resolve();
         }
       };
 
-      const timer = setTimeout(finish, 1800);
+      const timer = setTimeout(finish, 2500);
 
       try {
         socket = new WebSocket(wsUrl);

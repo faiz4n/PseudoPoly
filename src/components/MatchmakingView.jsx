@@ -404,7 +404,15 @@ export default function MatchmakingView({
                     className="mm-wifi-preset-chip" 
                     onClick={() => { setIpInput('192.168.1.43:3001'); updateServerUrl('192.168.1.43:3001'); setShowServerModal(false); }}
                   >
-                    192.168.1.43:3001 (Host PC)
+                    192.168.1.43:3001 (Wi-Fi LAN)
+                  </button>
+                  <button 
+                    type="button"
+                    className="mm-wifi-preset-chip" 
+                    style={{ background: 'rgba(76, 175, 80, 0.25)', borderColor: '#4CAF50' }}
+                    onClick={() => { setIpInput('https://crazy-memes-tap.loca.lt'); updateServerUrl('https://crazy-memes-tap.loca.lt'); setShowServerModal(false); }}
+                  >
+                    🌐 Online Tunnel
                   </button>
                   <button 
                     type="button"

@@ -1,0 +1,1209 @@
+/* =========================================================
+   PSEUDOPOLY - MATCHMAKING & LOBBY SYSTEM (MOBILE-OPTIMIZED)
+   ========================================================= */
+
+.mm-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px);
+  box-sizing: border-box;
+  background-color: #081120;
+  font-family: 'Junegull', sans-serif;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.mm-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.35) blur(6px);
+  transform: scale(1.05);
+}
+
+.mm-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 480px;
+  max-height: 94vh;
+  background: rgba(13, 27, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 24px 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  animation: mmFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.mm-container::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes mmFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* =========================================================
+   TOP NAV / HEADER
+   ========================================================= */
+
+.mm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  position: relative;
+  min-height: 40px;
+}
+
+.mm-header-title {
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: #ffd700;
+  text-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+  margin: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.mm-back-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.mm-back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  transform: scale(1.05);
+}
+.mm-back-btn:active {
+  transform: scale(0.95);
+}
+
+.mm-header-spacer {
+  width: 38px;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   SCREEN 1: WELCOME / MAIN MENU
+   ========================================================= */
+
+.mm-menu-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 10px 10px;
+  text-align: center;
+  position: relative;
+}
+
+/* Developer Options Gear Icon */
+.mm-dev-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+.mm-dev-toggle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: rotate(45deg);
+}
+.mm-dev-toggle.active {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4CAF50;
+  box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
+}
+.mm-dev-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: #4CAF50;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #4CAF50;
+}
+.mm-dev-notice {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #4CAF50;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+  animation: devPulse 2s ease-in-out infinite;
+}
+@keyframes devPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.mm-logo-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ffb300, #ff6f00);
+  color: #1a0f00;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 10px rgba(255, 111, 0, 0.4);
+}
+
+.mm-game-title {
+  font-size: 42px;
+  line-height: 1.1;
+  letter-spacing: 2px;
+  margin: 0 0 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #ffd54f 50%, #ff9800 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 12px rgba(255, 152, 0, 0.5));
+}
+
+.mm-game-subtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 30px;
+  letter-spacing: 0.5px;
+}
+
+.mm-primary-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  border-radius: 18px;
+  color: #ffffff;
+  font-family: 'Junegull', sans-serif;
+  font-size: 22px;
+  letter-spacing: 1.5px;
+  padding: 16px 36px;
+  width: 100%;
+  max-width: 280px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.mm-primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.5);
+}
+.mm-primary-btn:active {
+  transform: translateY(1px);
+}
+.mm-primary-btn.pulse {
+  animation: mmPulseBtn 2s infinite;
+}
+
+@keyframes mmPulseBtn {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(16, 185, 129, 0);
+  }
+}
+
+/* =========================================================
+   SCREEN 2: MODE SELECTION
+   ========================================================= */
+
+.mm-mode-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.mm-mode-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 20px 18px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  overflow: hidden;
+}
+.mm-mode-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 215, 0, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+.mm-mode-card:active {
+  transform: scale(0.98);
+}
+
+.mm-mode-card.offline {
+  border-left: 5px solid #10b981;
+}
+.mm-mode-card.online {
+  border-left: 5px solid #3b82f6;
+}
+.mm-mode-card.wifi {
+  border-left: 5px solid #f59e0b;
+}
+
+.mm-mode-icon-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+.mm-mode-card.offline .mm-mode-icon-wrap {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.6));
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+.mm-mode-card.online .mm-mode-icon-wrap {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.6));
+  border: 1px solid rgba(59, 130, 246, 0.5);
+}
+.mm-mode-card.wifi .mm-mode-icon-wrap {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.6));
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.mm-mode-info {
+  flex: 1;
+}
+
+.mm-mode-badge {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+.mm-mode-card.offline .mm-mode-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+.mm-mode-card.online .mm-mode-badge {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+.mm-mode-card.wifi .mm-mode-badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.mm-mode-title {
+  font-size: 20px;
+  margin: 0 0 4px;
+  color: #ffffff;
+}
+
+.mm-mode-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.4;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.mm-mode-arrow {
+  color: #64748b;
+  font-size: 20px;
+  transition: transform 0.2s, color 0.2s;
+}
+.mm-mode-card:hover .mm-mode-arrow {
+  color: #ffd700;
+  transform: translateX(4px);
+}
+
+/* =========================================================
+   SCREEN 3: ONLINE MATCHMAKING (IDENTITY + HOST/JOIN)
+   ========================================================= */
+
+/* Identity Card */
+.mm-identity-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mm-identity-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mm-identity-avatar-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  padding: 3px;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.mm-identity-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.mm-identity-input-wrap {
+  flex: 1;
+}
+
+.mm-input-label {
+  font-size: 11px;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.mm-name-input {
+  width: 100%;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  color: #ffffff;
+  font-family: 'Junegull', sans-serif;
+  font-size: 16px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+.mm-name-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Avatar Selector */
+.mm-avatar-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mm-avatar-opt {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 2px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(0, 0, 0, 0.3);
+}
+.mm-avatar-opt:hover {
+  transform: scale(1.1);
+}
+.mm-avatar-opt.selected {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px currentColor;
+}
+.mm-avatar-opt img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.mm-avatar-check {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: #10b981;
+  color: white;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  border: 1px solid #081120;
+}
+
+/* Segmented Tabs: Host vs Join */
+.mm-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+.mm-tab-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-family: 'Junegull', sans-serif;
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.mm-tab-btn.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.9));
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* Tab Panel: Host View */
+.mm-host-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.mm-perks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: #cbd5e1;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+}
+
+.mm-perk-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mm-perk-icon {
+  font-size: 16px;
+}
+
+/* Tab Panel: Join View */
+.mm-join-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  width: 100%;
+}
+
+.mm-pin-container {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+  cursor: pointer;
+}
+
+.mm-pin-hidden-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.mm-pin-box {
+  width: 58px;
+  height: 68px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: #ffd700;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mm-pin-box.active {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
+  transform: scale(1.04);
+}
+.mm-pin-box.filled {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  color: #ffffff;
+}
+
+.mm-join-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.mm-paste-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #cbd5e1;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-family: 'Junegull', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.mm-paste-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+/* =========================================================
+   SCREEN 4: GAME LOBBY (4-SLOT GRID & ONE-TAP COPY)
+   ========================================================= */
+
+.mm-lobby-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Room Code Hero Card */
+.mm-code-card {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 152, 0, 0.05));
+  border: 1.5px solid rgba(255, 215, 0, 0.35);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.mm-code-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mm-code-label {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #fbbf24;
+}
+
+.mm-code-digits {
+  display: flex;
+  gap: 6px;
+}
+
+.mm-code-digit {
+  background: #0f172a;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  width: 32px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.mm-copy-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 12px;
+  color: #1c1002;
+  font-family: 'Junegull', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.mm-copy-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(217, 119, 6, 0.5);
+}
+.mm-copy-btn:active {
+  transform: translateY(1px);
+}
+.mm-copy-btn.copied {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* 4-Player Slot Grid */
+.mm-slots-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.mm-slots-count {
+  font-size: 13px;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.mm-slots-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mm-player-slot {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  min-height: 110px;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+
+.mm-player-slot.filled {
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.mm-player-slot.is-me {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.2);
+}
+
+.mm-player-slot.empty {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.mm-slot-crown {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 14px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.mm-slot-avatar-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-bottom: 6px;
+}
+
+.mm-slot-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.mm-slot-name {
+  font-size: 14px;
+  color: #ffffff;
+  margin: 0 0 4px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-slot-badge {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+.mm-slot-badge.host {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+}
+.mm-slot-badge.ready {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+/* Empty Slot Styling */
+.mm-empty-radar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 18px;
+  margin-bottom: 6px;
+  animation: mmRadarPulse 2s infinite;
+}
+
+@keyframes mmRadarPulse {
+  0%, 100% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+.mm-empty-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Lobby Alert Banner */
+.mm-lobby-alert {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+.mm-lobby-alert.warning {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+.mm-lobby-alert.ready {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+/* Lobby Actions */
+.mm-lobby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.mm-waiting-host-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 14px 0;
+  font-style: italic;
+  animation: mmPulseMsg 1.5s infinite;
+}
+
+@keyframes mmPulseMsg {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.mm-leave-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  border-radius: 14px;
+  font-family: 'Junegull', sans-serif;
+  font-size: 15px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+.mm-leave-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+}
+
+/* =========================================================
+   MOBILE RESPONSIVENESS & LANDSCAPE OPTIMIZATION
+   ========================================================= */
+
+/* Compact Landscape Mode (e.g. phones in landscape) */
+@media (max-height: 520px) {
+  .mm-container {
+    max-height: 96vh;
+    padding: 14px 18px;
+    border-radius: 18px;
+  }
+  
+  .mm-header {
+    margin-bottom: 10px;
+    min-height: 32px;
+  }
+  .mm-header-title {
+    font-size: 18px;
+  }
+  .mm-back-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+  }
+
+  .mm-game-title {
+    font-size: 32px;
+    margin-bottom: 4px;
+  }
+  .mm-game-subtitle {
+    margin-bottom: 16px;
+    font-size: 11px;
+  }
+  .mm-primary-btn {
+    padding: 12px 28px;
+    font-size: 18px;
+  }
+
+  .mm-mode-grid {
+    flex-direction: row;
+    gap: 12px;
+  }
+  .mm-mode-card {
+    padding: 12px 14px;
+    gap: 12px;
+    flex: 1;
+  }
+  .mm-mode-icon-wrap {
+    width: 42px;
+    height: 42px;
+    font-size: 22px;
+  }
+  .mm-mode-title {
+    font-size: 16px;
+  }
+
+  .mm-identity-card {
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .mm-identity-avatar-wrap {
+    width: 44px;
+    height: 44px;
+  }
+  .mm-avatar-opt {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mm-tabs {
+    margin-bottom: 10px;
+  }
+  .mm-tab-btn {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .mm-pin-box {
+    width: 48px;
+    height: 54px;
+    font-size: 26px;
+    border-radius: 10px;
+  }
+
+  .mm-code-card {
+    padding: 8px 12px;
+  }
+  .mm-code-digit {
+    width: 28px;
+    height: 34px;
+    font-size: 18px;
+  }
+
+  .mm-slots-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .mm-player-slot {
+    min-height: 80px;
+    padding: 8px 6px;
+  }
+  .mm-slot-avatar-wrap {
+    width: 36px;
+    height: 36px;
+  }
+  .mm-empty-radar {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+}
+
+/* Small Portrait Phones (< 380px width) */
+@media (max-width: 380px) {
+  .mm-container {
+    padding: 16px 14px;
+  }
+  .mm-game-title {
+    font-size: 34px;
+  }
+  .mm-pin-box {
+    width: 48px;
+    height: 58px;
+    font-size: 26px;
+  }
+  .mm-mode-card {
+    padding: 14px 12px;
+  }
+}
+
+/* =========================================================
+   WI-FI MULTIPLAYER CONFIGURATION BAR & MODAL
+   ========================================================= */
+.mm-wifi-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.mm-wifi-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #cbd5e1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-wifi-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mm-wifi-dot.connected {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+.mm-wifi-dot.disconnected {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.mm-wifi-label {
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.mm-wifi-host {
+  font-family: monospace;
+  font-size: 11px;
+  color: #f1f5f9;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mm-wifi-cfg-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.mm-wifi-cfg-btn:hover {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+.mm-wifi-card {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1.5px solid rgba(245, 158, 11, 0.4);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  text-align: left;
+}
+
+.mm-wifi-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 4px;
+}
+
+.mm-wifi-card-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.35;
+  margin: 0 0 10px;
+}
+
+.mm-wifi-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mm-wifi-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: monospace;
+}
+.mm-wifi-input:focus {
+  outline: none;
+  border-color: #fbbf24;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+}
+
+.mm-wifi-save-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 8px;
+  color: #1a0f00;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 0 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.mm-wifi-save-btn:hover {
+  filter: brightness(1.1);
+}
+
+.mm-wifi-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.mm-wifi-preset-label {
+  color: #64748b;
+}
+
+.mm-wifi-preset-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-size: 10px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: monospace;
+}
+.mm-wifi-preset-chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}

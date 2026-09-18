@@ -28,6 +28,9 @@ import { RENT_DATA, TRAIN_RENT, TRAIN_TILES } from './data/rentData';
 import { CHANCE_CARDS } from './data/chanceCards';
 import { CHEST_CARDS } from './data/chestCards';
 import cashRegisterSound from './sounds/cash_register.mp3';
+import './matchmaking.css';
+import MatchmakingView from './components/MatchmakingView';
+import BoardIcon, { YachtIcon } from './components/BoardIcons';
 import './App.css';
 
 function App() {
@@ -39,6 +42,7 @@ function App() {
   const [history, setHistory] = useState(['Player 3 starts turn']);
   const [playerPositions, setPlayerPositions] = useState([0, 0, 0, 0]);
   const [hoppingPlayer, setHoppingPlayer] = useState(null);
+  const [pawnTransitionDuration, setPawnTransitionDuration] = useState(300);
   
   // Game Players State (Dynamic)
   const [gamePlayers, setGamePlayers] = useState(players); // Initialize with default
@@ -175,6 +179,9 @@ function App() {
   const [warCurrentRoller, setWarCurrentRoller] = useState(null); // Index in participants array
   const [warDiceValues, setWarDiceValues] = useState([1, 1]);
   const [warIsRolling, setWarIsRolling] = useState(false);
+  const [warWinner, setWarWinner] = useState(null);
+  const [warTiedPlayers, setWarTiedPlayers] = useState(null);
+  const [warTieRoll, setWarTieRoll] = useState(null);
 
   // Initialize inventory and effects
   useEffect(() => {
@@ -213,6 +220,7 @@ function App() {
   const [showDealReviewModal, setShowDealReviewModal] = useState(false);
   const [dealResultMessage, setDealResultMessage] = useState('');
   const [showDealResultModal, setShowDealResultModal] = useState(false);
+  const [activeDeal, setActiveDeal] = useState(null); // Synced online deal state { proposer, recipient, giveProperties, receiveProperties }
   
   // Bankruptcy System State
   const [bankruptPlayers, setBankruptPlayers] = useState({}); // { playerIndex: true }
@@ -227,8 +235,52 @@ function App() {
   // Menu System State
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [animationSpeed, setAnimationSpeed] = useState(1); // 0.5 to 2x speed multiplier
+  const [playerAnimationEnabled, setPlayerAnimationEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pseudo_player_animation_enabled');
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+  const [animationSpeed, setAnimationSpeed] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pseudo_animation_speed');
+      return stored ? parseFloat(stored) || 1 : 1;
+    } catch {
+      return 1;
+    }
+  });
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  // Keep refs in sync for async functions (like movePlayerToken)
+  const playerAnimationEnabledRef = useRef(playerAnimationEnabled);
+  useEffect(() => {
+    playerAnimationEnabledRef.current = playerAnimationEnabled;
+  }, [playerAnimationEnabled]);
+
+  const animationSpeedRef = useRef(animationSpeed);
+  useEffect(() => {
+    animationSpeedRef.current = animationSpeed;
+  }, [animationSpeed]);
+
+  const togglePlayerAnimation = (enabled) => {
+    const next = typeof enabled === 'boolean' ? enabled : !playerAnimationEnabled;
+    setPlayerAnimationEnabled(next);
+    playerAnimationEnabledRef.current = next;
+    try {
+      localStorage.setItem('pseudo_player_animation_enabled', String(next));
+    } catch {}
+  };
+
+  const updateAnimationSpeed = (val) => {
+    const speed = Math.max(0.5, Math.min(3, parseFloat(val) || 1));
+    setAnimationSpeed(speed);
+    animationSpeedRef.current = speed;
+    try {
+      localStorage.setItem('pseudo_animation_speed', String(speed));
+    } catch {}
+  };
   
   // Toast Notification
   const [toast, setToast] = useState({ show: false, message: '' });
@@ -277,6 +329,9 @@ function App() {
   
   // Debug Dice State
   const [debugDiceValue, setDebugDiceValue] = useState(7);
+  const [devMode, setDevMode] = useState(() => {
+    try { return localStorage.getItem('pseudopoly_devmode') === 'true'; } catch { return false; }
+  });
 
   // Helper: Close any modal with animation
   const closeAllModals = (callback, keepBuyingState = false) => {
@@ -346,7 +401,28 @@ function App() {
 
   // --- SOCKET.IO NETWORKING ---
 
-  const SOCKET_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+  const [serverUrl, setServerUrl] = useState(() => {
+    try {
+      return localStorage.getItem('pseudopoly_server_url') || import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+    } catch {
+      return 'http://localhost:3001';
+    }
+  });
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  const updateServerUrl = (newUrl) => {
+    let formatted = (newUrl || '').trim();
+    if (formatted && !formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+      formatted = 'http://' + formatted;
+    }
+    setServerUrl(formatted);
+    try { localStorage.setItem('pseudopoly_server_url', formatted); } catch {}
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    setSocketConnected(false);
+  };
 
   // Connect to Socket.IO server and set up event handlers
   // Wake Lock Implementation (Prevent Sleep)
@@ -383,11 +459,27 @@ function App() {
   const connectSocket = () => {
     if (socketRef.current) return socketRef.current;
     
-    const socket = io(SOCKET_URL);
+    const targetUrl = serverUrl || 'http://localhost:3001';
+    console.log('[connectSocket] Connecting to server at:', targetUrl);
+    const socket = io(targetUrl, {
+      reconnectionAttempts: 5,
+      timeout: 10000
+    });
     socketRef.current = socket;
     
     socket.on('connect', () => {
       console.log('Connected to server:', socket.id);
+      setSocketConnected(true);
+    });
+
+    socket.on('disconnect', () => {
+      setSocketConnected(false);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err);
+      setSocketConnected(false);
+      showToast(`Cannot connect to server at ${targetUrl}`);
     });
     
     socket.on('room_created', ({ roomCode: code, playerIndex, gameState, players }) => {
@@ -395,6 +487,19 @@ function App() {
       setRoomCode(code);
       setMyPlayerIndex(playerIndex);
       setConnectedPlayers(players);
+      if (players) {
+        setGamePlayers(players.map((p, i) => ({
+          id: i,
+          name: p.name,
+          avatar: p.avatar,
+          color: AVATAR_COLORS[p.avatar] || '#888888',
+          isBot: false,
+          connected: p.connected !== false,
+          canBeKicked: p.canBeKicked === true,
+          kicked: p.kicked === true,
+        })));
+      }
+      if (gameState) applyGameState(gameState);
       setGameStage('lobby');
     });
     
@@ -403,29 +508,70 @@ function App() {
       setRoomCode(code);
       setMyPlayerIndex(playerIndex);
       setConnectedPlayers(players);
-      applyGameState(gameState);
+      if (players) {
+        setGamePlayers(players.map((p, i) => ({
+          id: i,
+          name: p.name,
+          avatar: p.avatar,
+          color: AVATAR_COLORS[p.avatar] || '#888888',
+          isBot: false,
+          connected: p.connected !== false,
+          canBeKicked: p.canBeKicked === true,
+          kicked: p.kicked === true,
+        })));
+      }
+      if (gameState) applyGameState(gameState);
       setGameStage('lobby');
     });
     
     socket.on('players_updated', ({ players }) => {
       console.log('Players updated:', players);
       setConnectedPlayers(players);
-      // Update gamePlayers with actual player info and color based on avatar
-      setGamePlayers(prev => {
-        return players.map((p, i) => ({
+      if (players) {
+        setGamePlayers(players.map((p, i) => ({
           id: i,
           name: p.name,
           avatar: p.avatar,
-          color: AVATAR_COLORS[p.avatar] || '#888888', // Use avatar-based color
+          color: AVATAR_COLORS[p.avatar] || '#888888',
           isBot: false,
-        }));
-      });
+          connected: p.connected !== false,
+          canBeKicked: p.canBeKicked === true,
+          kicked: p.kicked === true,
+        })));
+      }
+    });
+
+    socket.on('player_kicked', ({ targetIndex, name }) => {
+      console.log(`[CLIENT] Player kicked: ${name} (P${targetIndex})`);
+      if (myPlayerIndex === targetIndex) {
+        showToast('You have been kicked from the room by the host.');
+        setTimeout(() => {
+          if (socketRef.current) socketRef.current.disconnect();
+          socketRef.current = null;
+          setGameStage('menu');
+          setNetworkMode('offline');
+        }, 1500);
+      } else {
+        showToast(`${name} was kicked from the game.`);
+      }
     });
     
     socket.on('game_started', ({ gameState, players }) => {
       console.log('Game started!');
-      applyGameState(gameState);
-      setConnectedPlayers(players);
+      if (players) {
+        setConnectedPlayers(players);
+        setGamePlayers(players.map((p, i) => ({
+          id: i,
+          name: p.name,
+          avatar: p.avatar,
+          color: AVATAR_COLORS[p.avatar] || '#888888',
+          isBot: false,
+          connected: p.connected !== false,
+          canBeKicked: p.canBeKicked === true,
+          kicked: p.kicked === true,
+        })));
+      }
+      if (gameState) applyGameState(gameState);
       setGameStage('playing');
     });
     
@@ -482,6 +628,35 @@ function App() {
       // Animation will complete when state_update arrives with final dice values
       setTimeout(() => setIsRolling(false), 800);
     });
+
+    // Synchronized Movement (Chance Cards, Jail, Travel): All clients animate simultaneously on track
+    socket.on('chance_move_animated', async ({ playerIndex, oldPos, targetPos, steps, delay, cardText }) => {
+      console.log(`[CLIENT] Received chance_move_animated: P${playerIndex} from ${oldPos} to ${targetPos} (${steps} steps)`);
+      
+      // Prevent double animation when state broadcast arrives
+      lastKnownPositionsRef.current[playerIndex] = targetPos;
+      isAnimatingRef.current = true;
+      
+      const moveDelay = delay || 180;
+      setHoppingPlayer(playerIndex);
+      await movePlayerToken(playerIndex, steps, moveDelay, oldPos);
+      setHoppingPlayer(null);
+      isAnimatingRef.current = false;
+      
+      // Ensure target position is exact
+      setPlayerPositions(prev => {
+        const next = [...prev];
+        next[playerIndex] = targetPos;
+        return next;
+      });
+      
+      // Active player triggers landing logic once arrived
+      const myIdx = gameStateRef.current.myPlayerIndex;
+      if (myIdx === playerIndex) {
+        sendGameAction('landed');
+        handleTileArrival(playerIndex, targetPos, false, null, null, true);
+      }
+    });
     
     // Deal System: Handle incoming deal offers
     socket.on('deal_offer', (dealData) => {
@@ -520,14 +695,14 @@ function App() {
     });
     
     socket.on('room_closed', ({ message }) => {
-      alert(message);
+      showToast(message || 'Room was closed');
       setGameStage('mode_select');
       setNetworkMode('offline');
       socketRef.current = null;
     });
     
     socket.on('error', ({ message }) => {
-      alert(message);
+      showToast(message || 'An error occurred');
     });
     
     socket.on('disconnect', () => {
@@ -577,7 +752,13 @@ function App() {
     // Otherwise, server echoing stale data back will reset the lap count and wipe history
     const isSafeToOverwriteState = !isAnimatingRef.current;
 
-    if (state.currentPlayer !== undefined) setCurrentPlayer(state.currentPlayer);
+    if (state.currentPlayer !== undefined) {
+      if (state.currentPlayer !== currentRef.currentPlayer) {
+        setBuyingProperty(null);
+        setShowBuyModal(false);
+      }
+      setCurrentPlayer(state.currentPlayer);
+    }
     if (state.diceValues) setDiceValues(state.diceValues);
     if (state.isRolling !== undefined) setIsRolling(state.isRolling);
     
@@ -719,8 +900,10 @@ function App() {
       setShowWarModal(state.warState.active);
       setWarPhase(state.warState.phase);
       setWarMode(state.warState.mode);
-      setWarParticipants(state.warState.participants);
+      setWarParticipants(state.warState.participants || []);
       setWarTieMessage(state.warState.tieMessage || null);
+      setWarTiedPlayers(state.warState.tiedPlayers || null);
+      setWarTieRoll(state.warState.tieRoll || null);
       if (state.warState.property) {
         setWarProperty(state.warState.property);
       } else if (state.warState.propertyIndex !== undefined && state.warState.propertyIndex !== null) {
@@ -732,13 +915,19 @@ function App() {
           console.error(`[App] RENT_DATA missing for index ${state.warState.propertyIndex}`);
         }
       }
-      setWarRolls(state.warState.rolls);
+      setWarRolls(state.warState.rolls || {});
       setWarCurrentRoller(state.warState.currentRoller);
-      setWarDiceValues(state.warState.diceValues);
+      setWarDiceValues(state.warState.diceValues || [1, 1]);
       if (state.warState.isRolling !== undefined) {
         setWarIsRolling(state.warState.isRolling);
       }
-      // Winner logic handled by phase 'result' and history/money updates
+      if (state.warState.winner !== undefined) {
+        setWarWinner(state.warState.winner);
+      }
+    }
+    
+    if (state.activeDeal !== undefined) {
+      setActiveDeal(state.activeDeal);
     }
     
     // Trigger Dice Animation if rolling
@@ -757,7 +946,9 @@ function App() {
       // Note: isAnimatingRef and lastKnownPositionsRef were already updated at top of function
       
       // Run hop animation
-      setHoppingPlayer(currentPlayerIdx);
+      if (playerAnimationEnabledRef.current) {
+        setHoppingPlayer(currentPlayerIdx);
+      }
       await movePlayerToken(currentPlayerIdx, moveAmount, 300, oldPosition);
       setHoppingPlayer(null);
       isAnimatingRef.current = false; // Clear animation lock when done
@@ -814,8 +1005,9 @@ function App() {
 
   // Join an existing room
   const joinRoom = () => {
-    if (!joinCode || joinCode.length !== 4) {
-      alert('Please enter a valid 4-character code.');
+    const cleanCode = (joinCode || '').trim();
+    if (!cleanCode || !/^\d{4}$/.test(cleanCode)) {
+      showToast('Please enter a valid 4-digit code.');
       return;
     }
     
@@ -823,7 +1015,7 @@ function App() {
     setNetworkMode('online');
     
     socket.emit('join_room', {
-      roomCode: joinCode.toUpperCase(),
+      roomCode: cleanCode,
       name: myIdentity.name,
       avatar: myIdentity.avatar
     });
@@ -1307,8 +1499,15 @@ function App() {
     const direction = steps > 0 ? 1 : -1;
     const count = Math.abs(steps);
     
+    const isAnimEnabled = playerAnimationEnabledRef.current;
+    const speed = animationSpeedRef.current || 1;
+    const stepDelay = isAnimEnabled ? Math.max(30, Math.round(delay / speed)) : 0;
+    
+    setPawnTransitionDuration(stepDelay); // Synchronize CSS transition duration with step delay!
     setIsLocalMoving(true); // Start movement lock
-    setHoppingPlayer(playerIdx); // Enable hop animation
+    if (isAnimEnabled) {
+      setHoppingPlayer(playerIdx); // Enable hop animation
+    }
 
     for (let i = 1; i <= count; i++) {
       // 1. Calculate and update position
@@ -1380,28 +1579,28 @@ function App() {
           }
         }
 
-        if (currentNextPos === 0 && direction > 0) {
+        if (currentNextPos === 0 && direction > 0 && networkMode !== 'online') {
           setPlayerMoney(moneyPrev => {
             const nextMoney = [...moneyPrev];
             nextMoney[playerIdx] += 1000;
-            if (networkMode === 'online') {
-              sendGameAction('update_state', { playerMoney: nextMoney });
-            }
             gameStateRef.current.playerMoney = nextMoney; // Sync ref immediately
             return nextMoney;
           });
         }
       }
       
-      // 2. Play hop sound
-      playHopSound();
+      if (isAnimEnabled) {
+        // 2. Play hop sound
+        playHopSound();
 
-      // 3. Wait for animation to complete
-      await wait(delay); 
+        // 3. Wait for animation to complete
+        await wait(stepDelay); 
+      }
     }
     
     setHoppingPlayer(null); // Disable hop animation
     setIsLocalMoving(false); // End movement lock
+    setPawnTransitionDuration(300); // Reset to default 300ms
   };
 
   // Auto-skip logic (Optimized)
@@ -1632,6 +1831,8 @@ function App() {
   const handleEndTurn = () => {
     // Online Mode: Send end_turn action to server
     if (networkMode === 'online') {
+      setBuyingProperty(null);
+      setShowBuyModal(false);
       // If we are currently skipped, we need to clear that state so we don't skip next time
       // BUT only if we didn't actually play a turn (turnFinished means we played).
       if (skippedTurns[currentPlayer] && !turnFinished) {
@@ -1742,7 +1943,7 @@ function App() {
     if (turnsLeft === 1) bailAmount = 200;
     
     if (playerMoney[currentPlayer] < bailAmount) {
-       alert("Not enough money to pay bail!");
+       showToast("Not enough money to pay bail!");
        return;
     }
     
@@ -1820,6 +2021,10 @@ function App() {
     const effectiveMyPlayerIndex = gameStateRef.current.myPlayerIndex;
     console.log(`[handleTileArrival] effectiveIsOnline=${effectiveIsOnline}, playerIndex=${playerIndex}, effectiveMyPlayerIndex=${effectiveMyPlayerIndex}`);
     
+    // Clear any previous buying state when arriving on any tile
+    setBuyingProperty(null);
+    setShowBuyModal(false);
+
     // 1. Check Special Tiles
     // Parking (Index 9 - bottom-left corner)
     // Parking (Index 10 - bottom-left corner)
@@ -1845,8 +2050,8 @@ function App() {
       return;
     }
 
-    // Forced Auction (Index 23 - next to Mobile Op)
-    if (tileIndex === 23) {
+    // Forced Auction (Index 31 - right column)
+    if (tileIndex === 31) {
       // Check if any owned properties have buildings
       const allOwnedProperties = Object.keys(propertyOwnership).map(Number);
       const propertiesWithBuildings = allOwnedProperties.filter(idx => (propertyLevels[idx] || 0) > 0);
@@ -1949,8 +2154,8 @@ function App() {
       
 
 
-    // Chance Tiles (31 = right column only, tile 3 is Cash Stack now)
-    if (tileIndex === 31) {
+    // Chance Tiles (23 = top row)
+    if (tileIndex === 23) {
       if (effectiveIsOnline) {
          if (playerIndex === effectiveMyPlayerIndex) {
             console.log('[handleTileArrival] Sending modal_open for CHANCE');
@@ -1985,11 +2190,15 @@ function App() {
     
     // Cash Stack (Index 3) - Player wins the jackpot!
     if (tileIndex === 3) {
+      setBuyingProperty(null);
+      setShowBuyModal(false);
       // Online Mode: Send to server
       if (effectiveIsOnline) {
         console.log('[Cash Stack] Sending cash_stack_claim to server');
         sendGameAction('cash_stack_claim');
         // Server will broadcast the animation to all players (including us)
+        setTurnFinished(true);
+        setIsProcessingTurn(false);
         return;
       }
 
@@ -2172,83 +2381,54 @@ function App() {
   const handleRobBankComplete = async () => {
     const playerIndex = currentPlayer;
     
+    if (networkMode === 'online') {
+      sendGameAction('close_modal');
+      endTurn(playerIndex, false);
+      return;
+    }
+    
     if (robStatus === 'success') {
       // Add money
       setPlayerMoney(prev => {
         const updated = [...prev];
         updated[playerIndex] += robResult.amount;
-        
-        // Online Sync
-        if (networkMode === 'online') {
-          sendGameAction('update_state', { playerMoney: updated });
-        }
-        
         return updated;
       });
       
-      // Floating Price Sync
-      if (networkMode === 'online') {
-        sendGameAction('floating_price', { 
-            tileIndex: 18, 
-            price: robResult.amount, 
-            isPositive: true 
-        });
-      } else {
-        const animKey = getUniqueKey();
-        setFloatingPrices(prev => [
-          ...prev, 
-          { price: robResult.amount, tileIndex: 18, key: animKey, isPositive: true }
-        ]);
-        setTimeout(() => {
-          setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
-        }, 3000);
-        
-        // Cash register sound
-        playBuySound();
-      }
+      const animKey = getUniqueKey();
+      setFloatingPrices(prev => [
+        ...prev, 
+        { price: robResult.amount, tileIndex: 18, key: animKey, isPositive: true }
+      ]);
+      setTimeout(() => {
+        setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
+      }, 3000);
       
+      playBuySound();
       setHistory(prev => [`💰 ${gamePlayers[playerIndex].name} robbed the bank for $${robResult.amount}!`, ...prev.slice(0, 9)]);
-      
-      if (networkMode === 'online') {
-        sendGameAction('close_modal');
-        // End turn is handled by calling endTurn locally which sends 'end_turn' action
-        endTurn(playerIndex, false);
-      } else {
-        closeAllModals(() => {
-          endTurn(playerIndex, false); 
-        });
-      }
+      closeAllModals(() => {
+        endTurn(playerIndex, false); 
+      });
       
     } else if (robStatus === 'caught') {
-    // Player was caught - move to jail tile (28) and end turn
-    const jailTileIndex = 28;
-    
-    // Update position
-    setPlayerPositions(prev => {
-      const newPos = [...prev];
-      newPos[playerIndex] = jailTileIndex;
-      return newPos;
-    });
-    lastKnownPositionsRef.current[playerIndex] = jailTileIndex;
-    
-    setHistory(prev => [`👮 ${gamePlayers[playerIndex].name} was caught and sent to jail!`, ...prev.slice(0, 9)]);
-    
-    if (networkMode === 'online') {
-       const newPositions = [...playerPositions];
-       newPositions[playerIndex] = jailTileIndex;
-       sendGameAction('close_modal');
-       sendGameAction('update_state', { playerPositions: newPositions });
-       endTurn(playerIndex, false);
-    } else {
-      closeAllModals(() => {
-           endTurn(playerIndex, false);
+      // Player was caught - move to jail tile (28) and end turn
+      const jailTileIndex = 28;
+      
+      setPlayerPositions(prev => {
+        const newPos = [...prev];
+        newPos[playerIndex] = jailTileIndex;
+        return newPos;
       });
+      lastKnownPositionsRef.current[playerIndex] = jailTileIndex;
+      
+      setHistory(prev => [`👮 ${gamePlayers[playerIndex].name} was caught and sent to jail!`, ...prev.slice(0, 9)]);
+      closeAllModals(() => {
+        endTurn(playerIndex, false);
+      });
+    } else {
+      closeAllModals(() => endTurn(playerIndex, false));
     }
-  } else {
-    // Cancelled (shouldn't happen here if button is only for success/caught)
-    closeAllModals(() => endTurn(playerIndex, false));
-  }
-};
+  };
 
   // Handle Audit Roll (Dice Gamble Mini-Game)
   const handleAuditRoll = async () => {
@@ -2287,7 +2467,15 @@ function App() {
     const playerIndex = currentPlayer;
     const tax = auditAmount;
     
-    // Deduct tax from player
+    if (networkMode === 'online') {
+      sendGameAction('close_modal');
+      closeAllModals(() => {
+        endTurn(playerIndex, false);
+      });
+      return;
+    }
+    
+    // Deduct tax from player (Offline)
     setPlayerMoney(prev => {
       const updated = [...prev];
       updated[playerIndex] -= tax;
@@ -2297,35 +2485,17 @@ function App() {
     // Add to Cash Stack
     setCashStack(prev => {
       const newTotal = prev + tax;
-      
-      // Online Sync - send audit_complete with all updates
-      if (networkMode === 'online') {
-        const updatedMoney = [...playerMoney];
-        updatedMoney[playerIndex] -= tax;
-        sendGameAction('audit_complete', { playerMoney: updatedMoney, cashStack: newTotal });
-        
-        // Broadcast floating price animation
-        sendGameAction('floating_price', { 
-          tileIndex: 7, 
-          price: tax, 
-          isPositive: false 
-        });
-      }
-      
       return newTotal;
     });
     
-    // Offline / Local animation only
-    if (networkMode !== 'online') {
-        showCashStackFloatingPrice(tax);
-        
-        // Floating price animation
-        const animKey = getUniqueKey();
-        setFloatingPrices(prev => [...prev, { price: tax, tileIndex: 7, key: animKey, isPositive: false }]);
-        setTimeout(() => {
-          setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
-        }, 3000);
-    }
+    showCashStackFloatingPrice(tax);
+    
+    // Floating price animation
+    const animKey = getUniqueKey();
+    setFloatingPrices(prev => [...prev, { price: tax, tileIndex: 7, key: animKey, isPositive: false }]);
+    setTimeout(() => {
+      setFloatingPrices(prev => prev.filter(fp => fp.key !== animKey));
+    }, 3000);
     
     // Cash register sound
     playBuySound();
@@ -2423,144 +2593,147 @@ function App() {
           // Calculate steps
           const targetPos = card.targetIndex;
           let steps = (targetPos - currentPos + 36) % 36;
-          if (steps === 0) steps = 36; // Full circle if same? Or 0? Usually 0.
+          if (steps === 0) steps = 36;
           if (targetPos === currentPos) steps = 0;
           
-          if (steps > 0) {
-            await movePlayerToken(playerIndex, steps, 100); // Fast movement
-          }
-          
-          // Sync new position to server (so it doesn't reset us)
-          // Also update ref FIRST so when server echoes back, we don't re-trigger
           if (networkMode === 'online') {
-            lastKnownPositionsRef.current[playerIndex] = targetPos;
-            const newPositions = [...playerPositions];
-            newPositions[playerIndex] = targetPos;
-            sendGameAction('update_state', { playerPositions: newPositions });
+            sendGameAction('chance_move', {
+              playerIndex,
+              oldPos: currentPos,
+              targetPos,
+              steps,
+              delay: 180,
+              cardText: card.text,
+              isJail: false
+            });
+            return;
           }
           
-          // Check for passing start (if not going to jail)
-          // Logic: If we moved forward and target < start (wrapped) OR target is 0
-          // But movePlayerToken handles wrapping visually.
-          // We need to know if we passed 0.
-          // Simple check: if (currentPos + steps >= 36)
-          if (currentPos + steps >= 36 && card.action !== 'GO_TO_JAIL') {
+          if (steps > 0) {
+            await movePlayerToken(playerIndex, steps, 180);
+          }
+          
+          // Passing Start reward ($1000)
+          if (currentPos + steps >= 36) {
              setPlayerMoney(prev => {
                const updated = [...prev];
-               updated[playerIndex] += 200;
-               
-               // Sync money to server
-               if (networkMode === 'online') {
-                 sendGameAction('update_state', { playerMoney: updated });
-               }
-               
+               updated[playerIndex] += 1000;
                return updated;
              });
 
-             setHistory(prev => [`${gamePlayers[playerIndex].name} collected $200 for passing Start`, ...prev.slice(0, 9)]);
-              
-              if (networkMode === 'online') {
-                sendGameAction('floating_price', { 
-                   tileIndex: 0, 
-                   price: 200, 
-                   isPositive: true 
-                });
-              } else {
-                 const animKeyStart = getUniqueKey();
-                 setFloatingPrices(prev => [
-                    ...prev, 
-                    { price: 200, tileIndex: 0, key: animKeyStart, isPositive: true }
-                 ]);
-                 setTimeout(() => {
-                   setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyStart));
-                 }, 3000);
-              }
-           }
+             setHistory(prev => [`${gamePlayers[playerIndex].name} collected $1000 for passing Start`, ...prev.slice(0, 9)]);
+             const animKeyStart = getUniqueKey();
+             setFloatingPrices(prev => [
+                ...prev, 
+                { price: 1000, tileIndex: 0, key: animKeyStart, isPositive: true }
+             ]);
+             setTimeout(() => {
+               setFloatingPrices(prev => prev.filter(fp => fp.key !== animKeyStart));
+             }, 3000);
+          }
           
           setHistory(prev => [`${gamePlayers[playerIndex].name} moved to ${getTileName(targetPos)}`, ...prev.slice(0, 9)]);
-          
-          // Process arrival at new tile
-          handleTileArrival(playerIndex, targetPos, false); // Assume no doubles for chance movement
+          handleTileArrival(playerIndex, targetPos, false);
           break;
           
         case 'MOVE_STEPS':
-          await movePlayerToken(playerIndex, card.steps);
           const newPosSteps2 = (currentPos + card.steps + 36) % 36;
-          // Sync position to server
           if (networkMode === 'online') {
-            lastKnownPositionsRef.current[playerIndex] = newPosSteps2;
-            const newPositions = [...playerPositions];
-            newPositions[playerIndex] = newPosSteps2;
-            sendGameAction('update_state', { playerPositions: newPositions });
+            sendGameAction('chance_move', {
+              playerIndex,
+              oldPos: currentPos,
+              targetPos: newPosSteps2,
+              steps: card.steps,
+              delay: 180,
+              cardText: card.text,
+              isJail: false
+            });
+            return;
           }
+          await movePlayerToken(playerIndex, card.steps, 180);
           setHistory(prev => [`${gamePlayers[playerIndex].name} moved ${card.steps} steps`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosSteps2, false);
           return;
 
         case 'MOVE_FORWARD_RANDOM':
-          // Use pre-calculated steps from card
-          await movePlayerToken(playerIndex, card.steps);
           const newPosFwd = (currentPos + card.steps + 36) % 36;
-          // Sync position to server
           if (networkMode === 'online') {
-            lastKnownPositionsRef.current[playerIndex] = newPosFwd;
-            const newPositions = [...playerPositions];
-            newPositions[playerIndex] = newPosFwd;
-            sendGameAction('update_state', { playerPositions: newPositions });
+            sendGameAction('chance_move', {
+              playerIndex,
+              oldPos: currentPos,
+              targetPos: newPosFwd,
+              steps: card.steps,
+              delay: 180,
+              cardText: card.text,
+              isJail: false
+            });
+            return;
           }
+          await movePlayerToken(playerIndex, card.steps, 180);
           setHistory(prev => [`${gamePlayers[playerIndex].name} moved forward ${card.steps} spaces`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosFwd, false);
           return;
 
         case 'MOVE_BACKWARD_RANDOM':
-          // Use pre-calculated steps from card (already negative)
-          await movePlayerToken(playerIndex, card.steps);
           const newPosBack = (currentPos + card.steps + 36) % 36;
-          // Sync position to server
           if (networkMode === 'online') {
-            lastKnownPositionsRef.current[playerIndex] = newPosBack;
-            const newPositions = [...playerPositions];
-            newPositions[playerIndex] = newPosBack;
-            sendGameAction('update_state', { playerPositions: newPositions });
+            sendGameAction('chance_move', {
+              playerIndex,
+              oldPos: currentPos,
+              targetPos: newPosBack,
+              steps: card.steps,
+              delay: 180,
+              cardText: card.text,
+              isJail: false
+            });
+            return;
           }
+          await movePlayerToken(playerIndex, card.steps, 180);
           setHistory(prev => [`${gamePlayers[playerIndex].name} moved back ${Math.abs(card.steps)} spaces`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, newPosBack, false);
           return;
 
         case 'MOVE_TO_RANDOM':
-          // Use pre-calculated target from card
           const stepsToRandom = (card.targetIndex - currentPos + 36) % 36;
-          await movePlayerToken(playerIndex, stepsToRandom);
-          // Sync position to server
           if (networkMode === 'online') {
-            lastKnownPositionsRef.current[playerIndex] = card.targetIndex;
-            const newPositions = [...playerPositions];
-            newPositions[playerIndex] = card.targetIndex;
-            sendGameAction('update_state', { playerPositions: newPositions });
+            sendGameAction('chance_move', {
+              playerIndex,
+              oldPos: currentPos,
+              targetPos: card.targetIndex,
+              steps: stepsToRandom,
+              delay: 180,
+              cardText: card.text,
+              isJail: false
+            });
+            return;
           }
+          await movePlayerToken(playerIndex, stepsToRandom, 180);
           setHistory(prev => [`${gamePlayers[playerIndex].name} teleported to ${getTileName(card.targetIndex)}`, ...prev.slice(0, 9)]);
           handleTileArrival(playerIndex, card.targetIndex, false);
           return;
           
         case 'GO_TO_JAIL':
-          // Move fast to Jail
-          // Calculate steps to Jail (28)
           const jailIndex = 28;
           let stepsToJail = (jailIndex - currentPos + 36) % 36;
           if (stepsToJail === 0) stepsToJail = 0;
-          
-          // Animate fast
-          if (stepsToJail > 0) {
-            await movePlayerToken(playerIndex, stepsToJail, 50); // Very fast
-          }
-          // Sync position to server
           if (networkMode === 'online') {
-            lastKnownPositionsRef.current[playerIndex] = jailIndex;
-            const newPositions = [...playerPositions];
-            newPositions[playerIndex] = jailIndex;
-            sendGameAction('update_state', { playerPositions: newPositions });
+            sendGameAction('chance_move', {
+              playerIndex,
+              oldPos: currentPos,
+              targetPos: jailIndex,
+              steps: stepsToJail,
+              delay: 150,
+              cardText: card.text,
+              isJail: true
+            });
+            return;
           }
+          if (stepsToJail > 0) {
+            await movePlayerToken(playerIndex, stepsToJail, 150);
+          }
+          setJailStatus(prev => ({ ...prev, [playerIndex]: 3 }));
           setHistory(prev => [`${gamePlayers[playerIndex].name} went to Jail!`, ...prev.slice(0, 9)]);
+          setTurnFinished(true);
           break;
           
         case 'REPAIRS':
@@ -2759,14 +2932,18 @@ function App() {
   const rollDice = async (overrideValue = null) => {
     if (isRolling || isProcessingTurn || skippedTurns[currentPlayer]) return;
     
-    // Online mode: Only allow if it's my turn
-    if (networkMode === 'online' && myPlayerIndex !== currentPlayer) return;
+    // Online mode: Only allow if it's my turn, send immediately to server
+    if (networkMode === 'online') {
+      if (myPlayerIndex !== currentPlayer) return;
+      sendGameAction('roll_dice', overrideValue ? { forcedValue: overrideValue } : {});
+      return;
+    }
     
     setIsRolling(true);
     setIsProcessingTurn(true);
     playDiceRollSound();
 
-    // Run dice animation locally (both offline and online)
+    // Run dice animation locally (offline only)
     const rollDuration = 1000;
     const intervalTime = 80;
     
@@ -2779,16 +2956,6 @@ function App() {
 
     await wait(rollDuration);
     clearInterval(rollInterval);
-
-    // Online Mode: Send action to server, server calculates result
-    if (networkMode === 'online') {
-      sendGameAction('roll_dice', overrideValue ? { forcedValue: overrideValue } : {});
-      // Server will respond with state_update containing new positions
-      // The applyGameState function will update state
-      // We need to wait for server response and then run hop animation
-      setIsRolling(false);
-      return;
-    }
 
     // Offline Mode: Calculate result locally
     let die1, die2;
@@ -2875,12 +3042,9 @@ function App() {
       setBuildTotalCost(prev => prev + upgradeCost);
     }
     
-    // Apply the build
+    // Apply the build (staged locally until confirmed via BUILD button)
     setPropertyLevels(prev => {
       const updated = { ...prev, [tileIndex]: newLevel };
-      if (networkMode === 'online') {
-        sendGameAction('update_state', { propertyLevels: updated });
-      }
       return updated;
     });
   };
@@ -3028,7 +3192,9 @@ function App() {
   
   const closeSettings = () => {
     setShowSettingsModal(false);
-    setShowMenuModal(true);
+    if (gameStage === 'playing') {
+      setShowMenuModal(true);
+    }
   };
   
   const handleExitGame = () => {
@@ -3036,13 +3202,19 @@ function App() {
     if (networkMode === 'online') {
       sendGameAction('exit_game', {});
     }
+
+    // Disconnect socket cleanly
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
     
     // Close modals
     setShowMenuModal(false);
     setShowExitConfirm(false);
     
-    // FULL GAME STATE RESET - so avatar selection shows all options again
-    setGamePlayers([]);
+    // FULL GAME STATE RESET - reset game players to default list
+    setGamePlayers(players);
     setConnectedPlayers([]);
     setPlayerPositions([0, 0, 0, 0]);
     setPlayerMoney([10000, 10000, 10000, 10000]);
@@ -3238,13 +3410,20 @@ function App() {
       }
       
       sendGameAction('buy_property', { tileIndex, price: finalPrice });
-      // NOTE: Removed manual floating_price send - server handles broadcast now
-      
-      // NOTE: Don't trigger local floating price here - server broadcast handles it
       playBuySound();
       
-      // Close modal locally
-      closeAllModals();
+      const isDoubles = buyingProperty?.isDoubles;
+      // Close modal locally and enable Done button
+      closeAllModals(() => {
+        if (isDoubles) {
+          setIsProcessingTurn(false);
+        } else {
+          setTimeout(() => {
+            setTurnFinished(true);
+            setIsProcessingTurn(false);
+          }, 300);
+        }
+      });
       return;
     }
     
@@ -3372,6 +3551,10 @@ function App() {
     setDealSelectionMode(false);
     setIncomingDeal(null);
     setShowDealReviewModal(false);
+    setActiveDeal(null);
+    if (networkMode === 'online') {
+      sendGameAction('deal_cancel');
+    }
   };
 
   // Handle Deal Initiate
@@ -3412,9 +3595,10 @@ function App() {
     if (!dealSelectionMode) return;
 
     const owner = propertyOwnership[tileIndex];
+    const proposerIndex = networkMode === 'online' ? myPlayerIndex : currentPlayer;
     
     // Check if it's active player's property
-    if (owner === currentPlayer) {
+    if (owner === proposerIndex) {
       // Toggle in give list
       setDealGiveProperties(prev => {
         if (prev.includes(tileIndex)) {
@@ -3439,8 +3623,9 @@ function App() {
 
   // Handle Deal Offer Submit
   const handleDealOffer = () => {
+    const proposerIndex = networkMode === 'online' ? myPlayerIndex : currentPlayer;
     const dealData = {
-      proposer: currentPlayer,
+      proposer: proposerIndex,
       recipient: selectedDealPlayer,
       giveProperties: dealGiveProperties,
       receiveProperties: dealReceiveProperties,
@@ -3781,10 +3966,13 @@ function App() {
       if (warCurrentRoller + 1 < warParticipants.length) {
         setWarCurrentRoller(warCurrentRoller + 1);
       } else {
-        // All done, show results - pass the complete rolls object!
+        // All participants have rolled! Mark evaluating immediately so roll button is NEVER displayed again
+        setWarCurrentRoller(null);
+        setWarPhase('evaluating');
+        // Wait 2.2s so players can see the last roll, then show results!
         setTimeout(() => {
           handleWarShowResults(updatedRolls);
-        }, 500);
+        }, 2200);
       }
     }, 1000);
   };
@@ -3799,18 +3987,32 @@ function App() {
     if (winners.length > 1) {
       // TIE! Need to re-roll between tied gamePlayers
       const tiedPlayers = winners.map(([idx]) => parseInt(idx));
-      setHistory(prev => [`⚔️ TIE! ${tiedPlayers.map(idx => gamePlayers[idx].name).join(' vs ')} will re-roll!`, ...prev.slice(0, 9)]);
+      const names = tiedPlayers.map(idx => gamePlayers[idx]?.name || `Player ${idx + 1}`).join(' & ');
       
-      // Reset for re-roll with only tied gamePlayers
-      setWarParticipants(tiedPlayers);
-      setWarRolls({});
-      setWarCurrentRoller(0);
-      setWarPhase('rolling');
+      setWarWinner(null);
+      setWarPhase('tie');
+      setWarTiedPlayers(tiedPlayers);
+      setWarTieRoll(maxRoll);
+      setWarTieMessage(`${names} tied with ${maxRoll}!`);
+      setHistory(prev => [`⚔️ TIE! ${names} tied with ${maxRoll}!`, ...prev.slice(0, 9)]);
+      
+      // Wait 2.8s showing the tie screen with highlighted tied players, then sudden-death rematch with ONLY tied players
+      setTimeout(() => {
+        setWarParticipants(tiedPlayers);
+        setWarRolls({});
+        setWarCurrentRoller(0);
+        setWarPhase('roll');
+        setWarTieMessage(null);
+        setWarTiedPlayers(null);
+        setWarTieRoll(null);
+        setHistory(prev => [`⚔️ Sudden-death rematch between ${names}...`, ...prev.slice(0, 9)]);
+      }, 2800);
       return;
     }
     
     // Single winner
     const winnerIdx = parseInt(winners[0][0]);
+    setWarWinner(winnerIdx);
     
     if (warMode === 'A' && warProperty) {
       // Winner gets property for free
@@ -3845,17 +4047,15 @@ function App() {
     // Online Mode
     if (networkMode === 'online') {
       sendGameAction('war_close');
-      // Also end turn locally? Server handles end_turn logic?
-      // Usually closing modal ends turn.
-      // Let's call endTurn locally to send 'end_turn' action if needed.
-      // But wait, war_close just closes modal.
-      // We should probably end turn too.
       endTurn(currentPlayer, false);
       return;
     }
 
     setShowWarModal(false);
     setWarPhase('idle');
+    setWarTiedPlayers(null);
+    setWarTieRoll(null);
+    setWarTieMessage(null);
     endTurn(currentPlayer, false);
   };
 
@@ -3896,18 +4096,20 @@ function App() {
     // Move player
     const currentPos = playerPositions[currentPlayer];
     const steps = (targetIndex - currentPos + 36) % 36;
-    await movePlayerToken(currentPlayer, steps, 50); // Fast travel
-    
-    // Sync position to server
     if (networkMode === 'online') {
-      const newPositions = [...playerPositions];
-      newPositions[currentPlayer] = targetIndex;
-      sendGameAction('update_state', { playerPositions: newPositions });
+      sendGameAction('chance_move', {
+        playerIndex: currentPlayer,
+        oldPos: currentPos,
+        targetPos: targetIndex,
+        steps,
+        delay: 150,
+        cardText: `Traveled to ${getTileName(targetIndex)}`,
+        isJail: false
+      });
+      return;
     }
-    
-    // Handle arrival at new station (don't trigger rent/buy/travel again?)
-    // Usually travel ends turn.
-    handleTileArrival(currentPlayer, targetIndex, false); 
+    await movePlayerToken(currentPlayer, steps, 150);
+    handleTileArrival(currentPlayer, targetIndex, false);
   };
 
   // Handle Tile Click (Open Property Details OR Select Travel Destination OR Auction Selection OR Deal Selection)
@@ -3932,7 +4134,7 @@ function App() {
 
     // Forced Auction Selection
     if (isSelectingAuctionProperty) {
-      if (tileIndex === 23) return; // Ignore self (Forced Auction tile)
+      if (tileIndex === 31) return; // Ignore self (Forced Auction tile)
       
       const property = RENT_DATA[tileIndex];
       // Must be a valid property
@@ -3985,6 +4187,11 @@ function App() {
       } else if (!isTrain) {
          // Ignore
       }
+      return;
+    }
+
+    if (tileIndex === 3) {
+      showToast(`💵 Cash Stack Pot: $${(cashStack || 0).toLocaleString()}`);
       return;
     }
 
@@ -4062,21 +4269,36 @@ function App() {
     return {}; // Normal styling
   };
 
-  // Helper: Get style for deal selection mode (greyscale non-eligible tiles)
+  // Helper: Get style for deal mode (greyscale non-eligible tiles, dim non-deal tiles during deal review)
   const getDealSelectionStyle = (tileIndex) => {
-    if (!dealSelectionMode) return {};
-    
-    const owner = propertyOwnership[tileIndex];
-    const isCurrentPlayerProperty = owner === currentPlayer;
-    const isSelectedPlayerProperty = owner === selectedDealPlayer;
-    
-    // Keep tile colored if owned by current player or selected player
-    if (isCurrentPlayerProperty || isSelectedPlayerProperty) {
-      return { transition: 'filter 0.3s', cursor: 'pointer' };
+    // 1. If actively picking properties to trade
+    if (dealSelectionMode) {
+      const owner = propertyOwnership[tileIndex];
+      const isCurrentPlayerProperty = owner === currentPlayer;
+      const isSelectedPlayerProperty = owner === selectedDealPlayer;
+      
+      // Keep tile colored if owned by current player or selected player
+      if (isCurrentPlayerProperty || isSelectedPlayerProperty) {
+        return { transition: 'filter 0.3s', cursor: 'pointer' };
+      }
+      
+      // Grayscale everything else
+      return { filter: 'grayscale(100%) brightness(0.6)', pointerEvents: 'none', transition: 'filter 0.3s' };
+    }
+
+    // 2. If reviewing deal or active deal pending online (non-selection mode)
+    const isDealReview = showDealReviewModal && incomingDeal;
+    const isDealSpectating = activeDeal && networkMode === 'online' && !showDealModal;
+    if (isDealReview || isDealSpectating) {
+      const gList = isDealReview ? (incomingDeal.giveProperties || []) : (activeDeal.giveProperties || []);
+      const rList = isDealReview ? (incomingDeal.receiveProperties || []) : (activeDeal.receiveProperties || []);
+      if (gList.includes(tileIndex) || rList.includes(tileIndex)) {
+        return {}; // Highlight handled by getModalHighlightStyle
+      }
+      return { filter: 'grayscale(60%) brightness(0.75)', transition: 'filter 0.3s' };
     }
     
-    // Grayscale everything else
-    return { filter: 'grayscale(100%) brightness(0.6)', pointerEvents: 'none', transition: 'filter 0.3s' };
+    return {};
   };
 
   // Helper: Get style for build mode (greyscale non-monopoly tiles)
@@ -4099,21 +4321,146 @@ function App() {
     return { filter: 'grayscale(100%) brightness(0.6)', pointerEvents: 'none', transition: 'filter 0.3s' };
   };
 
+  // Helper: Highlight property tile for all active modals (Property War, Deal, Buying, Property Details, Auction)
+  const getModalHighlightStyle = (tileIndex) => {
+    // 1. Property War: Chosen property
+    if (showWarModal && warProperty?.tileIndex !== undefined && warProperty?.tileIndex !== null) {
+      if (Number(warProperty.tileIndex) === Number(tileIndex)) {
+        return {
+          filter: 'brightness(1.25) drop-shadow(0 0 18px #FF3D00)',
+          zIndex: 120,
+          boxShadow: '0 0 22px #FF3D00, inset 0 0 12px #FFD700',
+          border: '3px solid #FFD700',
+          animation: 'warTilePulse 1.4s ease-in-out infinite',
+          transition: 'all 0.3s ease'
+        };
+      }
+    }
+
+    // 2. Buying Modal: Property currently up for purchase
+    if (showBuyModal && buyingProperty?.tileIndex !== undefined && buyingProperty?.tileIndex !== null) {
+      if (Number(buyingProperty.tileIndex) === Number(tileIndex)) {
+        return {
+          filter: 'brightness(1.25) drop-shadow(0 0 18px #FFD700)',
+          zIndex: 120,
+          boxShadow: '0 0 22px #FFD700, inset 0 0 12px #FFF9C4',
+          border: '3px solid #FFD700',
+          animation: 'buyTilePulse 1.4s ease-in-out infinite',
+          transition: 'all 0.3s ease'
+        };
+      }
+    }
+
+    // 3. Property Details Modal: Property being inspected
+    if (showPropertyModal && selectedProperty?.tileIndex !== undefined && selectedProperty?.tileIndex !== null) {
+      if (Number(selectedProperty.tileIndex) === Number(tileIndex)) {
+        return {
+          filter: 'brightness(1.25) drop-shadow(0 0 18px #29B6F6)',
+          zIndex: 120,
+          boxShadow: '0 0 22px #0288D1, inset 0 0 12px #81D4FA',
+          border: '3px solid #29B6F6',
+          animation: 'inspectTilePulse 1.4s ease-in-out infinite',
+          transition: 'all 0.3s ease'
+        };
+      }
+    }
+
+    // 4. Deal System: Properties being given or received
+    const isProposing = showDealModal || dealSelectionMode;
+    const isReviewing = showDealReviewModal && incomingDeal;
+    const isSpectating = activeDeal && networkMode === 'online';
+
+    const giveList = isProposing 
+      ? dealGiveProperties 
+      : isReviewing 
+        ? (incomingDeal.giveProperties || []) 
+        : isSpectating 
+          ? (activeDeal.giveProperties || []) 
+          : [];
+
+    const receiveList = isProposing 
+      ? dealReceiveProperties 
+      : isReviewing 
+        ? (incomingDeal.receiveProperties || []) 
+        : isSpectating 
+          ? (activeDeal.receiveProperties || []) 
+          : [];
+
+    if (giveList.includes(tileIndex)) {
+      return {
+        filter: 'brightness(1.25) drop-shadow(0 0 16px #00E676)',
+        zIndex: 115,
+        boxShadow: '0 0 22px #00E676, inset 0 0 10px #B9F6CA',
+        border: '3px solid #00E676',
+        animation: 'dealGivePulse 1.4s ease-in-out infinite',
+        transition: 'all 0.3s ease'
+      };
+    }
+
+    if (receiveList.includes(tileIndex)) {
+      return {
+        filter: 'brightness(1.25) drop-shadow(0 0 16px #FF9100)',
+        zIndex: 115,
+        boxShadow: '0 0 22px #FF9100, inset 0 0 10px #FFE57F',
+        border: '3px solid #FF9100',
+        animation: 'dealGetPulse 1.4s ease-in-out infinite',
+        transition: 'all 0.3s ease'
+      };
+    }
+
+    // 5. Active Auction (Bidding phase)
+    const auctionTile = pendingAuctionProperty?.tileIndex ?? auctionState?.propertyIndex;
+    if ((showAuctionModal || (auctionState && auctionState.status === 'bidding')) && auctionTile !== undefined && auctionTile !== null) {
+      if (Number(auctionTile) === Number(tileIndex)) {
+        return {
+          filter: 'brightness(1.25) drop-shadow(0 0 18px #FFC107)',
+          zIndex: 120,
+          boxShadow: '0 0 22px #FFC107, inset 0 0 12px #FFE082',
+          border: '3px solid #FFC107',
+          animation: 'auctionTilePulse 1.4s ease-in-out infinite',
+          transition: 'all 0.3s ease'
+        };
+      }
+    }
+
+    return {};
+  };
+
+  // Helper: Delegate getWarSelectionStyle to getModalHighlightStyle
+  const getWarSelectionStyle = (tileIndex) => getModalHighlightStyle(tileIndex);
+
   // Helper: Render deal indicator (+) or (-) on selected tiles
   const renderDealIndicator = (tileIndex) => {
-    if (!dealSelectionMode) return null;
-    
-    const isGiving = dealGiveProperties.includes(tileIndex);
-    const isReceiving = dealReceiveProperties.includes(tileIndex);
-    
-    if (isGiving) {
+    const isProposing = showDealModal || dealSelectionMode;
+    const isReviewing = showDealReviewModal && incomingDeal;
+    const isSpectating = activeDeal && networkMode === 'online';
+
+    if (!isProposing && !isReviewing && !isSpectating) return null;
+
+    const giveList = isProposing 
+      ? dealGiveProperties 
+      : isReviewing 
+        ? (incomingDeal.giveProperties || []) 
+        : isSpectating 
+          ? (activeDeal.giveProperties || []) 
+          : [];
+
+    const receiveList = isProposing 
+      ? dealReceiveProperties 
+      : isReviewing 
+        ? (incomingDeal.receiveProperties || []) 
+        : isSpectating 
+          ? (activeDeal.receiveProperties || []) 
+          : [];
+
+    if (giveList.includes(tileIndex)) {
       return (
-        <div className="deal-tile-indicator give">−</div>
+        <div className="deal-tile-indicator give" title="Offering">−</div>
       );
     }
-    if (isReceiving) {
+    if (receiveList.includes(tileIndex)) {
       return (
-        <div className="deal-tile-indicator receive">+</div>
+        <div className="deal-tile-indicator receive" title="Requesting">+</div>
       );
     }
     return null;
@@ -4122,8 +4469,8 @@ function App() {
   // Handle Auction Selection Confirmation
   const handleAuctionConfirm = () => {
       // Check funds
-      if (playerMoney[myPlayerIndex] < 1000) {
-          alert("Not enough money! You need $1,000 to start an auction.");
+      if (playerMoney[myPlayerIndex] < 3000) {
+          alert("Not enough money! You need $3,000 to start an auction.");
           return;
       }
       
@@ -4257,6 +4604,11 @@ function App() {
 
   // Calculate tile positions - using viewport-relative units
   // Board fills 100vh, corners are 13.5vh each
+  const getTileThemeClass = (tileColor) => {
+    const darkColors = [PROPERTY_COLORS.red, PROPERTY_COLORS.purple, PROPERTY_COLORS.darkGreen];
+    return darkColors.includes(tileColor) ? 'tile-dark' : 'tile-light';
+  };
+
   // Horizontal tiles: 8.111vh, Vertical tiles: 10.428vh (NO GAPS)
   const getTileStyle = (index, row, tileColor) => {
     const cornerSize = '13.5vh';
@@ -4530,143 +4882,48 @@ function App() {
         <div className="rotate-subtext">Or rotate your device manually</div>
       </div>
 
-      {/* Startup Screen */}
+      {/* Revamped Matchmaking & Startup Screen */}
       {gameStage !== 'playing' && (
-        <div className="startup-screen" style={{ backgroundImage: `url(${startupBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-          <div className="startup-content">
-            {/* Title and Subtitle Removed as per request */}
-            
-            {gameStage === 'menu' && (
-              <button className="startup-btn play-btn" onClick={() => setGameStage('mode_select')}>
-                PLAY
-              </button>
-            )}
-            
-            {gameStage === 'mode_select' && (
-              <div className="mode-select-container">
-                <button className="startup-btn mode-btn" onClick={() => {
-                  setNetworkMode('offline');
-                  setGameStage('playing');
-                }}>
-                  <span className="mode-icon">👥</span>
-                  <span className="mode-text">Pass n Play</span>
-                </button>
-                <button className="startup-btn mode-btn" onClick={() => setGameStage('online_menu')}>
-                  <span className="mode-icon">🌐</span>
-                  <span className="mode-text">Online</span>
-                </button>
-                <button className="startup-btn back-btn" onClick={() => setGameStage('menu')}>
-                  Back
-                </button>
-              </div>
-            )}
-            
-            {gameStage === 'online_menu' && (
-              <div className="mode-select-container">
-                <div className="identity-setup" style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '10px' }}>
-                  <h3 style={{ color: 'white', marginBottom: '10px' }}>Your Identity</h3>
-                  <input 
-                    type="text" 
-                    placeholder="Your Name" 
-                    value={myIdentity.name} 
-                    onChange={(e) => setMyIdentity(prev => ({ ...prev, name: e.target.value }))}
-                    className="join-input"
-                    style={{ width: '200px', marginBottom: '10px' }}
-                  />
-                  <div className="avatar-select" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                    {gamePlayers.map((p, i) => (
-                      <img 
-                        key={i} 
-                        src={p.avatar} 
-                        alt="avatar" 
-                        style={{ 
-                          width: '40px', 
-                          height: '40px', 
-                          border: myIdentity.avatar === p.avatar 
-                            ? `3px solid ${AVATAR_COLORS[p.avatar] || '#4CAF50'}` 
-                            : '2px solid transparent',
-                          borderRadius: '50%',
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setMyIdentity(prev => ({ ...prev, avatar: p.avatar }))}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <button className="startup-btn mode-btn" onClick={initializeHost}>
-                  <span className="mode-icon">🏠</span>
-                  <span className="mode-text">Host Game</span>
-                </button>
-                <div className="join-container">
-                  <input 
-                    type="text" 
-                    className="join-input"
-                    placeholder="CODE"
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    maxLength={4}
-                  />
-                  <button className="startup-btn mode-btn" onClick={joinGame}>
-                    <span className="mode-icon">🔗</span>
-                    <span className="mode-text">Join</span>
-                  </button>
-                </div>
-                <button className="startup-btn back-btn" onClick={() => setGameStage('mode_select')}>
-                  Back
-                </button>
-              </div>
-            )}
-            
-            {gameStage === 'lobby' && (
-              <div className="lobby-container">
-                <h2 className="lobby-title">Lobby</h2>
-                {myPlayerIndex === 0 && roomCode && (
-                  <div className="host-code-display">
-                    <span>Code: </span>
-                    <span className="code-value">{roomCode}</span>
-                  </div>
-                )}
-                <div className="lobby-gamePlayers">
-                  <h3>Players Joined:</h3>
-                  <ul>
-                    {connectedPlayers.map((p, i) => (
-                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <img 
-                          src={p.avatar || gamePlayers[i]?.avatar} 
-                          alt="av" 
-                          style={{ width: '30px', height: '30px', borderRadius: '50%' }} 
-                        />
-                        <span>{p.name || `Player ${i+1}`} {i === 0 ? '(Host)' : ''}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                {myPlayerIndex === 0 ? (
-                  <button 
-                    className="startup-btn play-btn" 
-                    onClick={startGame}
-                    disabled={connectedPlayers.length < 2}
-                    style={{ opacity: connectedPlayers.length < 2 ? 0.5 : 1, cursor: connectedPlayers.length < 2 ? 'not-allowed' : 'pointer' }}
-                  >
-                    START GAME
-                  </button>
-                ) : (
-                  <div className="waiting-text">Waiting for host to start...</div>
-                )}
-                <button className="startup-btn back-btn" onClick={() => {
-                   // Cleanup socket
-                   if (socketRef.current) socketRef.current.disconnect();
-                   socketRef.current = null;
-                   setGameStage('mode_select');
-                   setNetworkMode('offline');
-                }}>
-                  Leave
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <MatchmakingView
+          gameStage={gameStage}
+          setGameStage={setGameStage}
+          setNetworkMode={setNetworkMode}
+          myIdentity={myIdentity}
+          setMyIdentity={setMyIdentity}
+          players={players}
+          AVATAR_COLORS={AVATAR_COLORS}
+          initializeHost={initializeHost}
+          joinRoom={joinGame}
+          joinCode={joinCode}
+          setJoinCode={setJoinCode}
+          roomCode={roomCode}
+          connectedPlayers={connectedPlayers}
+          myPlayerIndex={myPlayerIndex}
+          startGame={startGame}
+          onLeaveRoom={() => {
+            if (socketRef.current) {
+              socketRef.current.disconnect();
+              socketRef.current = null;
+            }
+            setRoomCode('');
+            setConnectedPlayers([]);
+            setMyPlayerIndex(null);
+            setGameStage('online_menu');
+            setNetworkMode('offline');
+          }}
+          showToast={showToast}
+          startupBg={startupBg}
+          devMode={devMode}
+          onToggleDevMode={() => {
+            const next = !devMode;
+            setDevMode(next);
+            try { localStorage.setItem('pseudopoly_devmode', String(next)); } catch {}
+          }}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          serverUrl={serverUrl}
+          updateServerUrl={updateServerUrl}
+          socketConnected={socketConnected}
+        />
       )}
 
       {/* Game Board */}
@@ -4701,16 +4958,17 @@ function App() {
           const auctionStyle = getAuctionSelectionStyle(tileIndex);
           const dealStyle = getDealSelectionStyle(tileIndex);
           const buildStyle = getBuildSelectionStyle(tileIndex);
+          const warStyle = getWarSelectionStyle(tileIndex);
           return (
             <div 
               key={tile.id}
-              className={`tile horizontal ${tile.type}`}
-              style={{...getTileStyle(index, 'bottom', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle}}
+              className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)}`}
+              style={{...getTileStyle(index, 'bottom', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle, ...warStyle}}
               onClick={() => handleTileClick(tileIndex)}
             >
               {renderUpgrades(tileIndex, 'bottom')}
               <span className="tile-name">{tile.name}</span>
-              {tile.icon && <span className="tile-icon">{tile.icon}</span>}
+              {tile.icon && <span className="tile-icon"><BoardIcon type={tile.icon} /></span>}
               {tile.price && (
                 <span 
                   className={`tile-price ${ownerStyle ? 'owned' : ''}`}
@@ -4736,16 +4994,17 @@ function App() {
           const auctionStyle = getAuctionSelectionStyle(tileIndex);
           const dealStyle = getDealSelectionStyle(tileIndex);
           const buildStyle = getBuildSelectionStyle(tileIndex);
+          const warStyle = getWarSelectionStyle(tileIndex);
           return (
             <div 
               key={tile.id}
-              className={`tile vertical left ${tile.type}`}
-              style={{...getTileStyle(index, 'left', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle}}
+              className={`tile vertical left ${tile.type} ${getTileThemeClass(tile.color)}`}
+              style={{...getTileStyle(index, 'left', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle, ...warStyle}}
               onClick={() => handleTileClick(tileIndex)}
             >
               {renderUpgrades(tileIndex, 'left')}
               <span className="tile-name">{tile.name}</span>
-              {tile.icon && <span className="tile-icon">{tile.icon}</span>}
+              {tile.icon && <span className="tile-icon"><BoardIcon type={tile.icon} /></span>}
               {tile.price && (
                 <span 
                   className={`tile-price ${ownerStyle ? 'owned' : ''}`}
@@ -4769,16 +5028,17 @@ function App() {
           const auctionStyle = getAuctionSelectionStyle(tileIndex);
           const dealStyle = getDealSelectionStyle(tileIndex);
           const buildStyle = getBuildSelectionStyle(tileIndex);
+          const warStyle = getWarSelectionStyle(tileIndex);
           return (
             <div 
               key={tile.id}
-              className={`tile horizontal ${tile.type}`}
-              style={{...getTileStyle(index, 'top', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle}}
+              className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)}`}
+              style={{...getTileStyle(index, 'top', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle, ...warStyle}}
               onClick={() => handleTileClick(tileIndex)}
             >
               {renderUpgrades(tileIndex, 'top')}
               <span className="tile-name">{tile.name}</span>
-              {tile.icon && <span className="tile-icon">{tile.icon}</span>}
+              {tile.icon && <span className="tile-icon"><BoardIcon type={tile.icon} /></span>}
               {tile.price && (
                 <span 
                   className={`tile-price ${ownerStyle ? 'owned' : ''}`}
@@ -4802,16 +5062,17 @@ function App() {
           const auctionStyle = getAuctionSelectionStyle(tileIndex);
           const dealStyle = getDealSelectionStyle(tileIndex);
           const buildStyle = getBuildSelectionStyle(tileIndex);
+          const warStyle = getWarSelectionStyle(tileIndex);
           return (
             <div 
               key={tile.id}
-              className={`tile vertical right ${tile.type}`}
-              style={{...getTileStyle(index, 'right', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle}}
+              className={`tile vertical right ${tile.type} ${getTileThemeClass(tile.color)}`}
+              style={{...getTileStyle(index, 'right', tile.color), ...auctionStyle, ...dealStyle, ...buildStyle, ...warStyle}}
               onClick={() => handleTileClick(tileIndex)}
             >
               {renderUpgrades(tileIndex, 'right')}
               <span className="tile-name">{tile.name}</span>
-              {tile.icon && <span className="tile-icon">{tile.icon}</span>}
+              {tile.icon && <span className="tile-icon"><BoardIcon type={tile.icon} /></span>}
               {tile.price && (
                 <span 
                   className={`tile-price ${ownerStyle ? 'owned' : ''}`}
@@ -4832,7 +5093,7 @@ function App() {
         <div className="board-center">
           {/* Decorative Elements */}
           <div className="center-decorations">
-            <div className="yacht">🛥️</div>
+            <div className="yacht"><YachtIcon size={36} /></div>
           </div>
 
           {/* Jail Arrest Modal (Placed in local center scope) */}
@@ -4863,7 +5124,7 @@ function App() {
                           You have been arrested for <span style={{ fontWeight: 'bold', color: '#D32F2F', fontSize: '18px' }}>{arrestDuration}</span> turns.
                         </div>
                         <div style={{ fontSize: '40px', margin: '10px 0' }}>👮‍♂️</div>
-                        <div style={{ fontSize: '13px', color: '#666', marginTop: '10px' }}>
+                        <div style={{ fontSize: '13px', color: '#5D4037', marginTop: '10px' }}>
                            You won't collect rent until jailed time is served.
                         </div>
                      </div>
@@ -4911,7 +5172,7 @@ function App() {
                         <div style={{ fontSize: '16px', marginBottom: '10px' }}>
                           Turns in Jail: <span style={{ fontWeight: 'bold', fontSize: '18px' }}>{jailStatus[currentPlayer]}</span>
                         </div>
-                        <div style={{ fontSize: '13px', color: '#666' }}>
+                        <div style={{ fontSize: '13px', color: '#5D4037' }}>
                            Pay bail to leave now, or skip turn to serve time.
                         </div>
                      </div>
@@ -5005,7 +5266,7 @@ function App() {
                         </button>
                       )}
                       <button 
-                        className={`roll-button ${turnFinished ? 'done' : ''}`} 
+                        className={`roll-button ${turnFinished ? 'done' : ''} ${(!buyingProperty || showBuyModal) ? 'solo' : ''}`} 
                         onClick={() => {
                           if (turnFinished || skippedTurns[currentPlayer]) {
                             // If balance is negative, show bankruptcy modal instead of ending turn
@@ -5516,7 +5777,7 @@ function App() {
 
       {/* Build Modal (Main) */}
       {showBuildModal && (
-        <div className="modal-overlay" style={{ pointerEvents: 'none', background: 'transparent' }}>
+        <div className="modal-overlay modal-overlay-inline" style={{ pointerEvents: 'none', background: 'transparent' }}>
           <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '5vh', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', maxHeight: '80vh', overflow: 'hidden' }}>
             <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%)' }}>
               <span className="modal-heading-text">🏗️ BUILD MODE</span>
@@ -5606,7 +5867,7 @@ function App() {
 
       {/* Sell Modal (Main) */}
       {showSellModal && (
-        <div className="modal-overlay" style={{ pointerEvents: 'none', background: 'transparent' }}>
+        <div className="modal-overlay modal-overlay-inline" style={{ pointerEvents: 'none', background: 'transparent' }}>
           <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '5vh', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', maxHeight: '80vh', overflow: 'hidden' }}>
             <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #FF9800 0%, #F57C00 100%)' }}>
               <span className="modal-heading-text">💰 SELL MODE</span>
@@ -5719,71 +5980,30 @@ function App() {
             <div className="modal-body" style={{ textAlign: 'center' }}>
                <div style={{ fontSize: '14px', color: '#4a2c18', marginBottom: '15px' }}>
                  Are you sure you want to exit?<br/>
-                 <span style={{ fontSize: '12px', color: '#888' }}>Your properties will be released and you cannot rejoin.</span>
-               </div>
-               <div className="modal-buttons" style={{ justifyContent: 'center', gap: '15px' }}>
-                 <button 
-                    className="modal-btn" 
-                    style={{ flex: 'none', minWidth: '100px', background: '#e0e0e0', color: '#333' }} 
-                    onClick={() => setShowExitConfirm(false)}
-                 >
-                   CANCEL
-                 </button>
-                 <button 
-                    className="modal-btn cancel" 
-                    style={{ flex: 'none', minWidth: '100px', background: 'linear-gradient(to bottom, #f44336 0%, #c62828 100%)', color: 'white' }} 
-                    onClick={handleExitGame}
-                 >
-                   EXIT
-                 </button>
-               </div>
-            </div>
+                  <span style={{ fontSize: '12px', color: '#5D4037' }}>Your properties will be released and you cannot rejoin.</span>
+                </div>
+                <div className="modal-buttons" style={{ justifyContent: 'center', gap: '15px' }}>
+                  <button 
+                     className="modal-btn" 
+                     style={{ flex: 'none', minWidth: '100px', background: '#e0e0e0', color: '#333' }} 
+                     onClick={() => setShowExitConfirm(false)}
+                  >
+                    CANCEL
+                  </button>
+                  <button 
+                     className="modal-btn cancel" 
+                     style={{ flex: 'none', minWidth: '100px', background: 'linear-gradient(to bottom, #f44336 0%, #c62828 100%)', color: 'white' }} 
+                     onClick={handleExitGame}
+                  >
+                    EXIT
+                  </button>
+                </div>
+             </div>
           </div>
         </div>
       )}
 
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <div className="modal-overlay">
-          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '15vh', minWidth: '300px' }}>
-            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)' }}>
-              <span className="modal-heading-text">⚙️ SETTINGS</span>
-            </div>
-            <div className="modal-body" style={{ textAlign: 'center', padding: '20px' }}>
-               <div style={{ marginBottom: '20px' }}>
-                 <div style={{ fontSize: '14px', color: '#4a2c18', marginBottom: '10px', fontWeight: 'bold' }}>
-                   Player Hopping Animation Speed
-                 </div>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                   <span style={{ fontSize: '12px' }}>Slow</span>
-                   <input 
-                     type="range" 
-                     min="0.5" 
-                     max="2" 
-                     step="0.1" 
-                     value={animationSpeed}
-                     onChange={(e) => setAnimationSpeed(parseFloat(e.target.value))}
-                     style={{ flex: 1 }}
-                   />
-                   <span style={{ fontSize: '12px' }}>Fast</span>
-                 </div>
-                 <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                   Speed: {animationSpeed.toFixed(1)}x
-                 </div>
-               </div>
-               <div className="modal-buttons" style={{ justifyContent: 'center' }}>
-                 <button 
-                    className="modal-btn buy" 
-                    style={{ flex: 'none', minWidth: '120px', background: 'linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)' }} 
-                    onClick={closeSettings}
-                 >
-                   DONE
-                 </button>
-               </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Buying Modal */}
       {(showBuyModal || (isModalClosing && closingModal === 'buy')) && buyingProperty && (
@@ -5875,7 +6095,7 @@ function App() {
                     </div>
                   ) : (
                     <div className="modal-buttons">
-                      <div style={{ color: '#666', fontStyle: 'italic' }}>Waiting for player...</div>
+                      <div style={{ color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic' }}>Waiting for player...</div>
                     </div>
                   )}
                 </>
@@ -5901,7 +6121,7 @@ function App() {
                     {(networkMode !== 'online' || myPlayerIndex === currentPlayer) ? (
                       <button className="modal-btn buy" onClick={handleRobBankComplete} style={{ width: '100%' }}>COLLECT</button>
                     ) : (
-                      <div style={{ color: '#666', fontStyle: 'italic' }}>Waiting for player to collect...</div>
+                      <div style={{ color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic' }}>Waiting for player to collect...</div>
                     )}
                   </div>
                 </>
@@ -5915,7 +6135,7 @@ function App() {
                     {(networkMode !== 'online' || myPlayerIndex === currentPlayer) ? (
                       <button className="modal-btn cancel" onClick={handleRobBankComplete} style={{ width: '100%' }}>GO TO JAIL</button>
                     ) : (
-                      <div style={{ color: '#666', fontStyle: 'italic' }}>Waiting for player...</div>
+                      <div style={{ color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic' }}>Waiting for player...</div>
                     )}
                   </div>
                 </>
@@ -5952,7 +6172,7 @@ function App() {
                 </div>
               </div>
               
-              <div style={{ textAlign: 'center', fontSize: '14px', color: '#666', marginBottom: '10px' }}>
+              <div style={{ textAlign: 'center', fontSize: '15px', color: '#4A2C18', fontWeight: 'bold', marginBottom: '10px' }}>
                 Rolled {auditDiceValues[0] + auditDiceValues[1]} × $300
               </div>
               
@@ -5966,7 +6186,7 @@ function App() {
                     💸 PAY TAXES
                   </button>
                 ) : (
-                  <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                  <div style={{ textAlign: 'center', color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic' }}>
                     Waiting for {gamePlayers[currentPlayer]?.name || 'player'} to pay taxes...
                   </div>
                 )}
@@ -6038,7 +6258,7 @@ function App() {
                               </button>
                             )
                           ) : (
-                            <span style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                            <span style={{ fontSize: '12px', color: '#5D4037', fontWeight: 'bold', fontStyle: 'italic' }}>
                               {warParticipants.includes(idx) ? 'Joined' : 'Thinking...'}
                             </span>
                           )}
@@ -6071,7 +6291,7 @@ function App() {
                         </button>
                       </>
                     ) : (
-                      <div style={{ color: '#666', fontStyle: 'italic', textAlign: 'center', width: '100%' }}>
+                      <div style={{ color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic', textAlign: 'center', width: '100%' }}>
                         Waiting for {gamePlayers[currentPlayer]?.name} to start...
                       </div>
                     )}
@@ -6126,26 +6346,63 @@ function App() {
               {/* Roll Phase - Ready to start */}
               {/* Tie Phase */}
               {warPhase === 'tie' && (
-                <div style={{ textAlign: 'center', padding: '30px 20px' }}>
-                  <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚔️</div>
-                  <div className="modal-city-name" style={{ fontSize: '20px', color: '#B71C1C', marginBottom: '15px', lineHeight: '1.4' }}>
-                     {warTieMessage || "IT'S A TIE!"}
+                <div className="war-tie-container">
+                  <div style={{ fontSize: '32px', marginBottom: '2px' }}>⚔️</div>
+                  <div className="war-tie-banner">
+                    {warTieMessage || "IT'S A TIE!"}
                   </div>
-                   <div style={{ fontSize: '16px', color: '#555' }}>
-                     Preparing for re-roll...
+                  
+                  {/* Highlighted Tied Players Cards */}
+                  {(() => {
+                    const tiedList = (warTiedPlayers && warTiedPlayers.length > 0)
+                      ? warTiedPlayers
+                      : (() => {
+                          if (!warRolls || Object.keys(warRolls).length === 0) return [];
+                          const max = Math.max(...Object.values(warRolls));
+                          return Object.entries(warRolls).filter(([_, r]) => r === max).map(([p]) => parseInt(p));
+                        })();
+                    return (
+                      <div className="war-tied-players-row">
+                        {tiedList.map((pIdx, index) => {
+                          const player = gamePlayers[pIdx];
+                          if (!player) return null;
+                          const score = warTieRoll || warRolls[pIdx];
+                          return (
+                            <div key={pIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {index > 0 && <span className="war-tie-vs">VS</span>}
+                              <div className="war-tied-player-card">
+                                <img src={player.avatar} alt={player.name} className="avatar-ring" />
+                                <span className="player-name">{player.name}</span>
+                                {score !== undefined && score !== null && (
+                                  <span className="tied-score">🎲 {score}</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                  <div className="war-tie-subtitle" style={{ marginTop: '4px' }}>
+                    ⚡ Sudden-death rematch starting...
                   </div>
                 </div>
               )}
 
-              {/* Roll Phase - Dice Interface (Combined) */}
-              {(warPhase === 'roll' || warPhase === 'rolling') && warCurrentRoller !== null && (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <div className="modal-city-name" style={{ fontSize: '18px', marginBottom: '15px' }}>
-                    {gamePlayers[warParticipants[warCurrentRoller]]?.name}'s Turn
+              {/* Roll Phase & Evaluating Phase (Combined) */}
+              {(warPhase === 'roll' || warPhase === 'rolling' || warPhase === 'evaluating') && (
+                <div style={{ textAlign: 'center', padding: '4px 0' }}>
+                  <div className="modal-city-name" style={{ fontSize: '16px', marginBottom: '6px' }}>
+                    {warPhase === 'evaluating'
+                      ? '⏳ Calculating Result...'
+                      : (warCurrentRoller !== null && gamePlayers[warParticipants[warCurrentRoller]])
+                        ? `${gamePlayers[warParticipants[warCurrentRoller]]?.name}'s Turn`
+                        : '🎲 Roll Dice'}
                   </div>
                   
                   {/* Dice Display */}
-                  <div className="dice-container" style={{ marginBottom: '15px', justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div className="dice-container" style={{ margin: '4px 0', justifyContent: 'center' }}>
                     <div className={`dice ${warIsRolling ? 'rolling-left' : ''}`}>
                       {renderDiceDots(warDiceValues[0])}
                     </div>
@@ -6156,21 +6413,21 @@ function App() {
                   
                   {/* Previous Rolls */}
                   {Object.keys(warRolls).length > 0 && (
-                    <div className="war-rolling-list" style={{ marginBottom: '15px' }}>
+                    <div className="war-rolling-list" style={{ margin: '4px 0' }}>
                       {Object.entries(warRolls).map(([idx, roll]) => (
                         <div key={idx} style={{ 
-                          padding: '8px 12px', 
-                          marginBottom: '4px',
+                          padding: '4px 8px', 
+                          marginBottom: '3px',
                           background: '#f0f0f0',
                           borderRadius: '6px',
                           display: 'flex',
                           justifyContent: 'space-between',
                           fontWeight: 'bold',
-                          fontSize: '16px'
+                          fontSize: '13px'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <img src={gamePlayers[parseInt(idx)].avatar} alt={gamePlayers[parseInt(idx)].name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                            <span>{gamePlayers[parseInt(idx)].name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <img src={gamePlayers[parseInt(idx)]?.avatar} alt={gamePlayers[parseInt(idx)]?.name} style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+                            <span>{gamePlayers[parseInt(idx)]?.name}</span>
                           </div>
                           <span>🎲 {roll}</span>
                         </div>
@@ -6178,19 +6435,27 @@ function App() {
                     </div>
                   )}
                   
-                  <div className="modal-buttons">
-                    <button 
-                      className="modal-btn buy" 
-                      onClick={handleWarDoRoll}
-                      disabled={warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)}
-                      style={{ 
-                        width: '100%', 
-                        background: (warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)) ? '#ccc' : '#8B0000',
-                        cursor: (warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)) ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      {warIsRolling ? 'ROLLING...' : (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex) ? `Waiting for ${gamePlayers[warParticipants[warCurrentRoller]]?.name}...` : '🎲 ROLL!'}
-                    </button>
+                  <div className="modal-buttons" style={{ marginTop: '4px' }}>
+                    {warPhase === 'evaluating' ? (
+                      <div className="war-evaluating-notice">
+                        ⏳ All rolls in! Determining winner...
+                      </div>
+                    ) : warCurrentRoller !== null ? (
+                      <button 
+                        className="modal-btn buy" 
+                        onClick={handleWarDoRoll}
+                        disabled={warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)}
+                        style={{ 
+                          width: '100%', 
+                          background: (warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)) ? '#ccc' : '#8B0000',
+                          cursor: (warIsRolling || (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex)) ? 'not-allowed' : 'pointer',
+                          padding: '8px 12px',
+                          fontSize: '14px'
+                        }}
+                      >
+                        {warIsRolling ? 'ROLLING...' : (networkMode === 'online' && warParticipants[warCurrentRoller] !== myPlayerIndex) ? `Waiting for ${gamePlayers[warParticipants[warCurrentRoller]]?.name}...` : '🎲 ROLL!'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               )}
@@ -6199,15 +6464,40 @@ function App() {
               {warPhase === 'result' && (
                 <div className="war-result-container">
                   {/* Winner Announcement */}
-                  {Object.keys(warRolls).length > 0 && (() => {
-                    const winnerIdx = parseInt(Object.entries(warRolls).reduce((a, b) => b[1] > a[1] ? b : a)[0]);
+                  {(() => {
+                    const calculatedWinner = (warWinner !== null && warWinner !== undefined)
+                      ? warWinner
+                      : (Object.keys(warRolls).length > 0 ? parseInt(Object.entries(warRolls).reduce((a, b) => b[1] > a[1] ? b : a)[0]) : null);
+                    if (calculatedWinner === null || calculatedWinner === undefined || !gamePlayers[calculatedWinner]) return null;
+                    const winnerPlayer = gamePlayers[calculatedWinner];
                     return (
                       <div className="war-winner-section">
-                        <div style={{ fontSize: '48px', marginBottom: '10px' }}>🏆</div>
-                        <div className="modal-city-name" style={{ fontSize: '24px', color: '#E91E63', marginBottom: '5px' }}>
-                          {gamePlayers[winnerIdx].name} WINS!
+                        <div style={{ fontSize: '32px', marginBottom: '4px' }}>🏆</div>
+                        <div className="modal-city-name" style={{ 
+                          fontSize: '18px', 
+                          color: '#E91E63', 
+                          marginBottom: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px'
+                        }}>
+                          {winnerPlayer.avatar && (
+                            <img 
+                              src={winnerPlayer.avatar} 
+                              alt={winnerPlayer.name} 
+                              style={{ 
+                                width: '32px', 
+                                height: '32px', 
+                                borderRadius: '50%',
+                                border: '2px solid #FFD700',
+                                boxShadow: '0 0 10px rgba(255, 215, 0, 0.7)'
+                              }} 
+                            />
+                          )}
+                          <span>{winnerPlayer.name} WINS!</span>
                         </div>
-                        <div style={{ fontSize: '16px', color: '#5D4037', fontWeight: 'bold', marginBottom: '20px' }}>
+                        <div style={{ fontSize: '13px', color: '#5D4037', fontWeight: 'bold', marginBottom: '8px' }}>
                           {warMode === 'A' && warProperty 
                             ? `Won "${warProperty.name}"` 
                             : `Won $${battlePot.toLocaleString()}`}
@@ -6224,23 +6514,24 @@ function App() {
                         <div key={playerIdx} style={{ 
                           display: 'flex', 
                           justifyContent: 'space-between',
-                          padding: '10px 12px',
-                          marginBottom: '6px',
+                          padding: '6px 10px',
+                          marginBottom: '3px',
                           background: isWinner 
                             ? 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)' 
                             : 'linear-gradient(135deg, #FFB74D 0%, #FF9800 100%)',
-                          borderRadius: '8px',
+                          borderRadius: '6px',
                           color: '#fff',
                           fontWeight: 'bold',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                          fontSize: '13px'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <img src={gamePlayers[parseInt(playerIdx)].avatar} alt={gamePlayers[parseInt(playerIdx)].name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                            <span style={{ fontSize: '16px' }}>
-                              {gamePlayers[parseInt(playerIdx)].name}{isWinner && ' 👑'}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <img src={gamePlayers[parseInt(playerIdx)]?.avatar} alt={gamePlayers[parseInt(playerIdx)]?.name} style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+                            <span>
+                              {gamePlayers[parseInt(playerIdx)]?.name}{isWinner && ' 👑'}
                             </span>
                           </div>
-                          <span style={{ fontSize: '16px' }}>
+                          <span>
                             🎲 {roll}
                           </span>
                         </div>
@@ -6248,11 +6539,11 @@ function App() {
                     })}
                   </div>
                   
-                  <div className="modal-buttons">
+                  <div className="modal-buttons" style={{ marginTop: '6px' }}>
                     <button 
                       className="modal-btn buy" 
                       onClick={handleWarComplete}
-                      style={{ width: '100%', background: '#4CAF50' }}
+                      style={{ width: '100%', background: '#4CAF50', padding: '8px 12px', fontSize: '14px' }}
                     >
                       CONFIRM
                     </button>
@@ -6289,7 +6580,7 @@ function App() {
                     OK
                   </button>
                 ) : (
-                  <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                  <div style={{ textAlign: 'center', color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic' }}>
                     Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...
                   </div>
                 )}
@@ -6324,7 +6615,7 @@ function App() {
                     OK
                   </button>
                 ) : (
-                  <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                  <div style={{ textAlign: 'center', color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic' }}>
                     Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...
                   </div>
                 )}
@@ -6355,7 +6646,7 @@ function App() {
                      OK
                    </button>
                  ) : (
-                   <div style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                   <div style={{ textAlign: 'center', color: '#4A2C18', fontWeight: 'bold', fontStyle: 'italic' }}>
                      Waiting for {gamePlayers[currentPlayer]?.name || 'player'}...
                    </div>
                  )}
@@ -6375,7 +6666,7 @@ function App() {
             <div className="modal-body">
               <div style={{ textAlign: 'center', margin: '20px 0', fontSize: '18px' }}>
                 Opportunity Knocks! Force an opponent to sell a property? <br/> 
-                <span style={{ fontWeight: 'bold' }}>Cost: $1,000</span>
+                <span style={{ fontWeight: 'bold' }}>Cost: $3,000</span>
               </div>
               <div className="modal-buttons">
                 <button 
@@ -6411,7 +6702,7 @@ function App() {
 
       {/* 2. Instruction Overlay */}
       {showAuctionInstructionModal && !pendingAuctionProperty && (
-        <div className="modal-overlay" style={{ background: 'transparent', pointerEvents: 'none' }}>
+        <div className="modal-overlay modal-overlay-inline" style={{ background: 'transparent', pointerEvents: 'none' }}>
            <div className="buy-modal" style={{ pointerEvents: 'auto', marginTop: '10vh' }}>
              <div className="modal-heading" style={{ background: 'linear-gradient(135deg, #FFC107 0%, #FF9800 100%)' }}>
                <span className="modal-heading-text">INSTRUCTION</span>
@@ -6471,7 +6762,7 @@ function App() {
               </div>
               <div style={{ textAlign: 'center', margin: '20px 0', fontSize: '18px' }}>
                 Force this property into auction? <br/>
-                <span style={{ fontWeight: 'bold', color: '#D32F2F' }}>Fee: $1,000</span>
+                <span style={{ fontWeight: 'bold', color: '#D32F2F' }}>Fee: $3,000</span>
               </div>
               <div className="modal-buttons">
                 <button 
@@ -6485,7 +6776,7 @@ function App() {
                   style={{ background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)', fontSize: '11px' }}
                   onClick={handleAuctionConfirm}
                 >
-                  PAY $1000
+                  PAY $3000
                 </button>
               </div>
             </div>
@@ -6524,7 +6815,7 @@ function App() {
                      }}>
                         {getTileName(auctionState.propertyIndex)}
                      </div>
-                  <div style={{ fontSize: '14px', color: '#666' }}>
+                  <div style={{ fontSize: '14px', color: '#4A2C18', fontWeight: 'bold' }}>
                      Owner: {gamePlayers[auctionState.originalOwner]?.name || gamePlayers[propertyOwnership[auctionState.propertyIndex]]?.name}
                   </div>
                </div>
@@ -6544,15 +6835,15 @@ function App() {
               
               {/* Current High Bid */}
               <div style={{ textAlign: 'center', marginBottom: '5px' }}>
-                <div style={{ fontSize: '12px', color: '#666' }}>Current High Bid</div>
-                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#4CAF50', lineHeight: '1.2' }}>${auctionState.currentBid}</div>
+                <div style={{ fontSize: '13px', color: '#4A2C18', fontWeight: 'bold' }}>Current High Bid</div>
+                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2E7D32', lineHeight: '1.2' }}>${auctionState.currentBid}</div>
                 
                 {/* Last Bidder Info */}
                 <div style={{ fontSize: '13px', fontWeight: 'bold', minHeight: '20px', color: '#333' }}>
                    {auctionState.bids && auctionState.bids.length > 0 ? (
                       <span>{gamePlayers[auctionState.bids[0].player]?.name} bid ${auctionState.bids[0].amount}</span>
                    ) : (
-                      <span style={{ color: '#999', fontWeight: 'normal' }}>No Bids Yet</span>
+                      <span style={{ color: '#5D4037', fontWeight: 'normal', fontStyle: 'italic' }}>No Bids Yet</span>
                    )}
                 </div>
               </div>
@@ -6561,7 +6852,7 @@ function App() {
               <div className="modal-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 
                 {/* Status Label */}
-                <div style={{ textAlign: 'center', fontSize: '12px', color: '#555', fontStyle: 'italic' }}>
+                <div style={{ textAlign: 'center', fontSize: '13px', color: '#4A2C18', fontStyle: 'italic' }}>
                    {auctionState.currentBidder === myPlayerIndex 
                       ? <span style={{ color: '#2E7D32', fontWeight: 'bold' }}>YOUR TURN!</span>
                       : `${gamePlayers[auctionState.currentBidder]?.name} is bidding...`}
@@ -6571,8 +6862,8 @@ function App() {
                 {auctionState.participants?.includes(myPlayerIndex) && ( 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '5px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                        <span style={{ color: '#666' }}>Min: ${(auctionState.currentBid || 0) + 10}</span>
-                        <span style={{ fontWeight: 'bold', color: '#4CAF50', fontSize: '16px' }}>${auctionBidAmount}</span>
+                        <span style={{ color: '#4A2C18', fontWeight: 'bold' }}>Min: ${(auctionState.currentBid || 0) + 10}</span>
+                        <span style={{ fontWeight: 'bold', color: '#2E7D32', fontSize: '16px' }}>${auctionBidAmount}</span>
                     </div>
                     <input 
                        type="range" 
@@ -6621,7 +6912,7 @@ function App() {
              </div>
              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '10px' }}>
                <div style={{ textAlign: 'center', margin: '10px 0' }}>
-                  <div style={{ fontSize: '18px', marginBottom: '5px', color: '#666' }}>Winner:</div>
+                  <div style={{ fontSize: '18px', marginBottom: '5px', color: '#4A2C18', fontWeight: 'bold' }}>Winner:</div>
                   <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2E7D32', marginBottom: '10px' }}>
                      {gamePlayers[auctionState.winner]?.name}
                   </div>
@@ -6756,8 +7047,12 @@ function App() {
           {gamePlayers.map((player, index) => (
             <div 
               key={player.id} 
-              className={`player-pawn ${hoppingPlayer === index ? 'pawn-hopping' : ''}`}
-              style={getPawnStyle(playerPositions[index], index)}
+              className={`player-pawn ${playerAnimationEnabled && hoppingPlayer === index ? 'pawn-hopping' : ''}`}
+              style={{
+                ...getPawnStyle(playerPositions[index], index),
+                transition: playerAnimationEnabled ? `top ${pawnTransitionDuration}ms linear, left ${pawnTransitionDuration}ms linear` : 'none',
+                animationDuration: `${pawnTransitionDuration}ms`
+              }}
             >
               <img src={player.avatar} alt={player.name} className="pawn-img" />
             </div>
@@ -6795,14 +7090,47 @@ function App() {
             {gamePlayers.map((player, index) => (
               <div 
                 key={player.id}
-                className={`player-item ${index === currentPlayer ? 'active' : ''} ${bankruptPlayers[index] ? 'bankrupt' : ''}`}
-                style={bankruptPlayers[index] ? { filter: 'grayscale(100%)', opacity: 0.6 } : undefined}
+                className={`player-item ${index === currentPlayer ? 'active' : ''} ${bankruptPlayers[index] || player.kicked ? 'bankrupt' : ''}`}
+                style={bankruptPlayers[index] || player.kicked ? { filter: 'grayscale(100%)', opacity: 0.6 } : (!player.connected && networkMode === 'online') ? { opacity: 0.75 } : undefined}
               >
                 <div className="player-avatar">
                   <img src={player.avatar} alt={player.name} className="avatar-img" />
                 </div>
-                <div className="player-info">
-                  <div className="player-name">{player.name}{bankruptPlayers[index] ? ' 💀' : ''}</div>
+                <div className="player-info" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                  <div className="player-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.name}</span>
+                    {bankruptPlayers[index] && <span>💀</span>}
+                    {player.kicked && <span style={{ fontSize: '9px', background: '#e11d48', color: '#fff', padding: '1px 3px', borderRadius: '3px' }}>Kicked</span>}
+                    {networkMode === 'online' && !player.connected && !player.kicked && (
+                      <span style={{ fontSize: '8px', background: '#ea580c', color: '#fff', padding: '1px 3px', borderRadius: '3px' }}>Offline</span>
+                    )}
+                  </div>
+                  {/* Host Kick Option for Disconnected Players */}
+                  {networkMode === 'online' && myPlayerIndex === 0 && index !== 0 && !player.kicked && !player.connected && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Kick ${player.name} from the game?`)) {
+                          sendGameAction('kick_player', { targetIndex: index });
+                        }
+                      }}
+                      style={{
+                        alignSelf: 'flex-start',
+                        marginTop: '2px',
+                        background: '#dc2626',
+                        border: 'none',
+                        color: 'white',
+                        fontSize: '9px',
+                        fontWeight: 'bold',
+                        padding: '1px 5px',
+                        borderRadius: '3px',
+                        cursor: 'pointer'
+                      }}
+                      title={player.canBeKicked ? "1 minute elapsed. Host can kick this player." : "Player offline. Host can kick."}
+                    >
+                      Kick {player.canBeKicked ? '(1m+)' : ''}
+                    </button>
+                  )}
                 </div>
                 <div className="player-money" style={{ color: playerMoney[index] < 0 ? '#ff4444' : undefined }}>${playerMoney[index].toLocaleString()}</div>
               </div>
@@ -6811,17 +7139,9 @@ function App() {
         </div>
 
         {/* Cash Stack (The Pot) */}
-        <div className="cash-stack-panel" style={{
-          background: 'linear-gradient(135deg, #1a5c1a 0%, #0d3d0d 100%)',
-          borderRadius: '10px',
-          padding: '8px',
-          marginBottom: '4px',
-          textAlign: 'center',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          position: 'relative' // For floating price positioning
-        }}>
-          <div style={{ fontSize: '14px', color: '#90EE90', marginBottom: '2px' }}>💵 CASH STACK</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#00FF00' }}>${cashStack.toLocaleString()}</div>
+        <div className="cash-stack-panel">
+          <div className="cash-stack-title">💵 CASH STACK</div>
+          <div className="cash-stack-amount">${cashStack.toLocaleString()}</div>
           
           {/* Floating Prices for Cash Stack */}
           {cashStackFloatingPrices.map(fp => (
@@ -6859,7 +7179,8 @@ function App() {
         </div>
       )}
 
-      {/* Debug Panel */}
+      {/* Debug Panel - only visible when Developer Options enabled */}
+      {devMode && (
       <div className="debug-panel">
         <input 
           type="number" 
@@ -6873,12 +7194,127 @@ function App() {
           Force Roll
         </button>
       </div>
+      )}
 
 
       
 
 
     </div>
+      )}
+
+      {/* Universal Settings Modal (Accessible both in Welcome Screen and during Game) */}
+      {showSettingsModal && (
+        <div className="modal-overlay" style={{ zIndex: 99999 }}>
+          <div className="buy-modal deal-modal bank-modal" style={{ pointerEvents: 'auto', marginTop: '6vh', minWidth: '320px', maxWidth: '420px', boxShadow: '0 8px 30px rgba(0,0,0,0.6)' }}>
+            <div className="modal-heading" style={{ background: 'linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)' }}>
+              <span className="modal-heading-text">⚙️ GAME SETTINGS</span>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'left', padding: '18px 20px' }}>
+               
+               {/* 1. Player Movement Animation Toggle */}
+               <div style={{ marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid #e0d7c6' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                   <div style={{ fontSize: '14px', color: '#4a2c18', fontWeight: 'bold' }}>
+                     Player Animation
+                   </div>
+                   <button
+                     type="button"
+                     onClick={() => togglePlayerAnimation(!playerAnimationEnabled)}
+                     style={{
+                       padding: '6px 14px',
+                       borderRadius: '20px',
+                       fontWeight: 'bold',
+                       fontSize: '12px',
+                       cursor: 'pointer',
+                       border: 'none',
+                       backgroundColor: playerAnimationEnabled ? '#4CAF50' : '#757575',
+                       color: '#fff',
+                       boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                     }}
+                   >
+                     {playerAnimationEnabled ? 'ENABLED (ON)' : 'DISABLED (OFF)'}
+                   </button>
+                 </div>
+                 <div style={{ fontSize: '11px', color: '#795548', lineHeight: 1.3 }}>
+                   {playerAnimationEnabled 
+                     ? 'Pawns hop tile-by-tile smoothly during movement.' 
+                     : 'Instant movement: Pawns jump directly to destination tile without hopping.'}
+                 </div>
+               </div>
+
+               {/* 2. Animation Speed Slider */}
+               {playerAnimationEnabled && (
+                 <div style={{ marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid #e0d7c6' }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                     <div style={{ fontSize: '14px', color: '#4a2c18', fontWeight: 'bold' }}>
+                       Hopping Speed
+                     </div>
+                     <span style={{ fontSize: '13px', color: '#1565C0', fontWeight: 'bold' }}>
+                       {animationSpeed.toFixed(1)}x
+                     </span>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                     <span style={{ fontSize: '11px', color: '#795548' }}>0.5x</span>
+                     <input 
+                       type="range" 
+                       min="0.5" 
+                       max="2.5" 
+                       step="0.1" 
+                       value={animationSpeed}
+                       onChange={(e) => updateAnimationSpeed(e.target.value)}
+                       style={{ flex: 1, accentColor: '#2196F3' }}
+                     />
+                     <span style={{ fontSize: '11px', color: '#795548' }}>2.5x</span>
+                   </div>
+                 </div>
+               )}
+
+               {/* 3. Developer Mode Toggle */}
+               <div style={{ marginBottom: '14px' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                   <div style={{ fontSize: '14px', color: '#4a2c18', fontWeight: 'bold' }}>
+                     Developer Mode
+                   </div>
+                   <button
+                     type="button"
+                     onClick={() => {
+                       const next = !devMode;
+                       setDevMode(next);
+                       try { localStorage.setItem('pseudopoly_devmode', String(next)); } catch {}
+                     }}
+                     style={{
+                       padding: '6px 14px',
+                       borderRadius: '20px',
+                       fontWeight: 'bold',
+                       fontSize: '12px',
+                       cursor: 'pointer',
+                       border: 'none',
+                       backgroundColor: devMode ? '#4CAF50' : '#757575',
+                       color: '#fff',
+                       boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                     }}
+                   >
+                     {devMode ? 'ACTIVE (ON)' : 'OFF'}
+                   </button>
+                 </div>
+                 <div style={{ fontSize: '11px', color: '#795548', lineHeight: 1.3 }}>
+                   Enables manual Force Roll test panel on your turn.
+                 </div>
+               </div>
+
+               <div className="modal-buttons" style={{ justifyContent: 'center', marginTop: '15px' }}>
+                 <button 
+                    className="modal-btn buy" 
+                    style={{ flex: 'none', minWidth: '120px', background: 'linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)' }} 
+                    onClick={closeSettings}
+                 >
+                   DONE
+                 </button>
+               </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

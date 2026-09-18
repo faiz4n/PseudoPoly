@@ -11,6 +11,9 @@
     "start:server": "node server/index.js"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "peerjs": "^1.5.5",

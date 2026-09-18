@@ -1,213 +1,374 @@
 /* Additional App Styles */
 
-/* Property War Modal - Mobile Optimization */
+/* Property War Modal - Center Responsive Optimization (No Scrollbars) */
 .war-modal {
-  max-height: 95vh; /* Constrain to viewport */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* Prevent outer scroll */
+  width: 95% !important;
+  max-width: 380px !important;
+  max-height: 98% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.55) !important;
 }
 
 .war-modal .modal-heading {
-  flex-shrink: 0; /* Header never shrinks */
+  flex-shrink: 0 !important;
+  padding: 8px 12px !important;
+}
+
+.war-modal .modal-heading-text {
+  font-size: 16px !important;
+  letter-spacing: 1px !important;
 }
 
 .war-modal .modal-body {
-  flex: 1;
-  overflow-y: auto; /* Allow internal scroll if absolutely needed */
-  display: flex;
-  flex-direction: column;
-  padding: 15px; /* Reduce from default 20-30px */
-  max-height: calc(95vh - 60px); /* Viewport minus header */
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 10px 12px !important;
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
-/* Join Phase - Compact player list */
+.war-modal .modal-body::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Bulletproof Dice & Dot Sizing Across ALL Screens */
+.war-modal .dice-container {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin: 6px 0 !important;
+}
+
+.war-modal .dice {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  padding: 5px !important;
+  gap: 2px !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  grid-template-rows: repeat(3, 1fr) !important;
+  place-items: center !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.war-modal .dice .dot {
+  width: 8px !important;
+  height: 8px !important;
+  min-width: 8px !important;
+  min-height: 8px !important;
+  max-width: 8px !important;
+  max-height: 8px !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+  margin: auto !important;
+}
+
+/* Join Phase */
 .war-join-list {
-  max-height: 40vh; /* Limit player list height */
-  overflow-y: auto;
-  margin-bottom: 10px !important;
+  max-height: 140px !important;
+  overflow-y: auto !important;
+  margin-bottom: 6px !important;
+  scrollbar-width: none !important;
+}
+
+.war-join-list::-webkit-scrollbar {
+  display: none !important;
 }
 
 .war-join-list > div {
-  padding: 6px 8px !important; /* Reduce padding */
+  padding: 5px 8px !important;
   margin-bottom: 4px !important;
+  border-radius: 6px !important;
 }
 
 .war-join-list img {
-  width: 20px !important; /* Smaller avatars */
-  height: 20px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
 }
 
 .war-join-list .modal-btn {
-  padding: 4px 8px !important; /* Compact buttons */
-  font-size: 8px !important;
+  padding: 4px 8px !important;
+  font-size: 10px !important;
 }
 
-/* Roll Phase - Constrain roll history */
+/* Roll Phase History */
 .war-rolling-list {
-  max-height: 30vh !important; /* Critical: Prevent overflow */
-  overflow-y: auto;
-  margin-bottom: 10px !important;
-  flex-shrink: 1; /* Allow shrinking if needed */
+  max-height: 105px !important;
+  overflow-y: auto !important;
+  margin-bottom: 6px !important;
+  scrollbar-width: none !important;
+}
+
+.war-rolling-list::-webkit-scrollbar {
+  display: none !important;
 }
 
 .war-rolling-list > div {
-  padding: 6px 10px !important; /* Reduce padding */
+  padding: 4px 8px !important;
   margin-bottom: 3px !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
 }
 
 .war-rolling-list img {
   width: 20px !important;
   height: 20px !important;
+  border-radius: 50% !important;
 }
 
-/* Result Phase - Constrain roll list */
-.war-roll-list {
-  max-height: 35vh !important; /* Prevent overflow */
-  overflow-y: auto;
-  margin-bottom: 10px !important;
-  flex-shrink: 1;
+/* Evaluating Phase Notice (replaces roll button when all players have rolled) */
+.war-evaluating-notice {
+  width: 100%;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+  color: white;
+  font-weight: 800;
+  font-size: 13px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(245, 124, 0, 0.4);
+  animation: warEvalPulse 1.2s infinite alternate ease-in-out;
 }
 
-.war-roll-list > div {
-  padding: 8px 10px !important;
-  margin-bottom: 4px !important;
+@keyframes warEvalPulse {
+  0% { opacity: 0.85; transform: scale(0.99); }
+  100% { opacity: 1; transform: scale(1.01); }
 }
 
-/* Winner Section - Compact */
+/* Tie Screen Styles */
+.war-tie-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 0;
+  text-align: center;
+  width: 100%;
+}
+
+.war-tie-banner {
+  font-family: 'Junegull', sans-serif;
+  font-size: 18px;
+  color: #D32F2F;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  margin-bottom: 2px;
+}
+
+.war-tie-subtitle {
+  font-size: 12px;
+  color: #5D4037;
+  font-weight: 700;
+}
+
+.war-tied-players-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.war-tied-player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, rgba(255, 243, 224, 0.95), rgba(255, 224, 178, 0.95));
+  border: 2px solid #FF9800;
+  border-radius: 10px;
+  box-shadow: 0 0 14px rgba(255, 152, 0, 0.5), inset 0 0 8px rgba(255, 193, 7, 0.3);
+  animation: warTiePulse 1.2s ease-in-out infinite alternate;
+  min-width: 75px;
+}
+
+@keyframes warTiePulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(255, 152, 0, 0.4), inset 0 0 6px rgba(255, 193, 7, 0.2);
+    border-color: #FF9800;
+  }
+  100% {
+    transform: scale(1.05);
+    box-shadow: 0 0 18px rgba(255, 87, 34, 0.75), inset 0 0 12px rgba(255, 235, 59, 0.5);
+    border-color: #FF5722;
+  }
+}
+
+.war-tied-player-card .avatar-ring {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #FFD700;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+  object-fit: cover;
+}
+
+.war-tied-player-card .player-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #3E2723;
+  max-width: 85px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.war-tied-player-card .tied-score {
+  font-size: 11px;
+  font-weight: 800;
+  color: #E65100;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.war-tie-vs {
+  font-family: 'Junegull', sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  color: #D32F2F;
+  background: #FFF;
+  border: 2px solid #D32F2F;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+/* Result Phase */
+.war-result-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
 .war-winner-section {
-  margin-bottom: 10px !important;
-  flex-shrink: 0; /* Never shrink winner announcement */
+  margin-bottom: 6px !important;
+  flex-shrink: 0;
+  text-align: center;
 }
 
 .war-winner-section > div:first-child {
-  font-size: 36px !important; /* Smaller trophy */
-  margin-bottom: 5px !important;
+  font-size: 30px !important;
+  margin-bottom: 2px !important;
 }
 
 .war-winner-section .modal-city-name {
-  font-size: 20px !important; /* Smaller text */
+  font-size: 18px !important;
+  margin-bottom: 2px !important;
+}
+
+.war-roll-list {
+  max-height: 110px !important;
+  overflow-y: auto !important;
+  margin-bottom: 6px !important;
+  scrollbar-width: none !important;
+}
+
+.war-roll-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+.war-roll-list > div {
+  padding: 5px 8px !important;
   margin-bottom: 3px !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
 }
 
-/* Dice Container - Compact */
-.war-modal .dice-container {
-  margin-bottom: 10px !important;
-  gap: 10px !important;
+.war-roll-list img {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
 }
 
-.war-modal .dice {
-  width: 40px !important; /* Smaller dice */
-  height: 40px !important;
-}
-
-/* Modal Buttons - Ensure visibility */
+/* Modal Buttons */
 .war-modal .modal-buttons {
-  flex-shrink: 0; /* Never shrink buttons */
-  margin-top: 10px !important;
-  position: sticky; /* Stick to bottom */
-  bottom: 0;
-  /* background: white; */
-  padding-top: 10px;
-  /* border-top: 1px solid #eee; */
+  flex-shrink: 0 !important;
+  margin-top: 6px !important;
+  padding-top: 4px !important;
 }
 
-/* Mobile-specific adjustments */
-@media (max-height: 700px) {
+/* Mobile & Small Screen Adaptations */
+@media (max-width: 480px), (max-height: 600px) {
   .war-modal {
-    max-height: 98vh;
+    max-height: 98% !important;
   }
   
   .war-modal .modal-body {
-    padding: 10px;
-    font-size: 14px;
+    padding: 6px 8px !important;
   }
   
+  .war-modal .dice {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    max-width: 38px !important;
+    max-height: 38px !important;
+    padding: 3px !important;
+    gap: 1px !important;
+    border-radius: 6px !important;
+  }
+  
+  .war-modal .dice .dot {
+    width: 6px !important;
+    height: 6px !important;
+    min-width: 6px !important;
+    min-height: 6px !important;
+    max-width: 6px !important;
+    max-height: 6px !important;
+  }
+
   .war-modal .modal-city-name {
-    font-size: 16px !important;
-    margin-bottom: 5px !important;
+    font-size: 15px !important;
+    margin-bottom: 3px !important;
   }
   
   .war-join-list {
-    max-height: 35vh;
-  }
-  
-  .war-rolling-list {
-    max-height: 25vh !important;
-  }
-  
-  .war-roll-list {
-    max-height: 30vh !important;
-  }
-  
-  .war-modal .dice {
-    width: 40px !important;
-    height: 40px !important;
-  }
-}
-
-/* Mobile Portrait Fixes */
-@media (max-width: 1024px) {
-  .war-modal .dice {
-    width: 40px !important;
-    height: 40px !important;
-    padding: 4px !important;
-    gap: 1px !important;
-    justify-items: center;
-    align-items: center;
-  }
-  .war-modal .dice .dot {
-      width: 8px !important;
-      height: 8px !important;
-  }
-  .war-modal .dice-container {
-      gap: 10px !important;
-  }
-  .war-modal .modal-city-name {
-    font-size: 16px !important;
-  }
-  
-  /* Compact Rolling List */
-  .war-rolling-list > div, .war-roll-list > div {
-    padding: 3px 6px !important;
-    margin-bottom: 2px !important;
-    font-size: 11px !important;
-    min-height: 24px;
-    align-items: center;
-  }
-  
-  .war-rolling-list img, .war-roll-list img {
-    width: 16px !important;
-    height: 16px !important;
+    max-height: 100px !important;
   }
   
   .war-rolling-list, .war-roll-list {
-      gap: 2px;
+    max-height: 80px !important;
   }
-}
 
-/* Extra small screens */
-@media (max-height: 600px) {
-  .war-join-list {
-    max-height: 30vh;
+  .war-tied-player-card {
+    padding: 4px 6px;
+    min-width: 65px;
   }
-  
-  .war-rolling-list {
-    max-height: 20vh !important;
+
+  .war-tied-player-card .avatar-ring {
+    width: 28px;
+    height: 28px;
   }
-  
-  .war-roll-list {
-    max-height: 25vh !important;
-  }
-  
-  .war-modal .modal-heading {
-    padding: 8px !important;
-    font-size: 16px !important;
-  }
-  
-  .war-winner-section > div:first-child {
-    font-size: 28px !important;
+
+  .war-tied-player-card .player-name {
+    font-size: 10px;
+    max-width: 70px;
   }
 }
 

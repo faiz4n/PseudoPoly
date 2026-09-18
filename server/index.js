@@ -18,13 +18,12 @@ const io = new Server(httpServer, {
 // Game rooms storage: { roomCode: { gameState, players: [{id, name, avatar, socketId}] } }
 const rooms = {};
 
-// Generate 4-letter room code
+// Generate 4-digit numeric room code (no alphabets)
 function generateRoomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
+  let code;
+  do {
+    code = Math.floor(1000 + Math.random() * 9000).toString();
+  } while (rooms[code]);
   return code;
 }
 
@@ -68,7 +67,8 @@ function createInitialGameState() {
     },
     playerLoans: {}, // { playerIndex: { principalAmount, repayAmount, lapsRemaining, loanStartTile } }
     bankruptPlayers: {}, // { playerIndex: true }
-    landingResolved: false // Per-turn guard: prevents duplicate landing processing
+    landingResolved: false, // Per-turn guard: prevents duplicate landing processing
+    activeDeal: null // { proposer, recipient, giveProperties, receiveProperties, moneyOffer }
   };
 }
 
@@ -116,11 +116,14 @@ io.on('connection', (socket) => {
       gameState: rooms[roomCode].gameState,
       players: rooms[roomCode].players
     });
+
+    io.to(roomCode).emit('players_updated', { players: rooms[roomCode].players });
   });
 
   // Client joins an existing room
   socket.on('join_room', ({ roomCode, name, avatar }) => {
-    const room = rooms[roomCode];
+    const cleanRoomCode = String(roomCode || '').trim();
+    const room = rooms[cleanRoomCode];
     
     if (!room) {
       socket.emit('error', { message: 'Room not found!' });
@@ -153,6 +156,18 @@ io.on('connection', (socket) => {
              clearTimeout(room.hostDisconnectTimer);
              room.hostDisconnectTimer = null;
              io.to(roomCode).emit('message', { type: 'system', text: 'Host has reconnected!' });
+           }
+
+           // If player was disconnected, clear their 60s disconnect timer
+           if (room.playerDisconnectTimers && room.playerDisconnectTimers[existingPlayerIndex]) {
+             console.log(`[SERVER] Clearing disconnect timer for player ${existingPlayer.name}`);
+             clearTimeout(room.playerDisconnectTimers[existingPlayerIndex]);
+             delete room.playerDisconnectTimers[existingPlayerIndex];
+           }
+           existingPlayer.canBeKicked = false;
+           existingPlayer.disconnectedAt = null;
+           if (room.gameState && room.gameState.history) {
+             room.gameState.history.unshift(`✓ ${existingPlayer.name} reconnected!`);
            }
 
            // Send sync data to reconnecting player
@@ -258,6 +273,87 @@ io.on('connection', (socket) => {
         break;
       case 'close_modal':
         room.gameState.modalState = { type: 'NONE', status: 'IDLE', payload: {} };
+        room.gameState.isProcessingTurn = false;
+        break;
+      case 'floating_price':
+        if (payload && payload.tileIndex !== undefined) {
+          io.to(room.roomCode).emit('floating_price', payload);
+        }
+        break;
+      case 'pay_bail':
+        if (room.gameState.playerMoney[playerIndex] >= 500) {
+          room.gameState.playerMoney[playerIndex] -= 500;
+          if (!room.gameState.jailStatus) room.gameState.jailStatus = {};
+          room.gameState.jailStatus[playerIndex] = 0;
+          room.gameState.cashStack = (room.gameState.cashStack || 0) + 500;
+          room.gameState.history.unshift(`🔓 ${room.players[playerIndex]?.name || 'Player'} paid $500 bail to get out of Jail!`);
+          io.to(room.roomCode).emit('floating_price', { tileIndex: 28, price: 500, isPositive: false });
+          broadcastState(room);
+        }
+        break;
+      case 'bankrupt':
+        console.log(`[SERVER] Player ${playerIndex} declared bankruptcy`);
+        Object.keys(room.gameState.propertyOwnership).forEach(tileIdx => {
+          if (room.gameState.propertyOwnership[tileIdx] === playerIndex) {
+            delete room.gameState.propertyOwnership[tileIdx];
+            if (room.gameState.propertyLevels[tileIdx]) {
+              delete room.gameState.propertyLevels[tileIdx];
+            }
+          }
+        });
+        if (!room.gameState.bankruptPlayers) room.gameState.bankruptPlayers = {};
+        room.gameState.bankruptPlayers[playerIndex] = true;
+        if (room.gameState.playerLoans) delete room.gameState.playerLoans[playerIndex];
+        const bankruptName = room.players[playerIndex]?.name || `Player ${playerIndex}`;
+        room.gameState.history.unshift(`💀 ${bankruptName} declared BANKRUPTCY!`);
+        if (room.gameState.currentPlayer === playerIndex) {
+          handleEndTurn(room);
+        }
+        broadcastState(room);
+        break;
+      case 'kick_player':
+        if (playerIndex === 0 && payload && payload.targetIndex !== undefined && payload.targetIndex !== 0) {
+          const targetIdx = payload.targetIndex;
+          const targetPlayer = room.players[targetIdx];
+          if (targetPlayer) {
+            console.log(`[SERVER] Host kicked player ${targetPlayer.name} (P${targetIdx})`);
+            targetPlayer.kicked = true;
+            targetPlayer.connected = false;
+            if (!room.gameState.bankruptPlayers) room.gameState.bankruptPlayers = {};
+            room.gameState.bankruptPlayers[targetIdx] = true;
+
+            // Release their properties back to unowned
+            if (room.gameState.propertyOwnership) {
+              Object.keys(room.gameState.propertyOwnership).forEach(tileIdx => {
+                if (room.gameState.propertyOwnership[tileIdx] === targetIdx) {
+                  delete room.gameState.propertyOwnership[tileIdx];
+                  if (room.gameState.propertyLevels) {
+                    delete room.gameState.propertyLevels[tileIdx];
+                  }
+                }
+              });
+            }
+
+            if (room.gameState.history) {
+              room.gameState.history.unshift(`👢 ${targetPlayer.name} was kicked by the host.`);
+            }
+
+            // Clear their disconnect timer if running
+            if (room.playerDisconnectTimers && room.playerDisconnectTimers[targetIdx]) {
+              clearTimeout(room.playerDisconnectTimers[targetIdx]);
+              delete room.playerDisconnectTimers[targetIdx];
+            }
+
+            // If it was this player's turn, advance to next player
+            if (room.gameState.currentPlayer === targetIdx) {
+              handleEndTurn(room);
+            }
+
+            broadcastState(room);
+            io.to(room.roomCode).emit('players_updated', { players: room.players });
+            io.to(room.roomCode).emit('toast', { message: `👢 ${targetPlayer.name} was kicked by the host.` });
+          }
+        }
         break;
       case 'modal_open':
         // Generic modal broadcast (Chance, Chest, Parking)
@@ -333,6 +429,49 @@ io.on('connection', (socket) => {
              broadcastState(room);
         }
         break;
+      case 'chance_move':
+        // Synchronized movement for Chance cards, Jail, and Fast Travel
+        if (payload) {
+          const { playerIndex: movePlayerIdx, targetPos, steps, delay, cardText, isJail, oldPos } = payload;
+          const pIdx = movePlayerIdx !== undefined ? movePlayerIdx : playerIndex;
+          const currentPos = oldPos !== undefined ? oldPos : room.gameState.playerPositions[pIdx];
+          room.gameState.playerPositions[pIdx] = targetPos;
+          
+          if (isJail) {
+            if (!room.gameState.jailStatus) room.gameState.jailStatus = {};
+            room.gameState.jailStatus[pIdx] = 3;
+          }
+          
+          // Passing GO reward ($1000)
+          if (!isJail && steps > 0 && (targetPos === 0 || (currentPos + steps >= 36))) {
+            room.gameState.playerMoney[pIdx] += 1000;
+            const pName = room.players[pIdx]?.name || `Player ${pIdx}`;
+            room.gameState.history.unshift(`${pName} passed GO! Collect $1000`);
+            io.to(room.roomCode).emit('floating_price', {
+              tileIndex: 0,
+              price: 1000,
+              isPositive: true
+            });
+          }
+          
+          if (cardText) {
+            const pName = room.players[pIdx]?.name || `Player ${pIdx}`;
+            room.gameState.history.unshift(`❓ ${pName}: ${cardText}`);
+          }
+          
+          console.log(`[SERVER] Broadcasting chance_move_animated: P${pIdx} from ${currentPos} to ${targetPos} (${steps} steps)`);
+          io.to(room.roomCode).emit('chance_move_animated', {
+            playerIndex: pIdx,
+            oldPos: currentPos,
+            targetPos,
+            steps,
+            delay: delay || 180,
+            cardText
+          });
+          
+          broadcastState(room);
+        }
+        break;
       case 'build_complete':
         // Authoritative building completion with broadcast
         if (payload.totalCost > 0) {
@@ -399,8 +538,8 @@ io.on('connection', (socket) => {
         }
         break;
       case 'cash_stack_claim':
-        // Handle claiming the pot
-        const pot = room.gameState.cashStack;
+        // Handle claiming the pot if not already handled by handleLanding
+        const pot = room.gameState.cashStack || 0;
         if (pot > 0) {
             room.gameState.playerMoney[playerIndex] += pot;
             room.gameState.cashStack = 0;
@@ -414,10 +553,8 @@ io.on('connection', (socket) => {
               isPositive: true,       // Green (positive) animation
               label: `+$${pot}`       // Optional: custom label
             });
-        } else {
-            room.gameState.history.unshift(`${room.players[playerIndex]?.name || 'Player'} landed on Cash Stack, but it's empty!`);
+            broadcastState(room);
         }
-        broadcastState(room);
         break;
       case 'war_start':
         // Start the war (host/initiator only)
@@ -445,7 +582,9 @@ io.on('connection', (socket) => {
           rolls: {},
           property: null,
           currentRoller: null,
-          diceValues: [1, 1]
+          diceValues: [1, 1],
+          tiedPlayers: null,
+          tieRoll: null
         };
         console.log(`[SERVER] Property War closed`);
         broadcastState(room);
@@ -493,23 +632,37 @@ io.on('connection', (socket) => {
         if (payload.cashStack !== undefined) room.gameState.cashStack = payload.cashStack;
         break;
       case 'deal_offer':
-        // Broadcast deal offer to recipient
+        // Broadcast deal offer to recipient and set activeDeal for table visibility
         console.log(`[SERVER] Deal offer from Player ${playerIndex} to Player ${payload.recipient}`);
+        room.gameState.activeDeal = {
+          proposer: payload.proposer ?? playerIndex,
+          recipient: payload.recipient,
+          giveProperties: payload.giveProperties || [],
+          receiveProperties: payload.receiveProperties || [],
+          moneyOffer: payload.moneyOffer || 0
+        };
         const recipientSocket = room.players[payload.recipient]?.socketId;
         if (recipientSocket) {
           io.to(recipientSocket).emit('deal_offer', {
-            proposer: payload.proposer,
+            proposer: payload.proposer ?? playerIndex,
             recipient: payload.recipient,
             giveProperties: payload.giveProperties,
             receiveProperties: payload.receiveProperties,
             moneyOffer: payload.moneyOffer
           });
         }
+        broadcastState(room);
+        break;
+      case 'deal_cancel':
+        console.log(`[SERVER] Deal cancelled by Player ${playerIndex}`);
+        room.gameState.activeDeal = null;
+        broadcastState(room);
         break;
       case 'deal_response':
         // Handle deal accept or deny
         const deal = payload.deal;
         const proposerSocket = room.players[deal.proposer]?.socketId;
+        room.gameState.activeDeal = null;
         
         if (payload.accepted) {
           console.log(`[SERVER] Deal ACCEPTED between Player ${deal.proposer} and Player ${deal.recipient}`);
@@ -552,6 +705,7 @@ io.on('connection', (socket) => {
           }
         } else {
           console.log(`[SERVER] Deal DENIED between Player ${deal.proposer} and Player ${deal.recipient}`);
+          broadcastState(room);
           // Notify proposer of denial
           if (proposerSocket) {
             io.to(proposerSocket).emit('deal_result', { accepted: false, deal });
@@ -626,8 +780,46 @@ io.on('connection', (socket) => {
         
         console.log(`[SERVER] Player ${player.name} disconnected (Host: ${player.isHost})`);
         
+        player.disconnectedAt = Date.now();
+        player.canBeKicked = false;
+
+        // If game is in progress, announce in history
+        if (room.gameState && room.gameState.history) {
+          room.gameState.history.unshift(`⚠️ ${player.name} went offline. Waiting 60s for return...`);
+          broadcastState(room);
+        }
+
         // Notify others of disconnect
         io.to(roomCode).emit('players_updated', { players: room.players });
+        io.to(roomCode).emit('toast', { message: `⚠️ ${player.name} went offline. 60s reconnection window started.` });
+
+        // Start 60-second grace timer for this player (turn skip & kick eligibility)
+        if (!room.playerDisconnectTimers) room.playerDisconnectTimers = {};
+        if (room.playerDisconnectTimers[playerIndex]) {
+          clearTimeout(room.playerDisconnectTimers[playerIndex]);
+        }
+
+        room.playerDisconnectTimers[playerIndex] = setTimeout(() => {
+          if (!player.connected) {
+            console.log(`[SERVER] 60s expired: Player ${player.name} (P${playerIndex}) did not return.`);
+            player.canBeKicked = true;
+
+            // If it's currently this player's turn, skip their turn!
+            if (room.gameState && room.gameState.currentPlayer === playerIndex) {
+              console.log(`[SERVER] 1 minute elapsed: Skipping turn for offline player ${player.name}`);
+              if (room.gameState.history) {
+                room.gameState.history.unshift(`⏭️ Skipped turn for ${player.name} (offline > 1 min).`);
+              }
+              handleEndTurn(room);
+            } else if (room.gameState && room.gameState.history) {
+              room.gameState.history.unshift(`⏱️ ${player.name} offline > 1 min. Turn will skip and host can kick.`);
+            }
+
+            broadcastState(room);
+            io.to(roomCode).emit('players_updated', { players: room.players });
+            io.to(roomCode).emit('toast', { message: `⏱️ ${player.name} exceeded 1 min offline. Turn skipped.` });
+          }
+        }, 60000);
         
         // If HOST disconnected, start graceful shutdown timer
         if (player.isHost) {
@@ -734,19 +926,19 @@ function handleLanding(room, playerIndex, tileIndex) {
     const duration = Math.floor(Math.random() * 2) + 2; 
     if (!room.gameState.jailStatus) room.gameState.jailStatus = {};
     room.gameState.jailStatus[playerIndex] = duration;
-    
+    room.gameState.playerPositions[playerIndex] = 28; // Authoritatively move to Jail
     room.gameState.history.unshift(`👮 ${room.players[playerIndex].name} is arrested for ${duration} turns!`);
   } else if (tileIndex === 3) {
     // 4. CASH STACK (Server processed immediately upon landing if not handled by dedicated claim action)
-    // Actually, App.jsx sends 'cash_stack_claim', so we can keep that or handle it here.
-    // Let's handle it here for consistency if we want "Server detects landing".
     const pot = room.gameState.cashStack || 0;
     if (pot > 0) {
        room.gameState.playerMoney[playerIndex] += pot;
        room.gameState.cashStack = 0;
-       room.gameState.history.unshift(`💰 ${room.players[playerIndex].name} won the Cash Stack: $${pot}!`);
+       room.gameState.history.unshift(`💰 ${room.players[playerIndex]?.name || 'Player'} won the Cash Stack: $${pot}!`);
        
        io.to(room.roomCode).emit('floating_price', { tileIndex: 3, price: pot, isPositive: true });
+    } else {
+       room.gameState.history.unshift(`${room.players[playerIndex]?.name || 'Player'} landed on Cash Stack, but it's empty!`);
     }
   }
 }
@@ -787,8 +979,6 @@ function handleRollDice(room, playerIndex, payload = {}) {
       const newPos = (currentPos + moveAmount) % 36;
       room.gameState.playerPositions[playerIndex] = newPos;
       
-      // 3. Check specific landing overrides (Go To Jail)
-      // Actually, standard landing handles 'Go To Jail' tile, but moving TO jail happens there.
       // Passing GO logic:
       if (newPos < currentPos) {
         room.gameState.playerMoney[playerIndex] += 1000;
@@ -810,20 +1000,14 @@ function handleRollDice(room, playerIndex, payload = {}) {
       // 5. Handle Landing Logic (delayed slightly for visual sync)
       setTimeout(() => {
           handleLanding(room, playerIndex, newPos);
+          room.gameState.landingResolved = true; // Mark resolved so client 'landed' doesn't duplicate!
           
-          // Clear hopping player visual after landing processed
+          // Clear hopping player visual and turn lock after landing processed
           setTimeout(() => {
              room.gameState.hoppingPlayer = null;
-             // Don't clear isProcessingTurn yet if we are in a modal (landing might open modal)
-             // But if landing resolved immediately, we might want to clear.
-             // safest is to let landing logic or end turn handle processing state.
-             // But for simple moves:
-             if (!room.gameState.modalState.type || room.gameState.modalState.type === 'NONE') {
-                 // If no modal opened, we are essentially done processing unless we wait for user.
-                 // Actually, user needs to click 'End Turn'.
-             }
+             room.gameState.isProcessingTurn = false; // Turn processing unlocked!
              broadcastState(room);
-          }, 1000);
+          }, 800);
       }, 500); 
       
   }, 1000);
@@ -858,6 +1042,9 @@ function handleBuyProperty(room, playerIndex, payload) {
          price: cost,
          isPositive: false
     });
+    const isDoubles = room.gameState.diceValues && room.gameState.diceValues[0] === room.gameState.diceValues[1];
+    room.gameState.turnFinished = !isDoubles;
+    room.gameState.isProcessingTurn = false;
   } else {
     console.log(`[SERVER] Buy failed: Insufficient funds`);
   }
@@ -1008,8 +1195,8 @@ function handleWarStart(room, payload = {}) {
     // Fallback if client sent nothing (safety net)
     if (availableIndices.length === 0) {
         console.log(`[SERVER] Warning: No availableIndices received. Using fallback (all properties).`);
-        // Simple fallback: 1, 3, 6, 8, 9, 11, 13, 14, 15... (Just a range 1-39)
-        availableIndices = Array.from({length: 40}, (_, i) => i).filter(i => ![0, 10, 20, 30].includes(i)); // Exclude corners
+        // Fallback: all non-train properties from RENT_DATA (36-tile board)
+        availableIndices = Object.keys(RENT_DATA).map(Number).filter(i => !TRAIN_TILES.includes(i));
     }
 
     // After 3 seconds, Select Property and Reveal
@@ -1079,73 +1266,100 @@ function handleWarRoll(room) {
     // Next roller
     if (currentRoller + 1 < participants.length) {
       room.gameState.warState.currentRoller++;
+      broadcastState(room);
     } else {
-      // All rolled, determine winner
-      const rolls = room.gameState.warState.rolls;
-      const maxRoll = Math.max(...Object.values(rolls));
-      const winners = Object.entries(rolls)
-        .filter(([_, roll]) => roll === maxRoll)
-        .map(([idx]) => parseInt(idx));
-        
-      if (winners.length > 1) {
-        // Tie logic: Show message, wait 2s, then reset
-        const names = winners.map(idx => room.players[idx]?.name || `Player ${idx+1}`).join(' and ');
-        
-        room.gameState.warState.phase = 'tie';
-        room.gameState.warState.tieMessage = `${names} had a tie, fight again`;
-        broadcastState(room); // Update clients to show tie screen
-        
-        setTimeout(() => {
-           // Reset for re-roll
-           if (room.gameState.warState && room.gameState.warState.active) {
-             room.gameState.warState.participants = winners;
-             room.gameState.warState.rolls = {};
-             room.gameState.warState.currentRoller = 0;
-             room.gameState.warState.phase = 'roll';
-             room.gameState.warState.tieMessage = null;
-             room.gameState.history.unshift(`⚔️ TIE! Re-rolling...`);
-             broadcastState(room);
-           }
-        }, 2000);
-      } else {
-        // Winner
-        const winnerIdx = winners[0];
-        room.gameState.warState.winner = winnerIdx;
-        room.gameState.warState.phase = 'result';
-        
-        if (room.gameState.warState.mode === 'A') {
-          // Mode A: Award Property to winner
-          const propIndex = room.gameState.warState.propertyIndex;
-          if (propIndex !== undefined && propIndex !== null) {
-            room.gameState.propertyOwnership[propIndex] = winnerIdx;
-            console.log(`[SERVER] War Result: Property ${propIndex} transferred to Player ${winnerIdx}`);
-            room.gameState.history.unshift(`🏆 ${room.players[winnerIdx]?.name || 'Player'} won the property!`);
-          } else {
-             console.log(`[SERVER] War Result Error: No propertyIndex found!`);
-          }
+      // All participants have rolled! Mark evaluating so roll button is NEVER displayed again
+      room.gameState.warState.currentRoller = null;
+      room.gameState.warState.phase = 'evaluating';
+      broadcastState(room);
+
+      // Delay before computing and displaying results so players have time to see the last roll
+      setTimeout(() => {
+        if (!room.gameState.warState || !room.gameState.warState.active) return;
+
+        // All rolled, determine winner
+        const rolls = room.gameState.warState.rolls;
+        const maxRoll = Math.max(...Object.values(rolls));
+        const winners = Object.entries(rolls)
+          .filter(([_, roll]) => roll === maxRoll)
+          .map(([idx]) => parseInt(idx));
+          
+        if (winners.length > 1) {
+          // Tie logic: Show message with highlighted tied players, wait 2.8s, then sudden-death rematch
+          const names = winners.map(idx => room.players[idx]?.name || `Player ${idx+1}`).join(' & ');
+          
+          room.gameState.warState.phase = 'tie';
+          room.gameState.warState.tiedPlayers = winners;
+          room.gameState.warState.tieRoll = maxRoll;
+          room.gameState.warState.tieMessage = `${names} tied with ${maxRoll}!`;
+          broadcastState(room); // Update clients to show tie screen
+          
+          setTimeout(() => {
+             // Reset for sudden-death re-roll with ONLY tied players
+             if (room.gameState.warState && room.gameState.warState.active) {
+               room.gameState.warState.participants = winners;
+               room.gameState.warState.rolls = {};
+               room.gameState.warState.currentRoller = 0;
+               room.gameState.warState.phase = 'roll';
+               room.gameState.warState.tieMessage = null;
+               room.gameState.warState.tiedPlayers = null;
+               room.gameState.warState.tieRoll = null;
+               room.gameState.history.unshift(`⚔️ TIE! Sudden-death rematch between ${names}...`);
+               broadcastState(room);
+             }
+          }, 2800);
         } else {
-          // Mode B: Cash win
-          room.gameState.playerMoney[winnerIdx] += room.gameState.battlePot;
-          room.gameState.battlePot = 0;
+          // Winner
+          const winnerIdx = winners[0];
+          room.gameState.warState.winner = winnerIdx;
+          room.gameState.warState.phase = 'result';
+          
+          if (room.gameState.warState.mode === 'A') {
+            // Mode A: Award Property to winner
+            const propIndex = room.gameState.warState.propertyIndex;
+            if (propIndex !== undefined && propIndex !== null) {
+              room.gameState.propertyOwnership[propIndex] = winnerIdx;
+              console.log(`[SERVER] War Result: Property ${propIndex} transferred to Player ${winnerIdx}`);
+              room.gameState.history.unshift(`🏆 ${room.players[winnerIdx]?.name || 'Player'} won the property!`);
+            } else {
+               console.log(`[SERVER] War Result Error: No propertyIndex found!`);
+            }
+          } else {
+            // Mode B: Cash win
+            room.gameState.playerMoney[winnerIdx] += room.gameState.battlePot;
+            room.gameState.battlePot = 0;
+          }
+          room.gameState.history.unshift(`🏆 ${room.players[winnerIdx]?.name || 'Player'} won the war!`);
+          broadcastState(room);
         }
-        room.gameState.history.unshift(`🏆 ${room.players[winnerIdx]?.name || 'Player'} won the war!`);
-      }
+      }, 2200);
     }
-    broadcastState(room);
   }, 1000);
 }
 
 function handleWarClose(room) {
-  room.gameState.warState.active = false;
-  room.gameState.warState.phase = 'idle';
+  room.gameState.warState = {
+    active: false,
+    mode: 'A',
+    phase: 'idle',
+    participants: [],
+    rolls: {},
+    property: null,
+    currentRoller: null,
+    diceValues: [1, 1],
+    tiedPlayers: null,
+    tieRoll: null
+  };
+  room.gameState.isProcessingTurn = false;
+  room.gameState.turnFinished = true;
+  console.log(`[SERVER] Property War closed`);
   broadcastState(room);
 }
-
-
 
 function handleAttemptRobbery(room, playerIndex) {
   // 1. Start Processing
   room.gameState.modalState = { type: 'ROB_BANK', status: 'PROCESSING', payload: {} };
+  room.gameState.isProcessingTurn = true;
   console.log(`[SERVER] Rob Bank PROCESSING for player ${playerIndex}`);
   
   // Broadcast processing state
@@ -1171,7 +1385,7 @@ function handleAttemptRobbery(room, playerIndex) {
       };
       room.gameState.playerMoney[playerIndex] += amount;
       room.gameState.history.unshift(
-        `${room.players[playerIndex]?.name || 'Player'} robbed the bank for $${amount}!`
+        `💰 ${room.players[playerIndex]?.name || 'Player'} robbed the bank for $${amount}!`
       );
       console.log(`[SERVER] Rob Bank SUCCESS for player ${playerIndex}: $${amount}`);
     } else {
@@ -1181,11 +1395,15 @@ function handleAttemptRobbery(room, playerIndex) {
         status: 'RESULT', 
         payload: { result: 'caught' } 
       };
+      room.gameState.playerPositions[playerIndex] = 28; // Move to Jail tile
+      if (!room.gameState.jailStatus) room.gameState.jailStatus = {};
+      room.gameState.jailStatus[playerIndex] = 3;
       room.gameState.history.unshift(
-        `${room.players[playerIndex]?.name || 'Player'} got caught robbing the bank!`
+        `👮 ${room.players[playerIndex]?.name || 'Player'} got caught robbing the bank! Sent to Jail!`
       );
       console.log(`[SERVER] Rob Bank CAUGHT for player ${playerIndex}`);
     }
+    room.gameState.isProcessingTurn = false;
     
     // Broadcast result
     if (room.roomCode) {
@@ -1205,14 +1423,27 @@ function handleEndTurn(room) {
   let nextIdx = (room.gameState.currentPlayer + 1) % numPlayers;
   let loopCount = 0;
   
-  // Skip bankrupt players
-  while (room.gameState.bankruptPlayers && room.gameState.bankruptPlayers[nextIdx] && loopCount < numPlayers) {
-    nextIdx = (nextIdx + 1) % numPlayers;
-    loopCount++;
+  // Skip bankrupt, kicked, or timed-out offline players
+  while (loopCount < numPlayers) {
+    const p = room.players[nextIdx];
+    const isBankrupt = room.gameState.bankruptPlayers && room.gameState.bankruptPlayers[nextIdx];
+    const isKicked = p && p.kicked;
+    const isTimedOut = p && !p.connected && p.canBeKicked;
+
+    if (isBankrupt || isKicked || isTimedOut) {
+      if (isTimedOut && room.gameState.history) {
+        room.gameState.history.unshift(`⏭️ Skipped turn for ${p.name} (offline > 1 min).`);
+      }
+      nextIdx = (nextIdx + 1) % numPlayers;
+      loopCount++;
+      continue;
+    }
+    break;
   }
   
   room.gameState.currentPlayer = nextIdx;
   room.gameState.turnFinished = false;
+  room.gameState.isProcessingTurn = false;
   room.gameState.hoppingPlayer = null;
   room.gameState.landingResolved = false; // Reset for new turn
   room.gameState.history.unshift(
@@ -1227,7 +1458,7 @@ function handleAuctionSelect(room, playerIndex, payload) {
   if (!propertyIndex) return;
 
   // Deduct fee from initiator
-  const fee = 1000;
+  const fee = 3000;
   if (room.gameState.playerMoney[playerIndex] >= fee) {
     room.gameState.playerMoney[playerIndex] -= fee;
     room.gameState.cashStack += fee;
@@ -1423,6 +1654,8 @@ function endAuction(room, winnerIndex) {
       originalOwner: null,
       finalAmount: 0
     };
+    room.gameState.isProcessingTurn = false;
+    room.gameState.turnFinished = true;
     broadcastState(room);
   }, 3000);
 }

@@ -401,20 +401,49 @@ function App() {
 
   // --- SOCKET.IO NETWORKING ---
 
-  const [serverUrl, setServerUrl] = useState(() => {
-    try {
-      return localStorage.getItem('pseudopoly_server_url') || import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
-    } catch {
-      return 'http://localhost:3001';
+  const formatServerUrl = (raw) => {
+    let formatted = (raw || '').trim();
+    if (!formatted) return '';
+    if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+      formatted = 'http://' + formatted;
     }
-  });
+    // Auto-append port :3001 if no port specified
+    const match = formatted.match(/^(https?:\/\/[^/:]+)(\/.*)?$/);
+    if (match && !formatted.startsWith('https://')) {
+      formatted = `${match[1]}:3001${match[2] || ''}`;
+    }
+    return formatted;
+  };
+
+  const getInitialServerUrl = () => {
+    try {
+      const stored = localStorage.getItem('pseudopoly_server_url');
+      if (stored && !stored.includes('localhost') && !stored.includes('127.0.0.1')) {
+        return formatServerUrl(stored);
+      }
+      if (import.meta.env.VITE_SERVER_URL) {
+        return formatServerUrl(import.meta.env.VITE_SERVER_URL);
+      }
+      // If loaded in a browser on a phone or another device, use the actual host IP/domain!
+      if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+        const hostname = window.location.hostname;
+        if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+          const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+          return `${protocol}//${hostname}:3001`;
+        }
+      }
+      // Default for native Android APK and Wi-Fi multiplayer on this network
+      return 'http://192.168.1.43:3001';
+    } catch {
+      return 'http://192.168.1.43:3001';
+    }
+  };
+
+  const [serverUrl, setServerUrl] = useState(getInitialServerUrl);
   const [socketConnected, setSocketConnected] = useState(false);
 
   const updateServerUrl = (newUrl) => {
-    let formatted = (newUrl || '').trim();
-    if (formatted && !formatted.startsWith('http://') && !formatted.startsWith('https://')) {
-      formatted = 'http://' + formatted;
-    }
+    const formatted = formatServerUrl(newUrl);
     setServerUrl(formatted);
     try { localStorage.setItem('pseudopoly_server_url', formatted); } catch {}
     if (socketRef.current) {
@@ -457,13 +486,21 @@ function App() {
 
   // Connect to Socket.IO server and set up event handlers
   const connectSocket = () => {
-    if (socketRef.current) return socketRef.current;
+    if (socketRef.current && socketRef.current.connected) return socketRef.current;
+    if (socketRef.current) {
+      if (!socketRef.current.connected) {
+        socketRef.current.connect();
+      }
+      return socketRef.current;
+    }
     
-    const targetUrl = serverUrl || 'http://localhost:3001';
+    const targetUrl = serverUrl || getInitialServerUrl();
     console.log('[connectSocket] Connecting to server at:', targetUrl);
     const socket = io(targetUrl, {
-      reconnectionAttempts: 5,
-      timeout: 10000
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 10000,
+      transports: ['websocket', 'polling']
     });
     socketRef.current = socket;
     
@@ -477,9 +514,8 @@ function App() {
     });
 
     socket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err);
+      console.warn('Socket connection error:', err?.message || err);
       setSocketConnected(false);
-      showToast(`Cannot connect to server at ${targetUrl}`);
     });
     
     socket.on('room_created', ({ roomCode: code, playerIndex, gameState, players }) => {
@@ -711,6 +747,14 @@ function App() {
     
     return socket;
   };
+
+  // Automatically initiate socket connection when visiting multiplayer matchmaking screens
+  useEffect(() => {
+    if (gameStage === 'online_menu' || gameStage === 'mode_select') {
+      connectSocket();
+    }
+  }, [gameStage, serverUrl]);
+
   // Track last known positions for animation (independent of ref which can be stale)
   const lastKnownPositionsRef = useRef([0, 0, 0, 0]);
   
@@ -997,10 +1041,20 @@ function App() {
     const socket = connectSocket();
     setNetworkMode('online');
     
-    socket.emit('create_room', {
-      name: myIdentity.name,
-      avatar: myIdentity.avatar
-    });
+    if (socket.connected) {
+      socket.emit('create_room', {
+        name: myIdentity.name,
+        avatar: myIdentity.avatar
+      });
+    } else {
+      showToast(`Connecting to game host (${serverUrl})...`);
+      socket.once('connect', () => {
+        socket.emit('create_room', {
+          name: myIdentity.name,
+          avatar: myIdentity.avatar
+        });
+      });
+    }
   };
 
   // Join an existing room
@@ -1014,11 +1068,22 @@ function App() {
     const socket = connectSocket();
     setNetworkMode('online');
     
-    socket.emit('join_room', {
-      roomCode: cleanCode,
-      name: myIdentity.name,
-      avatar: myIdentity.avatar
-    });
+    if (socket.connected) {
+      socket.emit('join_room', {
+        roomCode: cleanCode,
+        name: myIdentity.name,
+        avatar: myIdentity.avatar
+      });
+    } else {
+      showToast(`Connecting to game host (${serverUrl})...`);
+      socket.once('connect', () => {
+        socket.emit('join_room', {
+          roomCode: cleanCode,
+          name: myIdentity.name,
+          avatar: myIdentity.avatar
+        });
+      });
+    }
   };
 
   // Start the game (Host only)

@@ -389,7 +389,7 @@ export default function MatchmakingView({
                   <input
                     type="text"
                     className="mm-wifi-input"
-                    placeholder="e.g. 192.168.1.15:3001"
+                    placeholder="e.g. 192.168.1.43:3001"
                     value={ipInput}
                     onChange={(e) => setIpInput(e.target.value)}
                   />
@@ -400,8 +400,16 @@ export default function MatchmakingView({
                 <div className="mm-wifi-presets">
                   <span className="mm-wifi-preset-label">Presets:</span>
                   <button 
+                    type="button"
                     className="mm-wifi-preset-chip" 
-                    onClick={() => { setIpInput('http://localhost:3001'); updateServerUrl('http://localhost:3001'); setShowServerModal(false); }}
+                    onClick={() => { setIpInput('192.168.1.43:3001'); updateServerUrl('192.168.1.43:3001'); setShowServerModal(false); }}
+                  >
+                    192.168.1.43:3001 (Host PC)
+                  </button>
+                  <button 
+                    type="button"
+                    className="mm-wifi-preset-chip" 
+                    onClick={() => { setIpInput('localhost:3001'); updateServerUrl('localhost:3001'); setShowServerModal(false); }}
                   >
                     localhost:3001
                   </button>

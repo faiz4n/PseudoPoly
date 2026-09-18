@@ -42,8 +42,8 @@ function App() {
   const [history, setHistory] = useState(['Player 3 starts turn']);
   const [playerPositions, setPlayerPositions] = useState([0, 0, 0, 0]);
   const [hoppingPlayer, setHoppingPlayer] = useState(null);
-  const [pawnTransitionDuration, setPawnTransitionDuration] = useState(210);
-  const [pawnStepDelay, setPawnStepDelay] = useState(350);
+  const [pawnTransitionDuration, setPawnTransitionDuration] = useState(185);
+  const [pawnStepDelay, setPawnStepDelay] = useState(210);
   const [pawnHopStep, setPawnHopStep] = useState(0);
   
   // Game Players State (Dynamic)
@@ -1030,7 +1030,7 @@ function App() {
       if (playerAnimationEnabledRef.current) {
         setHoppingPlayer(currentPlayerIdx);
       }
-      await movePlayerToken(currentPlayerIdx, moveAmount, 350, oldPosition);
+      await movePlayerToken(currentPlayerIdx, moveAmount, 210, oldPosition);
       setHoppingPlayer(null);
       isAnimatingRef.current = false; // Clear animation lock when done
       
@@ -1609,17 +1609,17 @@ function App() {
   };
 
   // Async function to move pawn step-by-step
-  const movePlayerToken = async (playerIdx, steps, delay = 350, startPosOverride = null) => {
+  const movePlayerToken = async (playerIdx, steps, delay = 210, startPosOverride = null) => {
     const startPos = startPosOverride ?? playerPositions[playerIdx];
     const direction = steps > 0 ? 1 : -1;
     const count = Math.abs(steps);
     
     const isAnimEnabled = playerAnimationEnabledRef.current;
     const speed = animationSpeedRef.current || 1;
-    // Step delay with comfortable floor to prevent frame dropping
-    const stepDelay = isAnimEnabled ? Math.max(220, Math.round(delay / speed)) : 0;
-    // Hop movement duration is ~60% of step interval, leaving ~40% for the stationary stop on the tile
-    const transitionDuration = Math.round(stepDelay * 0.60);
+    // Fluid step delay
+    const stepDelay = isAnimEnabled ? Math.max(160, Math.round(delay / speed)) : 0;
+    // Movement arrives at 87% of step interval, leaving an imperceptible micro-contact tap on the tile
+    const transitionDuration = Math.round(stepDelay * 0.87);
     
     setPawnTransitionDuration(transitionDuration);
     setPawnStepDelay(stepDelay);
@@ -1728,7 +1728,7 @@ function App() {
     setHoppingPlayer(null); // Disable hop animation
     setPawnHopStep(0);
     setIsLocalMoving(false); // End movement lock
-    setPawnTransitionDuration(240); // Reset
+    setPawnTransitionDuration(185); // Reset
   };
 
   // Auto-skip logic (Optimized)
@@ -7148,7 +7148,7 @@ function App() {
                 style={{
                   ...getPawnStyle(playerPositions[index], index),
                   transition: playerAnimationEnabled 
-                    ? `top ${pawnTransitionDuration}ms cubic-bezier(0.25, 0.9, 0.35, 1), left ${pawnTransitionDuration}ms cubic-bezier(0.25, 0.9, 0.35, 1)` 
+                    ? `top ${pawnTransitionDuration}ms cubic-bezier(0.2, 0.8, 0.35, 1), left ${pawnTransitionDuration}ms cubic-bezier(0.2, 0.8, 0.35, 1)` 
                     : 'none',
                   animationDuration: `${pawnStepDelay}ms`
                 }}

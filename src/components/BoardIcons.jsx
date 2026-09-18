@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 // 1. Cash Stack Icon (Banknotes with gold coins)
 export function CashStackIcon({ size = 22, className = '' }) {
@@ -73,60 +73,30 @@ export function AuditIcon({ size = 22, className = '' }) {
   );
 }
 
-// 4. Chance Icon (Pair of 3D Red Dice with White Pips - matching Screenshot 2)
+// 4. Chance Icon (Mystery Card with Glowing Question Mark)
 export function ChanceIcon({ size = 22, className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <defs>
-        <linearGradient id="diceGradRed1" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#EF5350" />
-          <stop offset="100%" stopColor="#B71C1C" />
-        </linearGradient>
-        <linearGradient id="diceGradRed2" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#E53935" />
-          <stop offset="100%" stopColor="#C62828" />
+        <linearGradient id="chanceGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FF7043" />
+          <stop offset="100%" stopColor="#D84315" />
         </linearGradient>
       </defs>
-      {/* Back Die */}
-      <g transform="rotate(-15 14 8)">
-        <rect x="9" y="3" width="11" height="11" rx="2.5" fill="url(#diceGradRed1)" stroke="#FFCDD2" strokeWidth="0.6" />
-        <circle cx="12" cy="6" r="1" fill="#FFFFFF" />
-        <circle cx="17" cy="6" r="1" fill="#FFFFFF" />
-        <circle cx="14.5" cy="8.5" r="1" fill="#FFFFFF" />
-        <circle cx="12" cy="11" r="1" fill="#FFFFFF" />
-        <circle cx="17" cy="11" r="1" fill="#FFFFFF" />
-      </g>
-      {/* Front Die */}
-      <g transform="rotate(12 7 15)">
-        <rect x="3" y="10" width="11" height="11" rx="2.5" fill="url(#diceGradRed2)" stroke="#FFCDD2" strokeWidth="0.7" />
-        <circle cx="5.5" cy="12.5" r="1" fill="#FFFFFF" />
-        <circle cx="11.5" cy="12.5" r="1" fill="#FFFFFF" />
-        <circle cx="8.5" cy="15.5" r="1" fill="#FFFFFF" />
-        <circle cx="5.5" cy="18.5" r="1" fill="#FFFFFF" />
-        <circle cx="11.5" cy="18.5" r="1" fill="#FFFFFF" />
-      </g>
-    </svg>
-  );
-}
-
-// 4b. 3D Single Red Die Icon (for Roll Button)
-export function RollDieIcon({ size = 20, className = '' }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <defs>
-        <linearGradient id="rollDieGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FF5252" />
-          <stop offset="50%" stopColor="#E53935" />
-          <stop offset="100%" stopColor="#B71C1C" />
-        </linearGradient>
-      </defs>
-      <rect x="2" y="2" width="20" height="20" rx="4.5" fill="url(#rollDieGrad)" stroke="#FFCDD2" strokeWidth="1.2" />
-      <circle cx="7" cy="7" r="1.8" fill="#FFFFFF" />
-      <circle cx="17" cy="7" r="1.8" fill="#FFFFFF" />
-      <circle cx="7" cy="12" r="1.8" fill="#FFFFFF" />
-      <circle cx="17" cy="12" r="1.8" fill="#FFFFFF" />
-      <circle cx="7" cy="17" r="1.8" fill="#FFFFFF" />
-      <circle cx="17" cy="17" r="1.8" fill="#FFFFFF" />
+      <rect x="4" y="2.5" width="16" height="19" rx="3" fill="url(#chanceGrad)" stroke="#FFE0B2" strokeWidth="1.2" />
+      <rect x="5.5" y="4" width="13" height="16" rx="2" fill="none" stroke="#FFA726" strokeWidth="0.6" strokeDasharray="1.5 1.5" />
+      <text
+        x="12"
+        y="16.5"
+        fontSize="13"
+        fontWeight="900"
+        fill="#FFFFFF"
+        textAnchor="middle"
+        fontFamily="'Fredoka One', 'Nunito', sans-serif"
+        filter="drop-shadow(0 1px 2px rgba(0,0,0,0.4))"
+      >
+        ?
+      </text>
     </svg>
   );
 }

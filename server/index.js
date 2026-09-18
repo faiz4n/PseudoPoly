@@ -170,101 +170,99 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Check if duplicate identity (Reconnection vs Collision)
-    const existingPlayerIndex = room.players.findIndex(p => p.name === name || p.avatar === avatar);
-    
-    if (existingPlayerIndex !== -1) {
-      const existingPlayer = room.players[existingPlayerIndex];
+    // Reconnection check
+    const reconnectIndex = room.players.findIndex(p => p.name === name && p.avatar === avatar && !p.connected);
+    if (reconnectIndex !== -1) {
+      const existingPlayer = room.players[reconnectIndex];
+      console.log(`[SERVER] Player ${name} reconnecting to ${cleanRoomCode}`);
       
-      // allow precise match to reconnect if they were disconnected
-      if (existingPlayer.name === name && existingPlayer.avatar === avatar) {
-         if (!existingPlayer.connected) {
-           // --- RECONNECTION LOGIC ---
-           console.log(`[SERVER] Player ${name} reconnecting to ${roomCode}`);
-           
-           // Update socket ID and status
-           existingPlayer.socketId = socket.id;
-           existingPlayer.connected = true;
-           
-           socket.join(roomCode);
-           socket.roomCode = roomCode;
-           socket.playerIndex = existingPlayerIndex;
-           
-           // If Host Reconnected, cancel destruction timer
-           if (existingPlayer.isHost && room.hostDisconnectTimer) {
-             console.log(`[SERVER] Host reconnected! Cancelling destruction timer.`);
-             clearTimeout(room.hostDisconnectTimer);
-             room.hostDisconnectTimer = null;
-             io.to(roomCode).emit('message', { type: 'system', text: 'Host has reconnected!' });
-           }
-
-           // If player was disconnected, clear their 60s disconnect timer
-           if (room.playerDisconnectTimers && room.playerDisconnectTimers[existingPlayerIndex]) {
-             console.log(`[SERVER] Clearing disconnect timer for player ${existingPlayer.name}`);
-             clearTimeout(room.playerDisconnectTimers[existingPlayerIndex]);
-             delete room.playerDisconnectTimers[existingPlayerIndex];
-           }
-           existingPlayer.canBeKicked = false;
-           existingPlayer.disconnectedAt = null;
-           if (room.gameState && room.gameState.history) {
-             room.gameState.history.unshift(`✓ ${existingPlayer.name} reconnected!`);
-           }
-
-           // Send sync data to reconnecting player
-           socket.emit('joined_room', {
-             roomCode,
-             playerIndex: existingPlayerIndex,
-             gameState: room.gameState,
-             players: room.players
-           });
-           
-           // Notify others
-           io.to(roomCode).emit('players_updated', { players: room.players });
-           return;
-         } else {
-           // Player is already connected - collision
-           socket.emit('error', { message: 'Name or Avatar already active in this room!' });
-           return;
-         }
-      } else {
-        // Name or avatar taken by someone else
-        socket.emit('error', { message: 'Name or Avatar already taken!' });
-        return;
+      existingPlayer.socketId = socket.id;
+      existingPlayer.connected = true;
+      
+      socket.join(cleanRoomCode);
+      socket.roomCode = cleanRoomCode;
+      socket.playerIndex = reconnectIndex;
+      
+      if (existingPlayer.isHost && room.hostDisconnectTimer) {
+        console.log(`[SERVER] Host reconnected! Cancelling destruction timer.`);
+        clearTimeout(room.hostDisconnectTimer);
+        room.hostDisconnectTimer = null;
+        io.to(cleanRoomCode).emit('message', { type: 'system', text: 'Host has reconnected!' });
       }
-    }
-    
-    if (room.players.length >= 4) {
-      socket.emit('error', { message: 'Room is full!' });
+
+      if (room.playerDisconnectTimers && room.playerDisconnectTimers[reconnectIndex]) {
+        clearTimeout(room.playerDisconnectTimers[reconnectIndex]);
+        delete room.playerDisconnectTimers[reconnectIndex];
+      }
+      existingPlayer.canBeKicked = false;
+      existingPlayer.disconnectedAt = null;
+      if (room.gameState && room.gameState.history) {
+        room.gameState.history.unshift(`✓ ${existingPlayer.name} reconnected!`);
+      }
+
+      socket.emit('joined_room', {
+        roomCode: cleanRoomCode,
+        playerIndex: reconnectIndex,
+        gameState: room.gameState,
+        players: room.players
+      });
+      
+      io.to(cleanRoomCode).emit('players_updated', { players: room.players });
       return;
+    }
+
+    if (room.players.length >= 4) {
+      socket.emit('error', { message: 'Room is full (max 4 players)!' });
+      return;
+    }
+
+    // Auto-disambiguate name if already in room
+    let finalName = name;
+    let nameTaken = room.players.some(p => p.name.toLowerCase() === finalName.toLowerCase() && p.connected);
+    if (nameTaken) {
+      let suffix = 2;
+      while (room.players.some(p => p.name.toLowerCase() === `${finalName} ${suffix}`.toLowerCase() && p.connected)) {
+        suffix++;
+      }
+      finalName = `${finalName} ${suffix}`;
+    }
+
+    // Auto-disambiguate avatar if already taken
+    let finalAvatar = avatar;
+    const allAvatars = ['avatar_blue_glossy', 'avatar_orange_glossy', 'avatar_black_glossy', 'avatar_white_glossy'];
+    let avatarTaken = room.players.some(p => p.avatar === finalAvatar && p.connected);
+    if (avatarTaken) {
+      const freeAvatar = allAvatars.find(a => !room.players.some(p => p.avatar === a && p.connected));
+      if (freeAvatar) finalAvatar = freeAvatar;
     }
     
     const playerIndex = room.players.length;
     
     room.players.push({
       id: playerIndex,
-      name,
-      avatar,
+      name: finalName,
+      avatar: finalAvatar,
       socketId: socket.id,
       isHost: false,
-      connected: true // Track connection status
+      connected: true
     });
     
-    socket.join(roomCode);
-    socket.roomCode = roomCode;
+    socket.join(cleanRoomCode);
+    socket.roomCode = cleanRoomCode;
     socket.playerIndex = playerIndex;
     
-    console.log(`${name} joined room ${roomCode} as player ${playerIndex}`);
+    console.log(`${finalName} joined room ${cleanRoomCode} as player ${playerIndex}`);
     
     // Send join confirmation to the new player
     socket.emit('joined_room', {
-      roomCode,
+      roomCode: cleanRoomCode,
       playerIndex,
       gameState: room.gameState,
       players: room.players
     });
     
     // Broadcast updated players list to all in room
-    io.to(roomCode).emit('players_updated', { players: room.players });
+    io.to(cleanRoomCode).emit('players_updated', { players: room.players });
   });
 
   // Start game (host only)

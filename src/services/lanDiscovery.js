@@ -82,27 +82,32 @@ class LanDiscoveryService {
     }
 
     // 2. Candidate targets to probe
-    const candidateHosts = [
-      'localhost:3001',    // Local phone or emulator
-    ];
+    const candidateHosts = [];
 
-    // Ask Android native for actual DHCP Hotspot/WiFi gateway IP
+    // On Android, check the DHCP Hotspot/WiFi gateway IP
     if (typeof window !== 'undefined' && window.AndroidHostServer?.getHotspotGatewayIp) {
       try {
         const gw = window.AndroidHostServer.getHotspotGatewayIp();
-        if (gw && !candidateHosts.includes(`${gw}:3001`)) {
-          candidateHosts.unshift(`${gw}:3001`);
-        }
+        if (gw) candidateHosts.push(`${gw}:3001`);
       } catch (e) {}
-    } else {
+    }
+    
+    // Always include the default Android hotspot gateway
+    if (!candidateHosts.includes('192.168.43.1:3001')) {
       candidateHosts.push('192.168.43.1:3001');
     }
 
-    // Add current origin hostname if running in browser
+    // If running in a browser or desktop, probe current host and localhost
     if (typeof window !== 'undefined' && window.location?.hostname) {
       const h = window.location.hostname;
       if (h && h !== 'localhost' && h !== '127.0.0.1' && !candidateHosts.includes(`${h}:3001`)) {
         candidateHosts.push(`${h}:3001`);
+      }
+    }
+    // Only probe localhost if not on native Android app or for debugging
+    if (typeof window === 'undefined' || !window.AndroidHostServer) {
+      if (!candidateHosts.includes('localhost:3001')) {
+        candidateHosts.push('localhost:3001');
       }
     }
 
@@ -175,42 +180,28 @@ class LanDiscoveryService {
                 const parsed = JSON.parse(msg.substring(2));
                 if (parsed[0] === 'room_info' && parsed[1]) {
                   const info = parsed[1];
-                  this.registerDiscoveredGame({
-                    id: cleanAddr,
-                    ip: cleanAddr.split(':')[0],
-                    port: cleanAddr.split(':')[1] || '3001',
-                    hostName: info.hostName || 'Nearby Host',
-                    roomCode: info.roomCode || '',
-                    players: info.players || 1,
-                    maxPlayers: info.maxPlayers || 4,
-                    latency: latency,
-                    targetUrl: `http://${cleanAddr}`,
-                    networkType: cleanAddr.includes('192.168.43.1') ? 'hotspot' : 'wifi',
-                  });
+                  // ONLY register if a valid room exists on this host
+                  if (info.roomCode && info.status !== 'open') {
+                    this.registerDiscoveredGame({
+                      id: cleanAddr,
+                      ip: cleanAddr.split(':')[0],
+                      port: cleanAddr.split(':')[1] || '3001',
+                      hostName: info.hostName || 'Nearby Host',
+                      roomCode: info.roomCode,
+                      players: info.players || 1,
+                      maxPlayers: info.maxPlayers || 4,
+                      latency: latency,
+                      targetUrl: `http://${cleanAddr}`,
+                      networkType: cleanAddr.includes('192.168.43.1') ? 'hotspot' : 'wifi',
+                    });
+                  }
                   clearTimeout(timer);
                   finish();
                   return;
                 }
               } catch {}
             }
-
-            // If we got an Engine.IO handshake "0{...}", the server is alive!
-            if (msg.startsWith('0')) {
-              this.registerDiscoveredGame({
-                id: cleanAddr,
-                ip: cleanAddr.split(':')[0],
-                port: cleanAddr.split(':')[1] || '3001',
-                hostName: cleanAddr.includes('192.168.43.1') ? 'Hotspot Host' : 'Nearby Host',
-                roomCode: '',
-                players: 1,
-                maxPlayers: 4,
-                latency: latency,
-                targetUrl: `http://${cleanAddr}`,
-                networkType: cleanAddr.includes('192.168.43.1') ? 'hotspot' : 'wifi',
-              });
-              clearTimeout(timer);
-              finish();
-            }
+            // Note: msg.startsWith('0') is the Engine.IO handshake, wait for room_info
           }
         };
 

@@ -16,10 +16,10 @@ import {
   PROPERTY_COLORS,
 } from "./data/boardData";
 import "./App.css";
-import startIcon from "./assets/start_hand.png";
-import parkingIcon from "./assets/parking_p.png";
-import robBankIcon from "./assets/revolver.png";
-import jailIcon from "./assets/handcuffs.png";
+import startIcon from "./assets/start.png";
+import parkingIcon from "./assets/parking.png";
+import robBankIcon from "./assets/robbank.png";
+import jailIcon from "./assets/jail.png";
 import startupBg from "./assets/startup_bg.png";
 import dealIcon from "./assets/deal.png";
 import sellIcon from "./assets/sell.png";

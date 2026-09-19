@@ -1,54 +1,44 @@
-﻿import React from 'react';
+import React from 'react';
+import trainImg from '../assets/travel_icon.png';
+import cashImg from '../assets/tax_cash.png';
+import chanceImg from '../assets/chance_dice.png';
+import chestImg from '../assets/chest_box.png';
 
-// 1. Cash Stack Icon (Banknotes with gold coins)
+// 1. Cash Stack Icon (Reference App Bills & Coins)
 export function CashStackIcon({ size = 22, className = '' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <defs>
-        <linearGradient id="cashGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#81C784" />
-          <stop offset="100%" stopColor="#2E7D32" />
-        </linearGradient>
-        <linearGradient id="coinGrad" x1="0" y1="0" x2="10" y2="10" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FFD54F" />
-          <stop offset="100%" stopColor="#FF8F00" />
-        </linearGradient>
-      </defs>
-      <rect x="2" y="7" width="17" height="11" rx="2" fill="#1B5E20" stroke="#A5D6A7" strokeWidth="0.75" />
-      <rect x="4" y="5" width="17" height="11" rx="2" fill="#388E3C" stroke="#C8E6C9" strokeWidth="0.75" />
-      <rect x="6" y="3" width="16" height="11" rx="2" fill="url(#cashGrad)" stroke="#E8F5E9" strokeWidth="0.9" />
-      <circle cx="14" cy="8.5" r="2.2" fill="#1B5E20" opacity="0.6" />
-      <text x="14" y="10.2" fontSize="3.8" fontWeight="bold" fill="#E8F5E9" textAnchor="middle" fontFamily="sans-serif">$</text>
-      <circle cx="5.5" cy="17.5" r="3.5" fill="url(#coinGrad)" stroke="#FFE082" strokeWidth="0.8" />
-      <text x="5.5" y="19" fontSize="3.5" fontWeight="bold" fill="#5D4037" textAnchor="middle" fontFamily="sans-serif">$</text>
-      <circle cx="10" cy="18.5" r="3" fill="url(#coinGrad)" stroke="#FFE082" strokeWidth="0.75" />
-    </svg>
+    <img
+      src={cashImg}
+      alt="Cash Stack"
+      style={{
+        width: `${size}px`,
+        height: 'auto',
+        maxHeight: `${size}px`,
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
+      }}
+      className={className}
+      draggable={false}
+    />
   );
 }
 
-// 2. Train / Railroad Icon (Modern Bullet Train)
-export function TrainIcon({ size = 22, className = '' }) {
+// 2. Train / Railroad Icon (Reference App Modern Subway Train)
+export function TrainIcon({ size = 26, className = '' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <defs>
-        <linearGradient id="trainGrad" x1="4" y1="2" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#64B5F6" />
-          <stop offset="100%" stopColor="#1565C0" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M6 5C6 3.34315 7.34315 2 9 2H15C16.6569 2 18 3.34315 18 5V15C18 16.6569 16.6569 18 15 18H9C7.34315 18 6 16.6569 6 15V5Z"
-        fill="url(#trainGrad)"
-        stroke="#E3F2FD"
-        strokeWidth="1"
-      />
-      <path d="M8 5.5H16V9.5C16 10 15.5 10.5 15 10.5H9C8.5 10.5 8 10.5 8 9.5V5.5Z" fill="#E1F5FE" />
-      <circle cx="9" cy="14.5" r="1.5" fill="#FFF9C4" stroke="#FBC02D" strokeWidth="0.5" />
-      <circle cx="15" cy="14.5" r="1.5" fill="#FFF9C4" stroke="#FBC02D" strokeWidth="0.5" />
-      <line x1="11" y1="14.5" x2="13" y2="14.5" stroke="#BBDEFB" strokeWidth="1" strokeLinecap="round" />
-      <path d="M5 21L8 18M19 21L16 18" stroke="#78909C" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="4" y1="21" x2="20" y2="21" stroke="#546E7A" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
+    <img
+      src={trainImg}
+      alt="Train"
+      style={{
+        width: `${size}px`,
+        height: 'auto',
+        maxHeight: `${size}px`,
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.35))',
+      }}
+      className={className}
+      draggable={false}
+    />
   );
 }
 
@@ -73,31 +63,22 @@ export function AuditIcon({ size = 22, className = '' }) {
   );
 }
 
-// 4. Chance Icon (Mystery Card with Glowing Question Mark)
+// 4. Chance Icon (Reference App 3D Tumbling Red Dice)
 export function ChanceIcon({ size = 22, className = '' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <defs>
-        <linearGradient id="chanceGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FF7043" />
-          <stop offset="100%" stopColor="#D84315" />
-        </linearGradient>
-      </defs>
-      <rect x="4" y="2.5" width="16" height="19" rx="3" fill="url(#chanceGrad)" stroke="#FFE0B2" strokeWidth="1.2" />
-      <rect x="5.5" y="4" width="13" height="16" rx="2" fill="none" stroke="#FFA726" strokeWidth="0.6" strokeDasharray="1.5 1.5" />
-      <text
-        x="12"
-        y="16.5"
-        fontSize="13"
-        fontWeight="900"
-        fill="#FFFFFF"
-        textAnchor="middle"
-        fontFamily="'Fredoka One', 'Nunito', sans-serif"
-        filter="drop-shadow(0 1px 2px rgba(0,0,0,0.4))"
-      >
-        ?
-      </text>
-    </svg>
+    <img
+      src={chanceImg}
+      alt="Chance"
+      style={{
+        width: `${size}px`,
+        height: 'auto',
+        maxHeight: `${size}px`,
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
+      }}
+      className={className}
+      draggable={false}
+    />
   );
 }
 
@@ -144,23 +125,22 @@ export function ForcedAuctionIcon({ size = 22, className = '' }) {
   );
 }
 
-// 7. Community Chest Icon (Treasure Chest / Vault)
+// 7. Community Chest Icon (Reference App Gold Treasure Chest)
 export function ChestIcon({ size = 22, className = '' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <defs>
-        <linearGradient id="chestWood" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#8D6E63" />
-          <stop offset="100%" stopColor="#4E342E" />
-        </linearGradient>
-      </defs>
-      <rect x="3" y="10" width="18" height="10.5" rx="1.5" fill="url(#chestWood)" stroke="#271C19" strokeWidth="1" />
-      <path d="M3 10C3 6.5 6.5 4 12 4C17.5 4 21 6.5 21 10H3Z" fill="#6D4C41" stroke="#271C19" strokeWidth="1" />
-      <rect x="6.5" y="4.5" width="2" height="15.5" fill="#FFC107" />
-      <rect x="15.5" y="4.5" width="2" height="15.5" fill="#FFC107" />
-      <rect x="10.5" y="9.5" width="3" height="4" rx="0.8" fill="#FFE082" stroke="#B26A00" strokeWidth="0.6" />
-      <circle cx="12" cy="11" r="0.6" fill="#3E2723" />
-    </svg>
+    <img
+      src={chestImg}
+      alt="Chest"
+      style={{
+        width: `${size}px`,
+        height: 'auto',
+        maxHeight: `${size}px`,
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
+      }}
+      className={className}
+      draggable={false}
+    />
   );
 }
 
@@ -188,7 +168,7 @@ export function YachtIcon({ size = 32, className = '' }) {
 }
 
 // 9. Master Icon Dispatcher
-export default function BoardIcon({ type, size = 20, className = '' }) {
+export default function BoardIcon({ type, size = 22, className = '' }) {
   if (!type) return null;
 
   switch (type) {

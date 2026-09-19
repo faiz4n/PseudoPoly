@@ -16,15 +16,18 @@ import {
   PROPERTY_COLORS,
 } from "./data/boardData";
 import "./App.css";
-import startIcon from "./assets/start.png";
-import parkingIcon from "./assets/parking.png";
-import robBankIcon from "./assets/robbank.png";
-import jailIcon from "./assets/jail.png";
+import startIcon from "./assets/start_hand.png";
+import parkingIcon from "./assets/parking_p.png";
+import robBankIcon from "./assets/revolver.png";
+import jailIcon from "./assets/handcuffs.png";
 import startupBg from "./assets/startup_bg.png";
-import dealIcon from "./assets/deal.png";
-import sellIcon from "./assets/sell.png";
+import dealIcon from "./assets/deal_btn.png";
+import sellIcon from "./assets/sell_btn.png";
 import buildIcon from "./assets/build.png";
 import bankIcon from "./assets/bank.png";
+import soundManager from "./services/soundManager";
+import AnimatedDie from "./components/AnimatedDie";
+
 import "./pawn.css";
 import "./safe_animation.css";
 import "./upgrades.css";
@@ -2003,255 +2006,16 @@ function App() {
     return ctx;
   };
 
-  // Modern "Tick" Sound for Hopping
-  const playHopSound = () => {
-    try {
-      const ctx = getAudioContext();
-      const t = ctx.currentTime;
+  // Authentic Reference Audio Player Wrappers
+  const playHopSound = () => soundManager.playStep();
+  const playDiceRollSound = () => soundManager.playDiceRoll();
+  const playBuySound = () => soundManager.playSpendMoney();
+  const playPayRentSound = () => soundManager.playSpendMoney();
+  const playCollectMoneySound = () => soundManager.playCollectMoney();
+  const playWinSound = () => soundManager.playWin();
+  const playClickSound = () => soundManager.playButtonClick();
+  const playErrorSound = () => soundManager.playError();
 
-      // Layer 1: High click
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.frequency.setValueAtTime(800, t);
-      osc.frequency.exponentialRampToValueAtTime(1200, t + 0.05);
-
-      gain.gain.setValueAtTime(0.05, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-
-      osc.start(t);
-      osc.stop(t + 0.05);
-
-      // Layer 2: Noise burst (texture)
-      const bufferSize = ctx.sampleRate * 0.05;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-      const noiseGain = ctx.createGain();
-      const noiseFilter = ctx.createBiquadFilter();
-
-      noiseFilter.type = "highpass";
-      noiseFilter.frequency.value = 1000;
-
-      noise.connect(noiseFilter);
-      noiseFilter.connect(noiseGain);
-      noiseGain.connect(ctx.destination);
-
-      noiseGain.gain.setValueAtTime(0.05, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-
-      noise.start(t);
-    } catch (e) {}
-  };
-
-  // Modern Dice Roll (Softer Shuffling)
-  const playDiceRollSound = () => {
-    try {
-      const ctx = getAudioContext();
-      const t = ctx.currentTime;
-
-      // Create noise buffer (Pinkish noise for softer sound)
-      const bufferSize = ctx.sampleRate * 0.6;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      // Simple pinking filter (1/f)
-      let b0, b1, b2, b3, b4, b5, b6;
-      b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + white * 0.0555179;
-        b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.969 * b2 + white * 0.153852;
-        b3 = 0.8665 * b3 + white * 0.3104856;
-        b4 = 0.55 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.016898;
-        data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-        data[i] *= 0.11; // Compensate for gain
-        b6 = white * 0.115926;
-      }
-
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-
-      // Lowpass to remove harshness
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(500, t);
-
-      const gain = ctx.createGain();
-
-      // Rhythmic amplitude modulation
-      gain.gain.setValueAtTime(0, t);
-      for (let i = 0; i < 6; i++) {
-        // Smoother ramps
-        gain.gain.linearRampToValueAtTime(0.25, t + i * 0.1 + 0.02);
-        gain.gain.linearRampToValueAtTime(0.05, t + i * 0.1 + 0.08);
-      }
-      gain.gain.linearRampToValueAtTime(0, t + 0.6);
-
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-
-      noise.start(t);
-    } catch (e) {}
-  };
-
-  // Custom Cash Register Sound (File)
-  const playBuySound = () => {
-    try {
-      const audio = new Audio(cashRegisterSound);
-      audio.volume = 0.5;
-      audio.play().catch((e) => console.log("Audio play failed", e));
-    } catch (e) {}
-  };
-
-  // Custom Cash Register Sound (Rent/Deducting)
-  const playPayRentSound = () => {
-    try {
-      const audio = new Audio(cashRegisterSound);
-      audio.volume = 0.5;
-      audio.play().catch((e) => console.log("Audio play failed", e));
-    } catch (e) {}
-  };
-
-  // Modern Collect Money (Cash Counter - Receiving)
-  const playCollectMoneySound = () => {
-    try {
-      const ctx = getAudioContext();
-      const t = ctx.currentTime;
-
-      // Rapid "counting" sound (ascending pitch for receiving)
-      for (let i = 0; i < 10; i++) {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const filter = ctx.createBiquadFilter();
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(ctx.destination);
-
-        // Crisp "bill count" sound
-        osc.type = "square";
-        osc.frequency.setValueAtTime(1200 + i * 50, t + i * 0.03);
-
-        filter.type = "highpass";
-        filter.frequency.setValueAtTime(2000, t + i * 0.03);
-
-        gain.gain.setValueAtTime(0, t + i * 0.03);
-        gain.gain.linearRampToValueAtTime(0.08, t + i * 0.03 + 0.005);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.03 + 0.025);
-
-        osc.start(t + i * 0.03);
-        osc.stop(t + i * 0.03 + 0.025);
-      }
-
-      // Final "Success" chime
-      setTimeout(() => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(880, t + 0.35); // A5
-        osc.frequency.exponentialRampToValueAtTime(1760, t + 0.4); // A6
-
-        gain.gain.setValueAtTime(0.1, t + 0.35);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
-
-        osc.start(t + 0.35);
-        osc.stop(t + 0.8);
-      }, 350);
-    } catch (e) {}
-  };
-
-  // Modern Win (Ethereal Chord)
-  const playWinSound = () => {
-    try {
-      const ctx = getAudioContext();
-      const t = ctx.currentTime;
-
-      // Major 9th chord
-      const notes = [261.63, 329.63, 392.0, 493.88, 587.33]; // C4, E4, G4, B4, D5
-
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const filter = ctx.createBiquadFilter();
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.type = "sawtooth"; // Richer tone
-        osc.frequency.setValueAtTime(freq, t);
-
-        // Filter sweep
-        filter.type = "lowpass";
-        filter.frequency.setValueAtTime(200, t);
-        filter.frequency.exponentialRampToValueAtTime(2000, t + 0.2);
-
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.1, t + 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5); // Long tail
-
-        osc.start(t);
-        osc.stop(t + 1.5);
-      });
-    } catch (e) {}
-  };
-
-  // Modern Click (Subtle Tap)
-  const playClickSound = () => {
-    try {
-      const ctx = getAudioContext();
-      const t = ctx.currentTime;
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.frequency.setValueAtTime(600, t);
-
-      gain.gain.setValueAtTime(0.05, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-
-      osc.start(t);
-      osc.stop(t + 0.05);
-    } catch (e) {}
-  };
-
-  // Modern Error (Low Buzz)
-  const playErrorSound = () => {
-    try {
-      const ctx = getAudioContext();
-      const t = ctx.currentTime;
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(100, t);
-      osc.frequency.linearRampToValueAtTime(80, t + 0.2);
-
-      gain.gain.setValueAtTime(0.1, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-
-      osc.start(t);
-      osc.stop(t + 0.2);
-    } catch (e) {}
-  };
 
   // Async function to move pawn step-by-step
   const movePlayerToken = async (
@@ -7497,14 +7261,9 @@ function App() {
               );
             })}
 
-            {/* Center Area */}
+            {/* Center Area with Authentic Reference Artwork */}
             <div className="board-center">
-              {/* Decorative Elements */}
-              <div className="center-decorations">
-                <div className="yacht">
-                  <YachtIcon size={36} />
-                </div>
-              </div>
+
 
               {/* Jail Arrest Modal (Placed in local center scope) */}
               {/* Jail Arrest Modal (Placed in local center scope) */}
@@ -7672,18 +7431,29 @@ function App() {
               {!buildMode && !sellMode && (
                 <>
                   <div className="dice-area">
-                    <div className="dice-container">
-                      <div
-                        className={`dice ${isRolling ? "rolling-left" : ""}`}
-                      >
-                        {renderDiceDots(diceValues[0])}
-                      </div>
-                      <div
-                        className={`dice ${isRolling ? "rolling-right" : ""}`}
-                      >
-                        {renderDiceDots(diceValues[1])}
-                      </div>
+                    <div
+                      className="dice-container"
+                      style={{
+                        display: "flex",
+                        gap: "8px",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <AnimatedDie
+                        value={diceValues[0]}
+                        isRolling={isRolling}
+                        size={46}
+                        stagger={0}
+                      />
+                      <AnimatedDie
+                        value={diceValues[1]}
+                        isRolling={isRolling}
+                        size={46}
+                        stagger={2}
+                      />
                     </div>
+
                     <div className="button-group">
                       {/* Only show buttons if offline OR it's this player's turn */}
                       {(networkMode === "offline" ||
@@ -10046,23 +9816,24 @@ function App() {
                         style={{
                           display: "flex",
                           justifyContent: "center",
-                          gap: "20px",
+                          gap: "16px",
                           marginBottom: "15px",
                         }}
                       >
-                        <div
-                          className="dice"
-                          style={{ width: "50px", height: "50px" }}
-                        >
-                          {renderDiceDots(auditDiceValues[0])}
-                        </div>
-                        <div
-                          className="dice"
-                          style={{ width: "50px", height: "50px" }}
-                        >
-                          {renderDiceDots(auditDiceValues[1])}
-                        </div>
+                        <AnimatedDie
+                          value={auditDiceValues[0]}
+                          isRolling={isRollingAuditDice}
+                          size={48}
+                          stagger={0}
+                        />
+                        <AnimatedDie
+                          value={auditDiceValues[1]}
+                          isRolling={isRollingAuditDice}
+                          size={48}
+                          stagger={2}
+                        />
                       </div>
+
 
                       <div
                         style={{
@@ -10738,26 +10509,31 @@ function App() {
                                     )}
                                   </div>
 
-                                  {/* Dice Display */}
                                   <div
                                     className="dice-container"
                                     style={{
                                       margin: "1px 0",
                                       justifyContent: "center",
                                       flexShrink: 0,
+                                      display: "flex",
+                                      gap: "8px",
+                                      alignItems: "center",
                                     }}
                                   >
-                                    <div
-                                      className={`dice ${warIsRolling ? "rolling-left" : ""}`}
-                                    >
-                                      {renderDiceDots(warDiceValues[0])}
-                                    </div>
-                                    <div
-                                      className={`dice ${warIsRolling ? "rolling-right" : ""}`}
-                                    >
-                                      {renderDiceDots(warDiceValues[1])}
-                                    </div>
+                                    <AnimatedDie
+                                      value={warDiceValues[0]}
+                                      isRolling={warIsRolling}
+                                      size={38}
+                                      stagger={0}
+                                    />
+                                    <AnimatedDie
+                                      value={warDiceValues[1]}
+                                      isRolling={warIsRolling}
+                                      size={38}
+                                      stagger={2}
+                                    />
                                   </div>
+
 
                                   {/* Participant Rolls in Single Column with Winner Transition */}
                                   <div

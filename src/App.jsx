@@ -11608,155 +11608,314 @@ function App() {
                     </div>
                     <div
                       className="modal-body"
-                      style={{ padding: "6px 10px", overflow: "hidden" }}
+                      style={{
+                        padding: "6px 10px",
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        flex: "1 1 auto",
+                        boxSizing: "border-box",
+                      }}
                     >
-                      {/* Current High Bid */}
-                      <div style={{ textAlign: "center", margin: "2px 0" }}>
+                      {/* Top Bar: Current High Bid + Turn Indicator */}
+                      <div style={{ flexShrink: 0, marginBottom: "2px" }}>
                         <div
                           style={{
-                            fontSize: "10px",
-                            color: "#5D4037",
-                            fontWeight: "bold",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px",
-                          }}
-                        >
-                          Current High Bid
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "20px",
-                            fontWeight: "bold",
-                            color: "#2E7D32",
-                            lineHeight: "1.1",
-                          }}
-                        >
-                          ${(auctionState.currentBid || 0).toLocaleString()}
-                        </div>
-
-                        {/* Last Bidder Info with Avatar */}
-                        <div
-                          style={{
-                            minHeight: "20px",
                             display: "flex",
                             alignItems: "center",
-                            justifyContent: "center",
-                            gap: "4px",
-                            marginTop: "1px",
+                            justifyContent: "space-between",
+                            background: "rgba(0, 0, 0, 0.04)",
+                            padding: "3px 8px",
+                            borderRadius: "6px",
+                            border: "1px solid rgba(0, 0, 0, 0.06)",
                           }}
                         >
-                          {auctionState.bids &&
-                          auctionState.bids.length > 0 &&
-                          gamePlayers[auctionState.bids[0].player] ? (
+                          <div>
                             <div
                               style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                background: "rgba(46, 125, 50, 0.1)",
-                                padding: "1px 6px",
-                                borderRadius: "10px",
+                                fontSize: "8.5px",
+                                color: "#5D4037",
+                                fontWeight: "bold",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.5px",
+                                lineHeight: 1,
                               }}
                             >
-                              <img
-                                src={
-                                  gamePlayers[auctionState.bids[0].player]
-                                    ?.avatar
-                                }
-                                alt=""
+                              Current High Bid
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "18px",
+                                fontWeight: "bold",
+                                color: "#2E7D32",
+                                lineHeight: "1.1",
+                              }}
+                            >
+                              ${(auctionState.currentBid || 0).toLocaleString()}
+                            </div>
+                          </div>
+
+                          {/* Last Bidder Pill */}
+                          <div>
+                            {auctionState.bids &&
+                            auctionState.bids.length > 0 &&
+                            gamePlayers[auctionState.bids[0].player] ? (
+                              <div
                                 style={{
-                                  width: "15px",
-                                  height: "15px",
-                                  borderRadius: "50%",
-                                  flexShrink: 0,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  background: "rgba(46, 125, 50, 0.12)",
+                                  padding: "2px 6px",
+                                  borderRadius: "10px",
+                                  border: "1px solid rgba(46, 125, 50, 0.25)",
                                 }}
-                              />
+                              >
+                                <img
+                                  src={
+                                    gamePlayers[auctionState.bids[0].player]
+                                      ?.avatar
+                                  }
+                                  alt=""
+                                  style={{
+                                    width: "14px",
+                                    height: "14px",
+                                    borderRadius: "50%",
+                                    flexShrink: 0,
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    fontSize: "9.5px",
+                                    fontWeight: "bold",
+                                    color: "#1B5E20",
+                                  }}
+                                >
+                                  {gamePlayers[auctionState.bids[0].player]?.name}
+                                </span>
+                              </div>
+                            ) : (
+                              <span
+                                style={{
+                                  color: "#8D6E63",
+                                  fontStyle: "italic",
+                                  fontSize: "9px",
+                                }}
+                              >
+                                Opening Bid
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Active Bidder Turn Indicator with Avatar */}
+                        {(() => {
+                          const currentBidderIdx = auctionState.currentBidder;
+                          const currentBidderPlayer =
+                            currentBidderIdx !== null &&
+                            currentBidderIdx !== undefined
+                              ? gamePlayers[currentBidderIdx]
+                              : null;
+                          const isMyTurn =
+                            networkMode === "online"
+                              ? currentBidderIdx === myPlayerIndex
+                              : true;
+
+                          return (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "5px",
+                                padding: "2px 8px",
+                                background: isMyTurn
+                                  ? "linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%)"
+                                  : "#F5F5F5",
+                                border: isMyTurn
+                                  ? "1.5px solid #FFB300"
+                                  : "1px solid #ddd",
+                                borderRadius: "6px",
+                                margin: "2px 0 0 0",
+                              }}
+                            >
+                              {currentBidderPlayer && (
+                                <img
+                                  src={currentBidderPlayer.avatar}
+                                  alt={currentBidderPlayer.name}
+                                  style={{
+                                    width: "16px",
+                                    height: "16px",
+                                    borderRadius: "50%",
+                                    flexShrink: 0,
+                                    border: "1.5px solid #FF9800",
+                                  }}
+                                />
+                              )}
                               <span
                                 style={{
                                   fontSize: "10px",
                                   fontWeight: "bold",
-                                  color: "#1B5E20",
+                                  color: "#4A2C18",
                                 }}
                               >
-                                {gamePlayers[auctionState.bids[0].player]?.name}
-                                : $
-                                {auctionState.bids[0].amount.toLocaleString()}
+                                {networkMode === "online"
+                                  ? currentBidderIdx === myPlayerIndex
+                                    ? "⚡ YOUR TURN TO BID!"
+                                    : `${currentBidderPlayer?.name || "Player"} is bidding...`
+                                  : `⚡ ${currentBidderPlayer?.name || "Player"}'s Turn to Bid`}
                               </span>
                             </div>
-                          ) : (
-                            <span
-                              style={{
-                                color: "#8D6E63",
-                                fontStyle: "italic",
-                                fontSize: "10px",
-                              }}
-                            >
-                              No bids placed yet
-                            </span>
-                          )}
-                        </div>
+                          );
+                        })()}
                       </div>
 
-                      {/* Active Bidder Turn Indicator with Avatar */}
-                      {(() => {
-                        const currentBidderIdx = auctionState.currentBidder;
-                        const currentBidderPlayer =
-                          currentBidderIdx !== null &&
-                          currentBidderIdx !== undefined
-                            ? gamePlayers[currentBidderIdx]
-                            : null;
-                        const isMyTurn =
-                          networkMode === "online"
-                            ? currentBidderIdx === myPlayerIndex
-                            : true;
-
-                        return (
-                          <div
+                      {/* Middle: Scrollable Bid History List */}
+                      <div
+                        className="auction-bid-history"
+                        style={{
+                          flex: "1 1 auto",
+                          minHeight: "55px",
+                          overflowY: "auto",
+                          background: "rgba(0, 0, 0, 0.04)",
+                          border: "1px solid rgba(0, 0, 0, 0.07)",
+                          borderRadius: "6px",
+                          padding: "3px 5px",
+                          margin: "2px 0",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "2px",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <div
+                          className="history-label"
+                          style={{
+                            fontSize: "8.5px",
+                            color: "#795548",
+                            fontWeight: 800,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            marginBottom: "2px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span>📜 BID HISTORY</span>
+                          <span
                             style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: "6px",
-                              padding: "2px 8px",
-                              background: isMyTurn
-                                ? "linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%)"
-                                : "#F5F5F5",
-                              border: isMyTurn
-                                ? "1.5px solid #FFB300"
-                                : "1px solid #ddd",
-                              borderRadius: "8px",
-                              margin: "2px 0 4px 0",
+                              background: "rgba(0,0,0,0.08)",
+                              padding: "0 4px",
+                              borderRadius: "4px",
+                              fontSize: "8px",
+                              fontWeight: 700,
                             }}
                           >
-                            {currentBidderPlayer && (
-                              <img
-                                src={currentBidderPlayer.avatar}
-                                alt={currentBidderPlayer.name}
+                            {auctionState.bids?.length || 0} bids
+                          </span>
+                        </div>
+
+                        {auctionState.bids && auctionState.bids.length > 0 ? (
+                          auctionState.bids.map((b, idx) => {
+                            const bidderPlayer = gamePlayers[b.player];
+                            const isHighest = idx === 0;
+                            return (
+                              <div
+                                key={idx}
+                                className={`bid-entry ${isHighest ? "highest-bid" : ""}`}
                                 style={{
-                                  width: "18px",
-                                  height: "18px",
-                                  borderRadius: "50%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  padding: "2px 5px",
+                                  fontSize: "9px",
+                                  borderRadius: "4px",
+                                  background: isHighest ? "#E8F5E9" : "#ffffff",
+                                  border: isHighest
+                                    ? "1px solid #4CAF50"
+                                    : "1px solid rgba(0, 0, 0, 0.06)",
+                                  minHeight: "20px",
+                                  boxSizing: "border-box",
                                   flexShrink: 0,
-                                  border: "1.5px solid #FF9800",
                                 }}
-                              />
-                            )}
-                            <span
-                              style={{
-                                fontSize: "10.5px",
-                                fontWeight: "bold",
-                                color: "#4A2C18",
-                              }}
-                            >
-                              {networkMode === "online"
-                                ? currentBidderIdx === myPlayerIndex
-                                  ? "⚡ YOUR TURN TO BID!"
-                                  : `${currentBidderPlayer?.name || "Player"} is bidding...`
-                                : `⚡ ${currentBidderPlayer?.name || "Player"}'s Turn to Bid`}
-                            </span>
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {bidderPlayer && (
+                                    <img
+                                      src={bidderPlayer.avatar}
+                                      alt=""
+                                      style={{
+                                        width: "14px",
+                                        height: "14px",
+                                        borderRadius: "50%",
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                  )}
+                                  <span
+                                    style={{
+                                      fontWeight: "bold",
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      maxWidth: "100px",
+                                      color: "#212121",
+                                    }}
+                                  >
+                                    {bidderPlayer?.name || `Player ${b.player + 1}`}
+                                  </span>
+                                  {isHighest && (
+                                    <span
+                                      style={{
+                                        fontSize: "7.5px",
+                                        color: "#2E7D32",
+                                        fontWeight: 800,
+                                        background: "rgba(46, 125, 50, 0.15)",
+                                        padding: "0 3px",
+                                        borderRadius: "3px",
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      HIGH BID
+                                    </span>
+                                  )}
+                                </div>
+                                <span
+                                  style={{
+                                    fontWeight: 800,
+                                    color: isHighest ? "#1B5E20" : "#5D4037",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  ${b.amount.toLocaleString()}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div
+                            style={{
+                              textAlign: "center",
+                              color: "#8D6E63",
+                              fontStyle: "italic",
+                              fontSize: "9.5px",
+                              padding: "10px 0",
+                            }}
+                          >
+                            No bids placed yet — starting at ${( (auctionState.currentBid || 0) + 10 ).toLocaleString()}
                           </div>
-                        );
-                      })()}
+                        )}
+                      </div>
 
                       {/* Controls */}
                       <div

@@ -1,11 +1,12 @@
 /* Additional App Styles */
 
-/* Property War Modal - Stable Full Height Optimization (No Dynamic Jumping) */
-.war-modal {
+/* Property War & Forced Auction Modals - Stable Full Height Optimization (No Dynamic Jumping) */
+.war-modal,
+.auction-modal {
   width: 96% !important;
-  max-width: 380px !important;
-  height: 94% !important;
-  max-height: 94% !important;
+  max-width: 440px !important;
+  height: 96% !important;
+  max-height: 96% !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
@@ -14,18 +15,21 @@
   box-sizing: border-box !important;
 }
 
-.war-modal .modal-heading {
+.war-modal .modal-heading,
+.auction-modal .modal-heading {
   flex-shrink: 0 !important;
   padding: 5px 8px !important;
   min-height: 22px !important;
 }
 
-.war-modal .modal-heading-text {
+.war-modal .modal-heading-text,
+.auction-modal .modal-heading-text {
   font-size: 13px !important;
   letter-spacing: 0.5px !important;
 }
 
-.war-modal .modal-body {
+.war-modal .modal-body,
+.auction-modal .modal-body {
   flex: 1 1 auto !important;
   display: flex !important;
   flex-direction: column !important;
@@ -38,7 +42,9 @@
 }
 
 .war-modal,
-.war-modal * {
+.auction-modal,
+.war-modal *,
+.auction-modal * {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
@@ -707,16 +713,18 @@
           padding: 2px !important;
           font-size: 11px !important;
       }
-      .auction-bid-history { display: none !important; }
   }
 
   .auction-bidder-indicator span { font-size: 11px !important; }
   
-  /* Tiny History */
+  /* Bid History */
   .auction-bid-history {
-    max-height: 45px !important; /* Only ~2 lines */
-    margin-bottom: 4px !important;
-    padding: 4px !important;
+    flex: 1 1 auto !important;
+    min-height: 50px !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    margin-bottom: 3px !important;
+    padding: 3px 5px !important;
   }
   .auction-bid-history .history-label { font-size: 9px !important; margin-bottom: 2px !important; }
   .auction-bid-history .bid-entry { padding: 2px 0 !important; font-size: 10px !important; }
@@ -780,7 +788,6 @@
 /* Extra small screens - Even more aggressive */
 @media (max-height: 500px) {
   .auction-current-bid-display .bid-amount { font-size: 20px !important; }
-  .auction-bid-history { display: none !important; } /* Hide history completely on very short screens */
   .auction-modal .modal-heading { font-size: 12px !important; padding: 4px !important; }
   .auction-bid-buttons .modal-btn { min-height: 32px !important; font-size: 11px !important; }
   
@@ -796,16 +803,21 @@
        screen and (max-height: 500px),
        (hover: none) and (orientation: landscape) {
   .auction-modal {
-    width: 92% !important;
-    max-width: 360px !important;
+    width: 94% !important;
+    max-width: 440px !important;
+    height: 96% !important;
     max-height: 96% !important;
+    display: flex !important;
+    flex-direction: column !important;
     overflow: hidden !important;
     border-radius: 12px !important;
+    box-sizing: border-box !important;
   }
 
   .auction-modal .modal-heading {
     padding: 6px 10px !important;
     min-height: 24px !important;
+    flex-shrink: 0 !important;
   }
 
   .auction-modal .modal-heading-text {
@@ -813,8 +825,14 @@
   }
 
   .auction-modal .modal-body {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
     padding: 6px 10px !important;
     overflow: hidden !important;
+    max-height: calc(100% - 32px) !important;
+    box-sizing: border-box !important;
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
   }

@@ -2344,7 +2344,8 @@ body {
     overflow: hidden !important;
   }
 
-  .modal-overlay .war-modal {
+  .modal-overlay .war-modal,
+  .modal-overlay:not(.modal-overlay-inline) .auction-modal {
     width: 94% !important;
     max-width: 440px !important;
     height: 96% !important;
@@ -2357,6 +2358,7 @@ body {
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
+    box-sizing: border-box !important;
   }
 
   /* Inline overlays (Build, Sell, Auction instructions) remain centered in board for tile tapping */

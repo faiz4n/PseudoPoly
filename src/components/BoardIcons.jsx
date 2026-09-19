@@ -1,30 +1,36 @@
 import React from 'react';
 import trainImg from '../assets/travel_icon.png';
-import cashImg from '../assets/tax_cash.png';
 import chanceImg from '../assets/chance_dice.png';
 import chestImg from '../assets/chest_box.png';
 
-// 1. Cash Stack Icon (Reference App Bills & Coins)
+// 1. Cash Stack Icon (Reverted original Banknotes with gold coins)
 export function CashStackIcon({ size = 22, className = '' }) {
   return (
-    <img
-      src={cashImg}
-      alt="Cash Stack"
-      style={{
-        width: `${size}px`,
-        height: 'auto',
-        maxHeight: `${size}px`,
-        objectFit: 'contain',
-        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
-      }}
-      className={className}
-      draggable={false}
-    />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <defs>
+        <linearGradient id="cashGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#81C784" />
+          <stop offset="100%" stopColor="#2E7D32" />
+        </linearGradient>
+        <linearGradient id="coinGrad" x1="0" y1="0" x2="10" y2="10" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FFD54F" />
+          <stop offset="100%" stopColor="#FF8F00" />
+        </linearGradient>
+      </defs>
+      <rect x="2" y="7" width="17" height="11" rx="2" fill="#1B5E20" stroke="#A5D6A7" strokeWidth="0.75" />
+      <rect x="4" y="5" width="17" height="11" rx="2" fill="#388E3C" stroke="#C8E6C9" strokeWidth="0.75" />
+      <rect x="6" y="3" width="16" height="11" rx="2" fill="url(#cashGrad)" stroke="#E8F5E9" strokeWidth="0.9" />
+      <circle cx="14" cy="8.5" r="2.2" fill="#1B5E20" opacity="0.6" />
+      <text x="14" y="10.2" fontSize="3.8" fontWeight="bold" fill="#E8F5E9" textAnchor="middle" fontFamily="sans-serif">$</text>
+      <circle cx="5.5" cy="17.5" r="3.5" fill="url(#coinGrad)" stroke="#FFE082" strokeWidth="0.8" />
+      <text x="5.5" y="19" fontSize="3.5" fontWeight="bold" fill="#5D4037" textAnchor="middle" fontFamily="sans-serif">$</text>
+      <circle cx="10" cy="18.5" r="3" fill="url(#coinGrad)" stroke="#FFE082" strokeWidth="0.75" />
+    </svg>
   );
 }
 
 // 2. Train / Railroad Icon (Reference App Modern Subway Train)
-export function TrainIcon({ size = 26, className = '' }) {
+export function TrainIcon({ size = 32, className = '' }) {
   return (
     <img
       src={trainImg}
@@ -34,9 +40,9 @@ export function TrainIcon({ size = 26, className = '' }) {
         height: 'auto',
         maxHeight: `${size}px`,
         objectFit: 'contain',
-        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.35))',
+        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))',
       }}
-      className={className}
+      className={`railroad-train-img ${className}`}
       draggable={false}
     />
   );

@@ -21,10 +21,12 @@ import parkingIcon from "./assets/parking_p.png";
 import robBankIcon from "./assets/revolver.png";
 import jailIcon from "./assets/handcuffs.png";
 import startupBg from "./assets/startup_bg.png";
-import dealIcon from "./assets/deal_btn.png";
-import sellIcon from "./assets/sell_btn.png";
+import dealIcon from "./assets/deal.png";
+import sellIcon from "./assets/sell.png";
 import buildIcon from "./assets/build.png";
 import bankIcon from "./assets/bank.png";
+import rollDiceIcon from "./assets/roll_dice_icon.png";
+import buyIcon from "./assets/buy_icon.png";
 import soundManager from "./services/soundManager";
 import AnimatedDie from "./components/AnimatedDie";
 
@@ -1527,6 +1529,10 @@ function App() {
         "to",
         newPosition,
       );
+
+      // Make sure dice stops tumbling and settles before hopping starts
+      setIsRolling(false);
+      await wait(450);
 
       // Calculate move amount (handle wrap around board)
       let moveAmount = newPosition - oldPosition;
@@ -3952,6 +3958,11 @@ function App() {
     const moveAmount = die1 + die2;
     setDiceValues([die1, die2]);
 
+    // Stop rolling animation so dice lands and settles on final face
+    setIsRolling(false);
+    // Pause briefly so players clearly see the landed dice result before token starts hopping
+    await wait(450);
+
     const movingPlayer = currentPlayer;
     await movePlayerToken(movingPlayer, moveAmount);
 
@@ -3962,8 +3973,6 @@ function App() {
       `${gamePlayers[movingPlayer].name} rolled ${moveAmount} → ${tileName}`,
       ...historyPrev.slice(0, 9),
     ]);
-
-    setIsRolling(false);
 
     const isDoubles =
       !isForced && die1 === die2 && (!overrideValue || overrideValue <= 12);
@@ -7443,13 +7452,13 @@ function App() {
                       <AnimatedDie
                         value={diceValues[0]}
                         isRolling={isRolling}
-                        size={46}
+                        size={68}
                         stagger={0}
                       />
                       <AnimatedDie
                         value={diceValues[1]}
                         isRolling={isRolling}
-                        size={46}
+                        size={68}
                         stagger={2}
                       />
                     </div>
@@ -7490,7 +7499,12 @@ function App() {
                                     className="buy-button"
                                     onClick={() => setShowBuyModal(true)}
                                   >
-                                    BUY
+                                    <img
+                                      src={buyIcon}
+                                      alt="Buy"
+                                      className="btn-inline-icon"
+                                    />
+                                    <span>BUY</span>
                                   </button>
                                 ) : (
                                   <button
@@ -7502,7 +7516,12 @@ function App() {
                                       )
                                     }
                                   >
-                                    BUY
+                                    <img
+                                      src={buyIcon}
+                                      alt="Buy"
+                                      className="btn-inline-icon"
+                                    />
+                                    <span>BUY</span>
                                   </button>
                                 ))}
 
@@ -7544,13 +7563,24 @@ function App() {
                                     (isRolling || isProcessingTurn))
                                 }
                               >
-                                {isLocalMoving
-                                  ? "MOVING..."
-                                  : skippedTurns[currentPlayer]
-                                    ? "SKIP TURN"
-                                    : turnFinished
-                                      ? "DONE"
-                                      : "ROLL"}
+                                {!turnFinished &&
+                                  !isLocalMoving &&
+                                  !skippedTurns[currentPlayer] && (
+                                    <img
+                                      src={rollDiceIcon}
+                                      alt="Roll"
+                                      className="btn-inline-icon"
+                                    />
+                                  )}
+                                <span>
+                                  {isLocalMoving
+                                    ? "MOVING..."
+                                    : skippedTurns[currentPlayer]
+                                      ? "SKIP TURN"
+                                      : turnFinished
+                                        ? "DONE"
+                                        : "ROLL"}
+                                </span>
                               </button>
                             </>
                           )}

@@ -5111,7 +5111,8 @@ function App() {
     }
     if (showTrainTravelModal) {
       setShowTrainTravelModal(false);
-      setTrainTravelTarget(null);
+      setTravelMode(false);
+      setSelectedTrainTile(null);
       return true;
     }
     if (showDealModal || showDealReviewModal || showDealResultModal) {
@@ -5128,10 +5129,6 @@ function App() {
     }
     if (showSellModal) {
       setShowSellModal(false);
-      return true;
-    }
-    if (showMortgageModal) {
-      setShowMortgageModal(false);
       return true;
     }
     if (
@@ -5167,7 +5164,6 @@ function App() {
     showBankModal,
     showBuildModal,
     showSellModal,
-    showMortgageModal,
     showParkingModal,
     showAuditModal,
     showChanceModal,

@@ -336,17 +336,13 @@ export default function MatchmakingView({
   return (
     <div className="mm-overlay">
       <div
-        className="mm-backdrop"
+        className={`mm-backdrop ${activeScreen === "home" ? "unblurred" : "blurred"}`}
         style={{
-          backgroundImage: activeScreen === "home"
-            ? `url(${homeBg})`
-            : startupBg
-              ? `url(${startupBg})`
-              : "none",
-          filter: activeScreen === "home"
-            ? "brightness(0.55) blur(2px)"
-            : "brightness(0.3) blur(8px)",
+          backgroundImage: `url(${homeBg})`,
         }}
+      />
+      <div
+        className={`mm-dark-filter ${activeScreen === "home" ? "home-filter" : "page-filter"}`}
       />
 
       <div className={`mm-container ${activeScreen === "home" ? "mm-container--home" : ""}`}>
@@ -537,7 +533,7 @@ export default function MatchmakingView({
                 }}
               >
                 <div className="mm-mode-icon-wrap">
-                  <UsersIcon size={28} color="#E67E22" />
+                  <UsersIcon size={24} color="#27ae60" />
                 </div>
                 <div className="mm-mode-title">Pass and Play</div>
                 <p className="mm-mode-desc">
@@ -552,7 +548,7 @@ export default function MatchmakingView({
                 onClick={() => setActiveScreen("hotspot_choice")}
               >
                 <div className="mm-mode-icon-wrap">
-                  <WifiIcon size={28} color="#27AE60" />
+                  <WifiIcon size={24} color="#1e88e5" />
                 </div>
                 <div className="mm-mode-title">Hotspot Multiplayer</div>
                 <p className="mm-mode-desc">
@@ -567,7 +563,7 @@ export default function MatchmakingView({
                 onClick={() => setActiveScreen("online_menu")}
               >
                 <div className="mm-mode-icon-wrap">
-                  <GlobeIcon size={28} color="#8E44AD" />
+                  <GlobeIcon size={24} color="#7b1fa2" />
                 </div>
                 <div className="mm-mode-title">Online Rooms</div>
                 <p className="mm-mode-desc">

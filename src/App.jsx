@@ -346,6 +346,7 @@ function App() {
   // Bankruptcy System State
   const [bankruptPlayers, setBankruptPlayers] = useState({}); // { playerIndex: true }
   const [showBankruptcyModal, setShowBankruptcyModal] = useState(false);
+  const isBuyingPropertyRef = useRef(false);
 
   // Build System State
   const [showBuildModal, setShowBuildModal] = useState(false);
@@ -933,7 +934,14 @@ function App() {
 
     socket.on("player_kicked", ({ targetIndex, name }) => {
       console.log(`[CLIENT] Player kicked: ${name} (P${targetIndex})`);
-      if (myPlayerIndex === targetIndex) {
+      const myIdx = myPlayerIndexRef.current;
+      // Host (P0) can NEVER be kicked
+      if (
+        myIdx !== null &&
+        myIdx !== undefined &&
+        Number(myIdx) !== 0 &&
+        Number(myIdx) === Number(targetIndex)
+      ) {
         showToast("You have been kicked from the room by the host.");
         setTimeout(() => {
           if (socketRef.current) socketRef.current.disconnect();
@@ -967,16 +975,18 @@ function App() {
       setGameStage("playing");
     });
 
-    socket.on("state_update", ({ gameState, players }) => {
+    socket.on("state_update", (data) => {
+      if (!data) return;
+      const targetGameState = data.gameState || data;
+      const targetPlayers = data.players;
+      if (!targetGameState || typeof targetGameState !== "object") return;
       console.log(
         "State update received:",
-        gameState.currentPlayer,
-        gameState.playerPositions,
+        targetGameState.currentPlayer,
+        targetGameState.playerPositions,
       );
-      console.log("Calling applyGameState now...");
-      applyGameState(gameState);
-      console.log("applyGameState returned");
-      if (players) setConnectedPlayers(players);
+      applyGameState(targetGameState);
+      if (targetPlayers) setConnectedPlayers(targetPlayers);
     });
 
     socket.on("floating_price", (payload) => {
@@ -1646,12 +1656,26 @@ function App() {
     const onlineServerUrl = formatServerUrl(
       import.meta.env.VITE_SERVER_URL || "https://pseudopoly.onrender.com",
     );
+    let hotspotDefaultUrl = "http://192.168.43.1:3001";
+    if (
+      typeof window !== "undefined" &&
+      window.location?.hostname &&
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1" &&
+      !window.location.hostname.includes("vercel.app") &&
+      !window.location.hostname.includes("onrender.com")
+    ) {
+      hotspotDefaultUrl = `http://${window.location.hostname}:3001`;
+    }
     const socketTarget =
-      targetServerUrl || (mode === "online" ? onlineServerUrl : undefined);
+      targetServerUrl || (mode === "hotspot" ? hotspotDefaultUrl : onlineServerUrl);
     const socket = connectSocket(socketTarget);
     setNetworkMode("online");
 
+    let joinEmitted = false;
     const emitJoin = () => {
+      if (joinEmitted) return;
+      joinEmitted = true;
       socket.emit("join_room", {
         roomCode: cleanCode,
         name: myIdentity.name,
@@ -1942,10 +1966,10 @@ function App() {
     if (index === 18) return "ROB BANK";
     if (index === 28) return "JAIL";
 
-    if (index > 0 && index < 10) return bottomRow[index - 1].name;
-    if (index > 10 && index < 18) return leftColumn[index - 11].name;
-    if (index > 18 && index < 28) return topRow[index - 19].name;
-    if (index > 28 && index < 36) return rightColumn[index - 29].name;
+    if (index > 0 && index < 10) return bottomRow[index - 1]?.name || "Unknown";
+    if (index > 10 && index < 18) return leftColumn[index - 11]?.name || "Unknown";
+    if (index > 18 && index < 28) return topRow[index - 19]?.name || "Unknown";
+    if (index > 28 && index < 36) return rightColumn[index - 29]?.name || "Unknown";
     return "Unknown";
   };
 
@@ -4538,6 +4562,7 @@ function App() {
     }
     setRoomCode("");
     setConnectedPlayers([]);
+    setMyPlayerIndex(null);
     setShowLeaveLobbyModal(false);
     setGameStage("menu");
   };
@@ -4719,6 +4744,13 @@ function App() {
 
   // Handle buying a property
   const handleBuyProperty = () => {
+    // Prevent double-clicks / rapid taps deducting money twice
+    if (isBuyingPropertyRef.current) return;
+    isBuyingPropertyRef.current = true;
+    setTimeout(() => {
+      isBuyingPropertyRef.current = false;
+    }, 1200);
+
     // Network Check
     if (networkMode === "online") {
       if (!buyingProperty) return;
@@ -8022,7 +8054,7 @@ function App() {
                             </span>
                           </div>
                           <div className="deal-property-list">
-                            {incomingDeal.receiveProperties.map((tileIndex) => {
+                            {(incomingDeal.receiveProperties || []).map((tileIndex) => {
                               const tile = getPropertyByTileIndex(tileIndex);
                               return (
                                 <div
@@ -8055,7 +8087,7 @@ function App() {
                             </span>
                           </div>
                           <div className="deal-property-list">
-                            {incomingDeal.giveProperties.map((tileIndex) => {
+                            {(incomingDeal.giveProperties || []).map((tileIndex) => {
                               const tile = getPropertyByTileIndex(tileIndex);
                               return (
                                 <div
@@ -10958,7 +10990,7 @@ function App() {
                                 <div className="war-winner-prize">
                                   {warMode === "A" && warProperty
                                     ? `Won "${warProperty.name}"`
-                                    : `Won $${battlePot.toLocaleString()}`}
+                                    : `Won $${(battlePot || 0).toLocaleString()}`}
                                 </div>
                               </div>
                             );
@@ -12267,7 +12299,7 @@ function App() {
                               <span>Level</span>
                               <span>Rent</span>
                             </div>
-                            {selectedProperty.rentLevels.map((rent, index) => {
+                            {(selectedProperty?.rentLevels || []).map((rent, index) => {
                               const currentLevel =
                                 propertyLevels[selectedProperty.tileIndex] || 0;
                               const isCurrent = currentLevel === index;

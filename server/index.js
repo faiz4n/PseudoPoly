@@ -194,6 +194,22 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: 'Room not found!' });
       return;
     }
+
+    // 0. If this socket is ALREADY registered in this room, re-send confirmation without adding duplicate
+    const existingPlayerBySocket = room.players.find(p => p.socketId === socket.id);
+    if (existingPlayerBySocket) {
+      console.log(`[SERVER] Socket ${socket.id} already in room ${cleanRoomCode} as player ${existingPlayerBySocket.id}`);
+      socket.join(cleanRoomCode);
+      socket.roomCode = cleanRoomCode;
+      socket.playerIndex = existingPlayerBySocket.id;
+      socket.emit('joined_room', {
+        roomCode: cleanRoomCode,
+        playerIndex: existingPlayerBySocket.id,
+        gameState: room.gameState,
+        players: room.players
+      });
+      return;
+    }
     
     // Robust Reconnection check:
     // 1. By exact playerIndex if specified and slot is disconnected
@@ -1187,6 +1203,12 @@ function handleBuyProperty(room, playerIndex, payload) {
   const pIndex = Number(playerIndex);
   const tIndex = Number(tileIndex);
   const cost = Number(price);
+
+  // GUARD: Prevent buying an already owned property (duplicate network requests / double-clicks)
+  if (room.gameState.propertyOwnership[tIndex] !== undefined) {
+    console.log(`[SERVER] Buy rejected: Tile ${tIndex} is already owned by player ${room.gameState.propertyOwnership[tIndex]}`);
+    return;
+  }
   
   if (room.gameState.playerMoney[pIndex] >= cost) {
     room.gameState.playerMoney[pIndex] -= cost;

@@ -5,14 +5,86 @@ import avatarBlue from '../assets/avatar_blue_glossy.png';
 import avatarBlack from '../assets/avatar_black_glossy.png';
 import avatarOrange from '../assets/avatar_orange_glossy.png';
 import avatarWhite from '../assets/avatar_white_glossy.png';
+import avatarRed from '../assets/avatar_red.png';
+import avatarGreen from '../assets/avatar_green.png';
 
-// Avatar to Color mapping (use avatar path as key)
-export const AVATAR_COLORS = {
-  [avatarOrange]: '#E64A19',  // Orange
-  [avatarBlue]: '#2196F3',     // Blue
-  [avatarWhite]: '#E0E0E0',    // White
-  [avatarBlack]: '#1A1A1A',    // Black
+export {
+  avatarBlue,
+  avatarBlack,
+  avatarOrange,
+  avatarWhite,
+  avatarRed,
+  avatarGreen,
 };
+
+// Base Avatar to Color mapping
+const BASE_AVATAR_COLORS = {
+  [avatarOrange]: '#E64A19',  // Orange
+  [avatarBlue]: '#2196F3',    // Blue
+  [avatarWhite]: '#E0E0E0',   // White
+  [avatarBlack]: '#1A1A1A',   // Black
+  [avatarRed]: '#E53935',     // Red
+  [avatarGreen]: '#43A047',   // Green
+  '/avatar_red.png': '#E53935',
+  'avatar_red.png': '#E53935',
+  'avatar_red': '#E53935',
+  'red': '#E53935',
+  '/avatar_green.png': '#43A047',
+  'avatar_green.png': '#43A047',
+  'avatar_green': '#43A047',
+  'green': '#43A047',
+  'avatar_orange_glossy': '#E64A19',
+  'avatar_blue_glossy': '#2196F3',
+  'avatar_white_glossy': '#E0E0E0',
+  'avatar_black_glossy': '#1A1A1A',
+};
+
+// Robust helper to get the avatar's theme color
+export function getAvatarColor(avatar) {
+  if (!avatar) return '#ffd700';
+  if (BASE_AVATAR_COLORS[avatar]) return BASE_AVATAR_COLORS[avatar];
+  const s = String(avatar).toLowerCase();
+  if (s.includes('red')) return '#E53935';
+  if (s.includes('green')) return '#43A047';
+  if (s.includes('orange')) return '#E64A19';
+  if (s.includes('blue')) return '#2196F3';
+  if (s.includes('white')) return '#E0E0E0';
+  if (s.includes('black')) return '#1A1A1A';
+  return '#ffd700';
+}
+
+// Robust helper to resolve any avatar string/identifier to the imported asset
+export function resolveAvatar(avatar) {
+  if (!avatar) return avatarOrange;
+  if (typeof avatar !== 'string') return avatar;
+  const s = avatar.toLowerCase();
+  if (s.includes('red')) return avatarRed;
+  if (s.includes('green')) return avatarGreen;
+  if (s.includes('orange')) return avatarOrange;
+  if (s.includes('blue')) return avatarBlue;
+  if (s.includes('white')) return avatarWhite;
+  if (s.includes('black')) return avatarBlack;
+  return avatar;
+}
+
+// Proxy wrapper so AVATAR_COLORS[any] always resolves accurately
+export const AVATAR_COLORS = new Proxy(BASE_AVATAR_COLORS, {
+  get(target, prop) {
+    if (typeof prop !== 'string') return target[prop];
+    if (target[prop]) return target[prop];
+    return getAvatarColor(prop);
+  },
+});
+
+// Choosable avatar options for UI pickers
+export const CHOOSABLE_AVATARS = [
+  { id: 'orange', avatar: avatarOrange, color: '#E64A19', name: 'Orange' },
+  { id: 'blue', avatar: avatarBlue, color: '#2196F3', name: 'Blue' },
+  { id: 'white', avatar: avatarWhite, color: '#E0E0E0', name: 'White' },
+  { id: 'black', avatar: avatarBlack, color: '#1A1A1A', name: 'Black' },
+  { id: 'red', avatar: avatarRed, color: '#E53935', name: 'Red' },
+  { id: 'green', avatar: avatarGreen, color: '#43A047', name: 'Green' },
+];
 
 export const PROPERTY_COLORS = {
   yellow: '#ffb900',

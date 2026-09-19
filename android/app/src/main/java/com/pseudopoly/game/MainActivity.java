@@ -25,7 +25,18 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         hideSystemUI();
+        setupWebView();
         setupHotspotBridge();
+    }
+
+    private void setupWebView() {
+        if (bridge != null && bridge.getWebView() != null) {
+            android.webkit.WebView webView = bridge.getWebView();
+            android.webkit.WebSettings settings = webView.getSettings();
+            settings.setTextZoom(100);
+            settings.setMinimumFontSize(1);
+            settings.setMinimumLogicalFontSize(1);
+        }
     }
 
     private android.net.wifi.WifiManager.MulticastLock multicastLock = null;
@@ -325,6 +336,11 @@ public class MainActivity extends BridgeActivity {
     private void hideSystemUI() {
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams lp = window.getAttributes();
+            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            window.setAttributes(lp);
+        }
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
         if (controller != null) {
             controller.hide(WindowInsetsCompat.Type.systemBars());

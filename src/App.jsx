@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
+import { App as CapApp } from "@capacitor/app";
 import {
   bottomRow,
   leftColumn,
@@ -7,6 +8,9 @@ import {
   rightColumn,
   corners,
   players,
+  CHOOSABLE_AVATARS,
+  getAvatarColor,
+  resolveAvatar,
   SPACE_TYPES,
   AVATAR_COLORS,
   PROPERTY_COLORS,
@@ -32,6 +36,11 @@ import "./matchmaking.css";
 import MatchmakingView from "./components/MatchmakingView";
 import BoardIcon, { YachtIcon } from "./components/BoardIcons";
 import "./App.css";
+import {
+  BustedJailIcon,
+  EscapedThiefIcon,
+  VaultDiamondIcon,
+} from "./components/RobBankIcons";
 
 function App() {
   const [diceValues, setDiceValues] = useState([6, 6]);
@@ -55,11 +64,39 @@ function App() {
   );
 
   // Identity State
-  const [myIdentity, setMyIdentity] = useState({
-    name: "Player",
-    avatar: players[0].avatar, // Default
-    peerId: "",
+  const [myIdentity, setMyIdentity] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pseudopoly_identity");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          return {
+            name:
+              typeof parsed.name === "string" && parsed.name.trim()
+                ? parsed.name
+                : "Player",
+            avatar: resolveAvatar(parsed.avatar) || players[0].avatar,
+            peerId: "",
+          };
+        }
+      }
+    } catch {}
+    return {
+      name: "Player",
+      avatar: players[0].avatar,
+      peerId: "",
+    };
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "pseudopoly_identity",
+        JSON.stringify({ name: myIdentity.name, avatar: myIdentity.avatar }),
+      );
+    } catch {}
+  }, [myIdentity.name, myIdentity.avatar]);
+
   const [myPlayerIndex, setMyPlayerIndex] = useState(null); // 0-3 if playing, null if spectator/lobby
 
   // Game Stage State: 'menu', 'mode_select', 'playing', 'lobby'
@@ -73,6 +110,33 @@ function App() {
 
   // Networking State
   const [networkMode, setNetworkMode] = useState("offline"); // 'offline', 'online'
+
+  // Synchronize player 0 with myIdentity in offline mode
+  useEffect(() => {
+    if (networkMode === "offline" && gameStage !== "lobby") {
+      setGamePlayers((prev) => {
+        if (!prev || prev.length === 0) return prev;
+        const targetAvatar = resolveAvatar(myIdentity.avatar);
+        const targetColor = getAvatarColor(myIdentity.avatar);
+        const targetName = myIdentity.name?.trim() || prev[0].name;
+        if (
+          prev[0].avatar === targetAvatar &&
+          prev[0].color === targetColor &&
+          prev[0].name === targetName
+        ) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[0] = {
+          ...updated[0],
+          name: targetName,
+          avatar: targetAvatar,
+          color: targetColor,
+        };
+        return updated;
+      });
+    }
+  }, [myIdentity.name, myIdentity.avatar, networkMode, gameStage]);
   const [roomCode, setRoomCode] = useState(""); // The 4-letter code
   const [connectedPlayers, setConnectedPlayers] = useState([]); // List of players in room
   const [matchmakingPending, setMatchmakingPending] = useState(null); // 'host_hotspot' | 'create_online' | 'join_code' | 'join_game' | null
@@ -311,6 +375,9 @@ function App() {
     }
   });
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showExitAppModal, setShowExitAppModal] = useState(false);
+  const [showLeaveLobbyModal, setShowLeaveLobbyModal] = useState(false);
+  const matchmakingBackHandlerRef = useRef(null);
 
   // Keep refs in sync for async functions (like movePlayerToken)
   const playerAnimationEnabledRef = useRef(playerAnimationEnabled);
@@ -431,6 +498,8 @@ function App() {
       setShowChestModal(false);
       setShowAuditModal(false);
       setShowWarModal(false);
+      setShowArrestModal(false);
+      setShowJailActionModal(false);
       setAuditStatus("idle");
       setRobStatus("idle"); // Reset status
       setIsModalClosing(false);
@@ -451,6 +520,8 @@ function App() {
     setShowChestModal(false);
     setShowAuditModal(false);
     setShowWarModal(false);
+    setShowArrestModal(false);
+    setShowJailActionModal(false);
     setAuditStatus("idle");
     setRobStatus("idle");
     setIsModalClosing(false);
@@ -608,6 +679,20 @@ function App() {
         setShowRobBankModal(true);
       }
     } catch {}
+
+    const checkNative = () => {
+      if (
+        window.Capacitor?.isNativePlatform?.() ||
+        window.AndroidHostServer ||
+        (navigator.userAgent && navigator.userAgent.includes("wv"))
+      ) {
+        document.documentElement.classList.add("is-capacitor");
+        if (document.body) document.body.classList.add("is-capacitor");
+      }
+    };
+    checkNative();
+    const nativeTimer = setTimeout(checkNative, 600);
+    return () => clearTimeout(nativeTimer);
   }, []);
 
   // Track money changes for player card pulse animations
@@ -763,8 +848,8 @@ function App() {
             players.map((p, i) => ({
               id: i,
               name: p.name,
-              avatar: p.avatar,
-              color: AVATAR_COLORS[p.avatar] || "#888888",
+              avatar: resolveAvatar(p.avatar),
+              color: AVATAR_COLORS[p.avatar] || getAvatarColor(p.avatar) || "#888888",
               isBot: false,
               connected: p.connected !== false,
               canBeKicked: p.canBeKicked === true,
@@ -790,8 +875,8 @@ function App() {
             players.map((p, i) => ({
               id: i,
               name: p.name,
-              avatar: p.avatar,
-              color: AVATAR_COLORS[p.avatar] || "#888888",
+              avatar: resolveAvatar(p.avatar),
+              color: AVATAR_COLORS[p.avatar] || getAvatarColor(p.avatar) || "#888888",
               isBot: false,
               connected: p.connected !== false,
               canBeKicked: p.canBeKicked === true,
@@ -833,8 +918,8 @@ function App() {
           players.map((p, i) => ({
             id: i,
             name: p.name,
-            avatar: p.avatar,
-            color: AVATAR_COLORS[p.avatar] || "#888888",
+            avatar: resolveAvatar(p.avatar),
+            color: AVATAR_COLORS[p.avatar] || getAvatarColor(p.avatar) || "#888888",
             isBot: false,
             connected: p.connected !== false,
             canBeKicked: p.canBeKicked === true,
@@ -867,8 +952,8 @@ function App() {
           players.map((p, i) => ({
             id: i,
             name: p.name,
-            avatar: p.avatar,
-            color: AVATAR_COLORS[p.avatar] || "#888888",
+            avatar: resolveAvatar(p.avatar),
+            color: AVATAR_COLORS[p.avatar] || getAvatarColor(p.avatar) || "#888888",
             isBot: false,
             connected: p.connected !== false,
             canBeKicked: p.canBeKicked === true,
@@ -1244,7 +1329,7 @@ function App() {
 
             robAnimIntervalRef.current = setInterval(() => {
               const elapsed = Date.now() - startT;
-              const progress = Math.min(elapsed / 3000, 1);
+              const progress = Math.min(elapsed / 5000, 1);
 
               if (progress < 0.28) {
                 // Phase 1 (0 to 840ms): Fast frantic sweeps
@@ -1716,16 +1801,54 @@ function App() {
       const ownerIndex = Number(rawOwner);
 
       if (gamePlayers[ownerIndex]) {
-        const bgColor = gamePlayers[ownerIndex].color;
+        const player = gamePlayers[ownerIndex];
+        const bgColor =
+          player.color ||
+          getAvatarColor(player.avatar) ||
+          "#888888";
 
-        // Custom Glassy Style for Orange Avatar (#FF9800)
-        if (bgColor === "#FF9800") {
+        // Custom Glassy Style for Orange Avatar (#FF9800 / #E64A19)
+        if (bgColor === "#FF9800" || bgColor === "#E64A19") {
           return {
             background: "linear-gradient(135deg, #FF9800 0%, #FFCC80 100%)",
             color: "#FFF",
             border: "1px solid rgba(255,255,255,0.6)",
             boxShadow:
               "0 2px 4px rgba(255, 152, 0, 0.3), inset 0 0 4px rgba(255,255,255,0.3)",
+            textShadow: "0 1px 2px rgba(0,0,0,0.2)",
+          };
+        }
+
+        // Custom Glassy Style for Red Avatar
+        if (
+          bgColor === "#E53935" ||
+          bgColor === "#fc1d1e" ||
+          (typeof player.avatar === "string" &&
+            player.avatar.toLowerCase().includes("red"))
+        ) {
+          return {
+            background: "linear-gradient(135deg, #E53935 0%, #EF5350 100%)",
+            color: "#FFF",
+            border: "1px solid rgba(255,255,255,0.6)",
+            boxShadow:
+              "0 2px 4px rgba(229, 57, 53, 0.3), inset 0 0 4px rgba(255,255,255,0.3)",
+            textShadow: "0 1px 2px rgba(0,0,0,0.2)",
+          };
+        }
+
+        // Custom Glassy Style for Green Avatar
+        if (
+          bgColor === "#43A047" ||
+          bgColor === "#2E7D32" ||
+          (typeof player.avatar === "string" &&
+            player.avatar.toLowerCase().includes("green"))
+        ) {
+          return {
+            background: "linear-gradient(135deg, #43A047 0%, #66BB6A 100%)",
+            color: "#FFF",
+            border: "1px solid rgba(255,255,255,0.6)",
+            boxShadow:
+              "0 2px 4px rgba(67, 160, 71, 0.3), inset 0 0 4px rgba(255,255,255,0.3)",
             textShadow: "0 1px 2px rgba(0,0,0,0.2)",
           };
         }
@@ -2565,6 +2688,8 @@ function App() {
     if (networkMode === "online") {
       setBuyingProperty(null);
       setShowBuyModal(false);
+      setIsProcessingTurn(false);
+      setTurnFinished(false);
       // If we are currently skipped, we need to clear that state so we don't skip next time
       // BUT only if we didn't actually play a turn (turnFinished means we played).
       if (skippedTurns[currentPlayer] && !turnFinished) {
@@ -2577,6 +2702,7 @@ function App() {
     }
 
     // Offline Mode: Handle locally
+    setIsProcessingTurn(false);
     let nextIdx = (currentPlayer + 1) % gamePlayers.length;
     let skippedPlayers = [];
     let loopCount = 0;
@@ -2607,6 +2733,7 @@ function App() {
     setCurrentPlayer(nextIdx);
     setTurnFinished(false);
     setBuyingProperty(null);
+    setIsProcessingTurn(false);
   };
 
   // Smart Chance Card Selection
@@ -2711,6 +2838,8 @@ function App() {
     }
 
     setShowJailActionModal(false);
+    setIsProcessingTurn(false);
+    setTurnFinished(false);
 
     setHistory((prev) => [
       `💰 ${gamePlayers[currentPlayer].name} paid $${bailAmount} bail and is free!`,
@@ -2749,6 +2878,8 @@ function App() {
     }
 
     setShowJailActionModal(false);
+    setIsProcessingTurn(false);
+    setTurnFinished(false);
     handleEndTurn();
 
     if (networkMode === "online") {
@@ -2815,6 +2946,9 @@ function App() {
       setRobProgress(0);
       setRobResult({ amount: 0, message: "" });
       setShowRobBankModal(true);
+      if (effectiveIsOnline && playerIndex === effectiveMyPlayerIndex) {
+        sendGameAction("modal_open", { type: "ROB_BANK" });
+      }
       return;
     }
 
@@ -2847,6 +2981,7 @@ function App() {
 
     // Go To Jail (Index 28)
     if (tileIndex === 28) {
+      setIsProcessingTurn(false);
       if (effectiveIsOnline) {
         // Server handles jail status and history.
         // We just show the local modal for visual feedback.
@@ -3210,7 +3345,7 @@ function App() {
     }
 
     const startTime = Date.now();
-    const duration = 3000; // 3 seconds total
+    const duration = 5000; // 5 seconds total
     const sweepDir = Math.random() < 0.5 ? 1 : -1;
     const teaseTargets = [16, 50, 84];
     const teaseTarget =
@@ -3221,14 +3356,14 @@ function App() {
       const progress = Math.min(elapsed / duration, 1);
 
       if (progress < 0.28) {
-        // Phase 1 (0 to 840ms): Fast frantic sweeps across badges
+        // Phase 1 (0 to 1400ms): Fast frantic sweeps across badges
         setRobStatusText("CRACKING TUMBLERS...");
         const p = progress / 0.28;
         const angle = p * Math.PI * 4;
         const currentPos = 50 + sweepDir * Math.sin(angle) * 34;
         setRobSliderPos(Math.round(currentPos));
       } else if (progress < 0.62) {
-        // Phase 2 (840ms to 1860ms): Slow suspense hesitation / teasing
+        // Phase 2 (1400ms to 3100ms): Slow suspense hesitation / teasing
         setRobStatusText("BYPASSING SENSORS...");
         const p = (progress - 0.28) / (0.62 - 0.28);
         const wobble = Math.sin(p * Math.PI * 2) * 4;
@@ -3236,14 +3371,14 @@ function App() {
           50 + (teaseTarget - 50) * Math.sin(p * Math.PI * 0.5) + wobble;
         setRobSliderPos(Math.round(Math.max(14, Math.min(86, currentPos))));
       } else if (progress < 0.82) {
-        // Phase 3 (1860ms to 2460ms): Sudden fast burst across the track
+        // Phase 3 (3100ms to 4100ms): Sudden fast burst across the track
         setRobStatusText("DISABLING ALARMS...");
         const p = (progress - 0.62) / (0.82 - 0.62);
         const angle = p * Math.PI * 3;
         const currentPos = 50 - sweepDir * Math.sin(angle) * 34;
         setRobSliderPos(Math.round(currentPos));
       } else if (progress < 1) {
-        // Phase 4 (2460ms to 3000ms): Smooth deceleration into final target
+        // Phase 4 (4100ms to 5000ms): Smooth deceleration into final target
         setRobStatusText("LOCKING IN OUTCOME...");
         const t = (progress - 0.82) / (1 - 0.82);
         const easeOut = 1 - Math.pow(1 - t, 3);
@@ -3277,13 +3412,32 @@ function App() {
     }, 35);
   };
 
+  // Handle Rob Bank Leave (Player chooses not to rob and exits safely)
+  const handleRobBankLeave = () => {
+    if (networkMode === "online") {
+      sendGameAction("close_modal");
+      sendGameAction("end_turn");
+    }
+    closeAllModals(() => {
+      setIsProcessingTurn(false);
+      setTurnFinished(false);
+      if (networkMode !== "online") {
+        handleEndTurn();
+      }
+    });
+  };
+
   // Handle Rob Bank Complete (Success, Caught, or Escaped)
   const handleRobBankComplete = async () => {
     const playerIndex = currentPlayer;
 
     if (networkMode === "online") {
       sendGameAction("close_modal");
-      endTurn(playerIndex, false);
+      sendGameAction("end_turn");
+      closeAllModals(() => {
+        setIsProcessingTurn(false);
+        setTurnFinished(false);
+      });
       return;
     }
 
@@ -3315,7 +3469,9 @@ function App() {
         ...prev.slice(0, 9),
       ]);
       closeAllModals(() => {
-        endTurn(playerIndex, false);
+        setIsProcessingTurn(false);
+        setTurnFinished(false);
+        handleEndTurn();
       });
     } else if (robStatus === "caught") {
       // Player was caught - move to jail tile (28) and end turn
@@ -3335,7 +3491,9 @@ function App() {
         ...prev.slice(0, 9),
       ]);
       closeAllModals(() => {
-        endTurn(playerIndex, false);
+        setIsProcessingTurn(false);
+        setTurnFinished(false);
+        handleEndTurn();
       });
     } else if (robStatus === "escaped") {
       setHistory((prev) => [
@@ -3343,10 +3501,16 @@ function App() {
         ...prev.slice(0, 9),
       ]);
       closeAllModals(() => {
-        endTurn(playerIndex, false);
+        setIsProcessingTurn(false);
+        setTurnFinished(false);
+        handleEndTurn();
       });
     } else {
-      closeAllModals(() => endTurn(playerIndex, false));
+      closeAllModals(() => {
+        setIsProcessingTurn(false);
+        setTurnFinished(false);
+        handleEndTurn();
+      });
     }
   };
 
@@ -4354,8 +4518,30 @@ function App() {
     setNetworkMode("offline");
     setRoomCode("");
 
-    // Go back to mode select
-    setGameStage("mode_select");
+    // Go back to homepage
+    setGameStage("menu");
+  };
+
+  // Leave online or hotspot lobby and return to homepage
+  const handleLeaveLobby = () => {
+    clearMatchmakingPending();
+    if (socketRef.current) {
+      try {
+        socketRef.current.emit("leave_room");
+      } catch {}
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    if (typeof window !== "undefined" && window.AndroidHostServer) {
+      try {
+        window.AndroidHostServer.updateRoomInfo("", "", 0);
+        window.AndroidHostServer.stopHotspotServer();
+      } catch (e) {}
+    }
+    setRoomCode("");
+    setConnectedPlayers([]);
+    setShowLeaveLobbyModal(false);
+    setGameStage("menu");
   };
 
   const handleBank = () => {
@@ -4892,6 +5078,171 @@ function App() {
 
     resetDealState();
   };
+
+  // Helper to close any currently open modal on Android back gesture
+  const closeCurrentOpenModal = useCallback(() => {
+    if (showExitAppModal) {
+      setShowExitAppModal(false);
+      return true;
+    }
+    if (showLeaveLobbyModal) {
+      setShowLeaveLobbyModal(false);
+      return true;
+    }
+    if (showExitConfirm) {
+      setShowExitConfirm(false);
+      return true;
+    }
+    if (showSettingsModal) {
+      closeSettings();
+      return true;
+    }
+    if (showMenuModal) {
+      closeMenu();
+      return true;
+    }
+    if (showBuyModal) {
+      handleCancelBuy();
+      return true;
+    }
+    if (showPropertyModal) {
+      closeAllModals();
+      return true;
+    }
+    if (showTrainTravelModal) {
+      setShowTrainTravelModal(false);
+      setTrainTravelTarget(null);
+      return true;
+    }
+    if (showDealModal || showDealReviewModal || showDealResultModal) {
+      resetDealState();
+      return true;
+    }
+    if (showBankModal) {
+      setShowBankModal(false);
+      return true;
+    }
+    if (showBuildModal) {
+      setShowBuildModal(false);
+      return true;
+    }
+    if (showSellModal) {
+      setShowSellModal(false);
+      return true;
+    }
+    if (showMortgageModal) {
+      setShowMortgageModal(false);
+      return true;
+    }
+    if (
+      showParkingModal ||
+      showAuditModal ||
+      showChanceModal ||
+      showChestModal
+    ) {
+      closeAllModals();
+      return true;
+    }
+    if (showArrestModal) {
+      setShowArrestModal(false);
+      return true;
+    }
+    if (showJailActionModal) {
+      setShowJailActionModal(false);
+      return true;
+    }
+    return false;
+  }, [
+    showExitAppModal,
+    showLeaveLobbyModal,
+    showExitConfirm,
+    showSettingsModal,
+    showMenuModal,
+    showBuyModal,
+    showPropertyModal,
+    showTrainTravelModal,
+    showDealModal,
+    showDealReviewModal,
+    showDealResultModal,
+    showBankModal,
+    showBuildModal,
+    showSellModal,
+    showMortgageModal,
+    showParkingModal,
+    showAuditModal,
+    showChanceModal,
+    showChestModal,
+    showArrestModal,
+    showJailActionModal,
+  ]);
+
+  // Handle Android Back Gesture / Button
+  const handleBackNavigation = useCallback(() => {
+    // 1. When there's a modal, close it
+    if (closeCurrentOpenModal()) {
+      return;
+    }
+
+    // 2. In game: show exit to homepage
+    if (gameStage === "playing") {
+      setShowExitConfirm(true);
+      return;
+    }
+
+    // 3. In lobby: show leave lobby confirmation modal
+    if (gameStage === "lobby") {
+      setShowLeaveLobbyModal(true);
+      return;
+    }
+
+    // 4. In matchmaking sub-screens (mode_select, scan, etc.)
+    if (matchmakingBackHandlerRef.current) {
+      const handled = matchmakingBackHandlerRef.current();
+      if (handled) return;
+    }
+
+    // 5. On homepage root: show exit app confirmation modal
+    setShowExitAppModal(true);
+  }, [closeCurrentOpenModal, gameStage]);
+
+  const handleBackNavigationRef = useRef(handleBackNavigation);
+  useEffect(() => {
+    handleBackNavigationRef.current = handleBackNavigation;
+  }, [handleBackNavigation]);
+
+  // Capacitor Back Button & Browser PopState Listener
+  useEffect(() => {
+    let backListener = null;
+
+    const initBackButton = async () => {
+      try {
+        backListener = await CapApp.addListener("backButton", () => {
+          handleBackNavigationRef.current?.();
+        });
+      } catch (err) {
+        console.log("[CapApp] backButton listener not available:", err);
+      }
+    };
+
+    initBackButton();
+
+    // Also support web history popstate (mobile browser back gesture)
+    const onPopState = (e) => {
+      e.preventDefault();
+      window.history.pushState(null, "", window.location.href);
+      handleBackNavigationRef.current?.();
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", onPopState);
+
+    return () => {
+      if (backListener && typeof backListener.remove === "function") {
+        backListener.remove();
+      }
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, []);
 
   // Handle Parking Confirm
   const handleParkingConfirm = () => {
@@ -6700,6 +7051,7 @@ function App() {
           myIdentity={myIdentity}
           setMyIdentity={setMyIdentity}
           players={players}
+          avatarOptions={CHOOSABLE_AVATARS}
           AVATAR_COLORS={AVATAR_COLORS}
           initializeHost={initializeHost}
           joinRoom={joinGame}
@@ -6709,26 +7061,9 @@ function App() {
           connectedPlayers={connectedPlayers}
           myPlayerIndex={myPlayerIndex}
           startGame={startGame}
-          onLeaveRoom={() => {
-            clearMatchmakingPending();
-            if (socketRef.current) {
-              try {
-                socketRef.current.emit("leave_room");
-              } catch {}
-              socketRef.current.disconnect();
-              socketRef.current = null;
-            }
-            if (typeof window !== "undefined" && window.AndroidHostServer) {
-              try {
-                window.AndroidHostServer.updateRoomInfo("", "", 0);
-                window.AndroidHostServer.stopHotspotServer();
-              } catch (e) {}
-            }
-            setRoomCode("");
-            setConnectedPlayers([]);
-            setMyPlayerIndex(null);
-            setGameStage("menu");
-            setNetworkMode("offline");
+          onLeaveRoom={handleLeaveLobby}
+          onRegisterBackHandler={(fn) => {
+            matchmakingBackHandlerRef.current = fn;
           }}
           showToast={showToast}
           startupBg={startupBg}
@@ -6756,9 +7091,10 @@ function App() {
       {gameStage === "playing" && (
         <div className="game-container">
           {/* Game Board */}
-          <div
-            className={`board ${dealSelectionMode || buildMode || sellMode ? "deal-selection-active" : ""} ${devMode && devTapToMove ? "dev-tap-active" : ""}`}
-          >
+          <div className="board-wrapper">
+            <div
+              className={`board ${dealSelectionMode || buildMode || sellMode ? "deal-selection-active" : ""} ${devMode && devTapToMove ? "dev-tap-active" : ""}`}
+            >
             {/* Corner Spaces */}
             <div
               className="corner start"
@@ -7168,8 +7504,8 @@ function App() {
                           </span>{" "}
                           turns.
                         </div>
-                        <div style={{ fontSize: "40px", margin: "10px 0" }}>
-                          👮‍♂️
+                        <div style={{ margin: "12px 0", textAlign: "center" }}>
+                          <BustedJailIcon size={52} />
                         </div>
                         <div
                           style={{
@@ -7188,6 +7524,8 @@ function App() {
                           style={{ background: "#D32F2F", width: "100%" }}
                           onClick={() => {
                             setShowArrestModal(false);
+                            setIsProcessingTurn(false);
+                            setTurnFinished(false);
                             handleEndTurn();
                           }}
                         >
@@ -8410,21 +8748,34 @@ function App() {
                 <div
                   className="modal-overlay modal-overlay-inline"
                   style={{
-                    pointerEvents: "none",
-                    background: "transparent",
+                    pointerEvents: "auto",
+                    background: "rgba(0, 0, 0, 0.35)",
                     zIndex: 1100,
+                  }}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                      setShowTrainTravelModal(false);
+                      setTravelMode(false);
+                      setBuyingProperty(null);
+                      setSelectedTrainTile(null);
+                      if (networkMode === "online") {
+                        sendGameAction("select_train_destination", {
+                          tileIndex: null,
+                        });
+                      }
+                      endTurn(currentPlayer, false);
+                    }
                   }}
                 >
                   <div
                     className="buy-modal"
                     style={{
                       pointerEvents: "auto",
-                      marginTop: "4vh",
-                      maxWidth: "340px",
+                      maxWidth: "270px",
                       background: "#FFFDF7",
-                      border: "2px solid #1E88E5",
-                      borderRadius: "12px",
-                      boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+                      border: "1.5px solid #1E88E5",
+                      borderRadius: "10px",
+                      boxShadow: "0 8px 30px rgba(0,0,0,0.5)",
                       overflow: "hidden",
                     }}
                   >
@@ -8433,12 +8784,12 @@ function App() {
                       style={{
                         background:
                           "linear-gradient(to bottom, #1E88E5 0%, #1565C0 100%)",
-                        padding: "6px 10px",
+                        padding: "5px 8px",
                       }}
                     >
                       <span
                         className="modal-heading-text"
-                        style={{ fontSize: "13px" }}
+                        style={{ fontSize: "12px" }}
                       >
                         🚅 TRAIN FAST TRAVEL
                       </span>
@@ -8446,45 +8797,36 @@ function App() {
                     <div
                       className="modal-body"
                       style={{
-                        padding: "10px 12px",
+                        padding: "8px 10px",
                         textAlign: "center",
                         background: "#FFFDF7",
                       }}
                     >
                       <div
                         style={{
-                          fontSize: "11px",
+                          fontSize: "9.5px",
                           color: "#555",
-                          marginBottom: "6px",
+                          marginBottom: "5px",
                           fontWeight: 600,
                         }}
                       >
-                        Departing:{" "}
+                        From:{" "}
                         <span style={{ color: "#1565C0", fontWeight: "bold" }}>
                           {getTileName(
                             travelSourceIndex ?? playerPositions[currentPlayer],
                           )}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "10px",
-                          color: "#444",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        Tap the destination train station you want to travel to
-                        ($100 per train cross):
+                        </span>{" "}
+                        ($100/station)
                       </div>
 
-                      {/* Selectable Train Cards */}
+                      {/* Selectable Train Cards - Compact all-in-one */}
                       <div
                         style={{
                           display: "flex",
                           flexDirection: "column",
-                          gap: "6px",
-                          marginBottom: "8px",
-                          maxHeight: "140px",
+                          gap: "3px",
+                          marginBottom: "5px",
+                          maxHeight: "120px",
                           overflowY: "auto",
                           scrollbarWidth: "none",
                           msOverflowStyle: "none",
@@ -8524,13 +8866,13 @@ function App() {
                                 justifyContent: "space-between",
                                 background: isSelected ? "#E3F2FD" : "#F5F5F5",
                                 border: isSelected
-                                  ? "2px solid #1E88E5"
-                                  : "1.5px solid #CFD8DC",
-                                borderRadius: "8px",
-                                padding: "6px 10px",
+                                  ? "1.5px solid #1E88E5"
+                                  : "1px solid #CFD8DC",
+                                borderRadius: "4px",
+                                padding: "3px 8px",
                                 cursor: "pointer",
                                 boxShadow: isSelected
-                                  ? "0 2px 8px rgba(30,136,229,0.3)"
+                                  ? "0 1px 4px rgba(30,136,229,0.25)"
                                   : "none",
                                 transition: "all 0.15s ease",
                               }}
@@ -8539,85 +8881,57 @@ function App() {
                                 style={{
                                   display: "flex",
                                   alignItems: "center",
-                                  gap: "8px",
+                                  gap: "6px",
                                   textAlign: "left",
                                 }}
                               >
-                                <span style={{ fontSize: "18px" }}>🚅</span>
+                                <span style={{ fontSize: "13px" }}>🚅</span>
                                 <div>
                                   <div
                                     style={{
                                       fontWeight: "bold",
-                                      fontSize: "11.5px",
+                                      fontSize: "10px",
                                       color: isSelected ? "#0D47A1" : "#37474F",
+                                      lineHeight: "1.1",
                                     }}
                                   >
                                     {getTileName(destTile)}
                                   </div>
                                   <div
                                     style={{
-                                      fontSize: "9.5px",
+                                      fontSize: "8.5px",
                                       color: "#78909C",
+                                      lineHeight: "1",
                                     }}
                                   >
-                                    {stationDist} station
-                                    {stationDist > 1 ? "s" : ""} away
+                                    {stationDist} station{stationDist > 1 ? "s" : ""} away
                                   </div>
                                 </div>
                               </div>
                               <div style={{ textAlign: "right" }}>
                                 <span
                                   style={{
-                                    fontSize: "11px",
+                                    fontSize: "9.5px",
                                     fontWeight: "bold",
                                     color: isSelected ? "#1565C0" : "#546E7A",
                                     background: isSelected
                                       ? "#BBDEFB"
                                       : "#ECEFF1",
-                                    padding: "2px 7px",
-                                    borderRadius: "4px",
+                                    padding: "1px 6px",
+                                    borderRadius: "3px",
                                   }}
                                 >
-                                  ${cost}
+                                  ${cost} {isSelected && "✓"}
                                 </span>
-                                {isSelected && (
-                                  <span
-                                    style={{
-                                      marginLeft: "4px",
-                                      color: "#1E88E5",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    ✓
-                                  </span>
-                                )}
                               </div>
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* Price & Balance Preview */}
+                      {/* Price & Balance Preview (Only when selected) */}
                       {(() => {
-                        if (selectedTrainTile === null) {
-                          return (
-                            <div
-                              style={{
-                                margin: "6px 0 10px",
-                                padding: "8px 10px",
-                                background: "#F0F4F8",
-                                border: "1px dashed #90CAF9",
-                                borderRadius: "6px",
-                                fontSize: "11px",
-                                color: "#1565C0",
-                                fontWeight: 600,
-                                textAlign: "center",
-                              }}
-                            >
-                              👆 Tap an owned station above or on the board
-                            </div>
-                          );
-                        }
+                        if (selectedTrainTile === null) return null;
                         const sortedTrains = [4, 13, 21, 32];
                         const srcIdx = sortedTrains.indexOf(
                           travelSourceIndex ?? playerPositions[currentPlayer],
@@ -8630,12 +8944,12 @@ function App() {
                         return (
                           <div
                             style={{
-                              margin: "6px 0 10px",
-                              padding: "6px 10px",
+                              margin: "3px 0 5px",
+                              padding: "4px 8px",
                               background: "#FFF8E1",
                               border: "1px solid #FFE082",
-                              borderRadius: "6px",
-                              fontSize: "11px",
+                              borderRadius: "4px",
+                              fontSize: "9.5px",
                               color: "#5D4037",
                               textAlign: "left",
                             }}
@@ -8647,14 +8961,10 @@ function App() {
                                 fontWeight: "bold",
                               }}
                             >
-                              <span>
-                                Travel Fare ({stationDist} station
-                                {stationDist > 1 ? "s" : ""}):
-                              </span>
+                              <span>Fare:</span>
                               <span
                                 style={{
                                   color: canAfford ? "#E65100" : "#C62828",
-                                  fontSize: "12px",
                                 }}
                               >
                                 ${cost}
@@ -8664,24 +8974,23 @@ function App() {
                               style={{
                                 display: "flex",
                                 justifyContent: "space-between",
-                                fontSize: "10px",
+                                fontSize: "8.5px",
                                 color: "#8D6E63",
-                                marginTop: "2px",
+                                marginTop: "1px",
                               }}
                             >
-                              <span>Cash After Travel:</span>
+                              <span>Cash After:</span>
                               <span
                                 style={{
                                   fontWeight: "bold",
                                   color: canAfford ? "#2E7D32" : "#C62828",
                                 }}
                               >
-                                $
-                                {Math.max(
+                                ${Math.max(
                                   0,
                                   playerMoney[currentPlayer] - cost,
                                 ).toLocaleString()}
-                                {!canAfford && " (Insufficient funds)"}
+                                {!canAfford && " (Short funds)"}
                               </span>
                             </div>
                           </div>
@@ -8693,19 +9002,21 @@ function App() {
                         className="modal-buttons"
                         style={{
                           display: "flex",
-                          gap: "8px",
+                          gap: "6px",
                           justifyContent: "center",
                           padding: 0,
+                          marginTop: "4px",
                         }}
                       >
                         <button
                           className="modal-btn cancel"
                           style={{
-                            height: "28px",
-                            minHeight: "28px",
-                            fontSize: "10.5px",
-                            padding: "0 14px",
+                            height: "26px",
+                            minHeight: "26px",
+                            fontSize: "10px",
+                            padding: "0 10px",
                             flex: 1,
+                            borderRadius: "4px",
                           }}
                           onClick={() => {
                             setShowTrainTravelModal(false);
@@ -8729,17 +9040,18 @@ function App() {
                                 className="modal-btn buy"
                                 disabled={true}
                                 style={{
-                                  height: "28px",
-                                  minHeight: "28px",
-                                  fontSize: "10.5px",
-                                  padding: "0 14px",
+                                  height: "26px",
+                                  minHeight: "26px",
+                                  fontSize: "10px",
+                                  padding: "0 10px",
                                   flex: 1,
                                   opacity: 0.45,
                                   background: "#9E9E9E",
                                   cursor: "not-allowed",
+                                  borderRadius: "4px",
                                 }}
                               >
-                                SELECT DESTINATION
+                                SELECT
                               </button>
                             );
                           }
@@ -8758,11 +9070,12 @@ function App() {
                               className="modal-btn buy"
                               disabled={!canAfford}
                               style={{
-                                height: "28px",
-                                minHeight: "28px",
-                                fontSize: "10.5px",
-                                padding: "0 14px",
+                                height: "26px",
+                                minHeight: "26px",
+                                fontSize: "10px",
+                                padding: "0 10px",
                                 flex: 1,
+                                borderRadius: "4px",
                                 background: canAfford
                                   ? "linear-gradient(to bottom, #1E88E5, #1565C0)"
                                   : "#B0BEC5",
@@ -9069,7 +9382,13 @@ function App() {
 
               {/* Menu Modal */}
               {showMenuModal && (
-                <div className="modal-overlay">
+                <div
+                  className="modal-overlay menu-modal-overlay"
+                  style={{ zIndex: 1000000 }}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) closeMenu();
+                  }}
+                >
                   <div
                     className="buy-modal deal-modal bank-modal"
                     style={{
@@ -9141,7 +9460,12 @@ function App() {
 
               {/* Exit Confirmation Modal */}
               {showExitConfirm && (
-                <div className="modal-overlay">
+                <div
+                  className="modal-overlay"
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) setShowExitConfirm(false);
+                  }}
+                >
                   <div
                     className="buy-modal deal-modal bank-modal"
                     style={{ pointerEvents: "auto", marginTop: "20vh" }}
@@ -9153,7 +9477,7 @@ function App() {
                           "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
                       }}
                     >
-                      <span className="modal-heading-text">⚠️ EXIT GAME</span>
+                      <span className="modal-heading-text">🚪 EXIT TO HOMEPAGE</span>
                     </div>
                     <div className="modal-body" style={{ textAlign: "center" }}>
                       <div
@@ -9163,11 +9487,10 @@ function App() {
                           marginBottom: "15px",
                         }}
                       >
-                        Are you sure you want to exit?
+                        Exit current game and return to Homepage?
                         <br />
                         <span style={{ fontSize: "12px", color: "#5D4037" }}>
-                          Your properties will be released and you cannot
-                          rejoin.
+                          Any active game progress will be forfeited.
                         </span>
                       </div>
                       <div
@@ -9184,20 +9507,20 @@ function App() {
                           }}
                           onClick={() => setShowExitConfirm(false)}
                         >
-                          CANCEL
+                          RESUME
                         </button>
                         <button
                           className="modal-btn cancel"
                           style={{
                             flex: "none",
-                            minWidth: "100px",
+                            minWidth: "140px",
                             background:
                               "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
                             color: "white",
                           }}
                           onClick={handleExitGame}
                         >
-                          EXIT
+                          EXIT TO HOMEPAGE
                         </button>
                       </div>
                     </div>
@@ -9210,6 +9533,9 @@ function App() {
                 buyingProperty && (
                   <div
                     className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) handleCancelBuy();
+                    }}
                   >
                     <div className="buy-modal">
                       {/* Header */}
@@ -9354,7 +9680,7 @@ function App() {
                             <div className="modal-buttons">
                               <button
                                 className="modal-btn cancel"
-                                onClick={handleCancelBuy}
+                                onClick={handleRobBankLeave}
                               >
                                 LEAVE
                               </button>
@@ -9402,7 +9728,9 @@ function App() {
                               <div
                                 className={`rob-target-badge target-caught ${robTargetLanded === "caught" || (robSliderPos <= 33 && !robTargetLanded) ? "active" : ""}`}
                               >
-                                <div className="target-icon">👮</div>
+                                <div className="target-icon">
+                                  <BustedJailIcon size={24} />
+                                </div>
                                 <div className="target-label">BUSTED</div>
                                 <div className="target-sub">GO TO JAIL</div>
                               </div>
@@ -9411,7 +9739,9 @@ function App() {
                               <div
                                 className={`rob-target-badge target-escaped ${robTargetLanded === "escaped" || (robSliderPos > 33 && robSliderPos <= 67 && !robTargetLanded) ? "active" : ""}`}
                               >
-                                <div className="target-icon">🏃💨</div>
+                                <div className="target-icon">
+                                  <EscapedThiefIcon size={24} />
+                                </div>
                                 <div className="target-label">ESCAPED</div>
                                 <div className="target-sub">EMPTY-HANDED</div>
                               </div>
@@ -9420,7 +9750,9 @@ function App() {
                               <div
                                 className={`rob-target-badge target-jackpot ${robTargetLanded === "success" || (robSliderPos > 67 && !robTargetLanded) ? "active" : ""}`}
                               >
-                                <div className="target-icon">💎</div>
+                                <div className="target-icon">
+                                  <VaultDiamondIcon size={24} />
+                                </div>
                                 <div className="target-label">ROB BANK</div>
                                 <div className="target-sub">$1K - $10K</div>
                               </div>
@@ -9462,6 +9794,9 @@ function App() {
 
                       {robStatus === "success" && (
                         <>
+                          <div style={{ textAlign: "center", margin: "4px 0 8px" }}>
+                            <VaultDiamondIcon size={56} />
+                          </div>
                           <div
                             className="modal-city-name"
                             style={{ color: "#2E7D32" }}
@@ -9516,12 +9851,11 @@ function App() {
                           </div>
                           <div
                             style={{
-                              fontSize: "46px",
                               textAlign: "center",
-                              margin: "8px 0",
+                              margin: "8px 0 10px",
                             }}
                           >
-                            🏃💨
+                            <EscapedThiefIcon size={56} />
                           </div>
                           <div
                             style={{
@@ -9578,12 +9912,11 @@ function App() {
                           </div>
                           <div
                             style={{
-                              fontSize: "50px",
                               textAlign: "center",
-                              margin: "10px 0",
+                              margin: "10px 0 12px",
                             }}
                           >
-                            👮‍♂️
+                            <BustedJailIcon size={56} />
                           </div>
                           <div
                             className="modal-buttons"
@@ -9790,13 +10123,13 @@ function App() {
                                     flexDirection: "row",
                                     justifyContent: "space-between",
                                     alignItems: "center",
-                                    padding: "3px 6px",
+                                    padding: "2px 5px",
                                     background: isJoined
                                       ? "#E8F5E9"
                                       : "#F5F5F5",
-                                    borderRadius: "6px",
+                                    borderRadius: "4px",
                                     border: isJoined
-                                      ? "1.5px solid #4CAF50"
+                                      ? "1px solid #4CAF50"
                                       : "1px solid #ddd",
                                     boxSizing: "border-box",
                                   }}
@@ -9815,50 +10148,42 @@ function App() {
                                       src={player.avatar}
                                       alt={player.name}
                                       style={{
-                                        width: "18px",
-                                        height: "18px",
+                                        width: "15px",
+                                        height: "15px",
                                         borderRadius: "50%",
                                         flexShrink: 0,
                                       }}
                                     />
-                                    <div
+                                    <span
                                       style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        minWidth: 0,
+                                        fontWeight: "bold",
+                                        fontSize: "8.5px",
+                                        color: "#212121",
+                                        whiteSpace: "nowrap",
                                         overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        maxWidth: "75px",
+                                        lineHeight: "1.1",
                                       }}
                                     >
-                                      <span
-                                        style={{
-                                          fontWeight: "bold",
-                                          fontSize: "9.5px",
-                                          color: "#212121",
-                                          whiteSpace: "nowrap",
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          maxWidth: "85px",
-                                          lineHeight: "1.1",
-                                        }}
-                                      >
-                                        {player.name}
-                                      </span>
-                                      <span
-                                        style={{
-                                          fontSize: "8.5px",
-                                          color:
-                                            playerMoney[idx] < fee
-                                              ? "#D32F2F"
-                                              : "#2E7D32",
-                                          fontWeight: 600,
-                                          lineHeight: "1",
-                                        }}
-                                      >
-                                        {playerMoney[idx] >= 1000
-                                          ? `$${(playerMoney[idx] / 1000).toFixed(playerMoney[idx] % 1000 === 0 ? 0 : 1)}k`
-                                          : `$${playerMoney[idx]}`}
-                                      </span>
-                                    </div>
+                                      {player.name}
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontSize: "8px",
+                                        color:
+                                          playerMoney[idx] < fee
+                                            ? "#D32F2F"
+                                            : "#2E7D32",
+                                        fontWeight: 700,
+                                        lineHeight: "1",
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      ({playerMoney[idx] >= 1000
+                                        ? `$${(playerMoney[idx] / 1000).toFixed(playerMoney[idx] % 1000 === 0 ? 0 : 1)}k`
+                                        : `$${playerMoney[idx]}`})
+                                    </span>
                                   </div>
 
                                   <div
@@ -9877,11 +10202,12 @@ function App() {
                                             flex: "none",
                                             width: "auto",
                                             whiteSpace: "nowrap",
-                                            padding: "0 6px",
-                                            fontSize: "8.5px",
-                                            height: "22px",
-                                            minHeight: "22px",
-                                            lineHeight: "22px",
+                                            padding: "0 5px",
+                                            fontSize: "8px",
+                                            height: "19px",
+                                            minHeight: "19px",
+                                            lineHeight: "19px",
+                                            borderRadius: "3px",
                                           }}
                                           onClick={() => handleWarWithdraw(idx)}
                                         >
@@ -9890,7 +10216,7 @@ function App() {
                                       ) : (
                                         <span
                                           style={{
-                                            fontSize: "9px",
+                                            fontSize: "8.5px",
                                             color: "#2E7D32",
                                             fontWeight: "bold",
                                             whiteSpace: "nowrap",
@@ -9907,11 +10233,12 @@ function App() {
                                             flex: "none",
                                             width: "auto",
                                             whiteSpace: "nowrap",
-                                            padding: "0 8px",
-                                            fontSize: "9px",
-                                            height: "22px",
-                                            minHeight: "22px",
-                                            lineHeight: "22px",
+                                            padding: "0 6px",
+                                            fontSize: "8.5px",
+                                            height: "19px",
+                                            minHeight: "19px",
+                                            lineHeight: "19px",
+                                            borderRadius: "3px",
                                           }}
                                           onClick={() => handleWarJoin(idx)}
                                         >
@@ -9921,7 +10248,7 @@ function App() {
                                         <div
                                           style={{
                                             display: "flex",
-                                            gap: "3px",
+                                            gap: "2px",
                                           }}
                                         >
                                           {canTakeLoan && (
@@ -9931,11 +10258,12 @@ function App() {
                                                 flex: "none",
                                                 width: "auto",
                                                 whiteSpace: "nowrap",
-                                                padding: "0 6px",
-                                                fontSize: "8.5px",
-                                                height: "22px",
-                                                minHeight: "22px",
-                                                lineHeight: "22px",
+                                                padding: "0 4px",
+                                                fontSize: "8px",
+                                                height: "19px",
+                                                minHeight: "19px",
+                                                lineHeight: "19px",
+                                                borderRadius: "3px",
                                                 background:
                                                   "linear-gradient(135deg, #FF9800 0%, #F57C00 100%)",
                                               }}
@@ -9953,11 +10281,12 @@ function App() {
                                               flex: "none",
                                               width: "auto",
                                               whiteSpace: "nowrap",
-                                              padding: "0 6px",
-                                              fontSize: "8.5px",
-                                              height: "22px",
-                                              minHeight: "22px",
-                                              lineHeight: "22px",
+                                              padding: "0 4px",
+                                              fontSize: "8px",
+                                              height: "19px",
+                                              minHeight: "19px",
+                                              lineHeight: "19px",
+                                              borderRadius: "3px",
                                               background: "#9C27B0",
                                               color: "white",
                                             }}
@@ -9973,7 +10302,7 @@ function App() {
                                     ) : (
                                       <span
                                         style={{
-                                          fontSize: "9px",
+                                          fontSize: "8px",
                                           color: "#777",
                                           fontStyle: "italic",
                                         }}
@@ -10087,34 +10416,60 @@ function App() {
                         </div>
                       )}
 
-                      {/* Reveal Phase */}
+                      {/* Reveal Phase - Box with property color, same as Forced Auction */}
                       {warPhase === "reveal" && warProperty && (
-                        <div style={{ textAlign: "center", padding: "12px 0" }}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "8px 0",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flex: 1,
+                          }}
+                        >
                           <div
                             style={{
-                              fontSize: "14px",
+                              fontSize: "12px",
                               color: "#5D4037",
                               fontWeight: "bold",
-                              marginBottom: "8px",
+                              marginBottom: "6px",
                             }}
                           >
-                            The war is for...
+                            ⚔️ The war is for...
                           </div>
                           <div
                             className="modal-city-name"
                             style={{
-                              fontSize: "24px",
-                              color: "#8B0000",
-                              marginBottom: "6px",
+                              background: warProperty.color || "#E91E63",
+                              color: "#fff",
+                              textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                              width: "135px",
+                              minHeight: "38px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              margin: "4px auto",
+                              borderRadius: "6px",
+                              boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                              border: "2px solid white",
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              lineHeight: "1.1",
+                              padding: "4px 8px",
+                              boxSizing: "border-box",
                             }}
                           >
                             {warProperty.name}
                           </div>
                           <div
                             style={{
-                              fontSize: "14px",
+                              fontSize: "12px",
                               color: "#2E7D32",
                               fontWeight: "bold",
+                              marginTop: "6px",
                             }}
                           >
                             Worth ${warProperty.price?.toLocaleString()}
@@ -10202,11 +10557,20 @@ function App() {
                         </div>
                       )}
 
-                      {/* Roll Phase & Evaluating Phase (Combined) */}
+                      {/* Roll Phase & Evaluating Phase (Combined) - Single Column & Roll Button at Bottom */}
                       {(warPhase === "roll" ||
                         warPhase === "rolling" ||
                         warPhase === "evaluating") && (
-                        <div style={{ textAlign: "center", padding: "2px 0" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            height: "100%",
+                            justifyContent: "space-between",
+                            flex: 1,
+                            minHeight: 0,
+                          }}
+                        >
                           {(() => {
                             const effectiveRollerIdx =
                               warCurrentRoller !== null &&
@@ -10221,117 +10585,183 @@ function App() {
                                 ? rollerPlayerIdx === myPlayerIndex
                                 : true;
 
+                            const allRolled =
+                              warParticipants.length > 0 &&
+                              warParticipants.every(
+                                (pIdx) => warRolls[pIdx] !== undefined,
+                              );
+                            const maxRollVal =
+                              Object.keys(warRolls).length > 0
+                                ? Math.max(...Object.values(warRolls))
+                                : null;
+
+                            // Sort participants: completed rolls sorted descending; winner transitions to top
+                            const displayParticipants = [
+                              ...warParticipants,
+                            ].sort((a, b) => {
+                              const rA = warRolls[a];
+                              const rB = warRolls[b];
+                              if (rA !== undefined && rB !== undefined) {
+                                return rB - rA;
+                              }
+                              if (rA !== undefined) return -1;
+                              if (rB !== undefined) return 1;
+                              return 0;
+                            });
+
                             return (
                               <>
                                 <div
-                                  className="war-roller-badge"
                                   style={{
-                                    fontSize: "12px",
-                                    marginBottom: "3px",
-                                    display: "inline-flex",
+                                    display: "flex",
+                                    flexDirection: "column",
                                     alignItems: "center",
-                                    justifyContent: "center",
-                                    gap: "6px",
-                                    background: "rgba(233, 30, 99, 0.08)",
-                                    border: "1px solid rgba(233, 30, 99, 0.22)",
-                                    padding: "3px 10px",
-                                    borderRadius: "8px",
+                                    minHeight: 0,
+                                    flex: 1,
+                                    overflowY: "auto",
                                   }}
                                 >
-                                  {warPhase === "evaluating" ? (
-                                    <span
-                                      style={{
-                                        fontWeight: "bold",
-                                        color: "#4A2C18",
-                                      }}
-                                    >
-                                      ⏳ Calculating Result...
-                                    </span>
-                                  ) : (
-                                    <>
-                                      {rollerPlayer && (
-                                        <img
-                                          src={rollerPlayer.avatar}
-                                          alt=""
-                                          style={{
-                                            width: "18px",
-                                            height: "18px",
-                                            borderRadius: "50%",
-                                          }}
-                                        />
-                                      )}
+                                  <div
+                                    className="war-roller-badge"
+                                    style={{
+                                      fontSize: "11px",
+                                      marginBottom: "2px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "5px",
+                                      background: "rgba(233, 30, 99, 0.08)",
+                                      border:
+                                        "1px solid rgba(233, 30, 99, 0.22)",
+                                      padding: "2px 8px",
+                                      borderRadius: "6px",
+                                    }}
+                                  >
+                                    {warPhase === "evaluating" ? (
                                       <span
                                         style={{
                                           fontWeight: "bold",
-                                          color: "#4A2C18",
+                                          color: "#2E7D32",
                                         }}
                                       >
-                                        {rollerPlayer
-                                          ? `${rollerPlayer.name}'s Turn`
-                                          : "🎲 Roll Dice"}
+                                        🏆 Rolls complete! Determining winner...
                                       </span>
-                                    </>
-                                  )}
-                                </div>
-
-                                {/* Dice Display */}
-                                <div
-                                  className="dice-container"
-                                  style={{
-                                    margin: "2px 0",
-                                    justifyContent: "center",
-                                  }}
-                                >
-                                  <div
-                                    className={`dice ${warIsRolling ? "rolling-left" : ""}`}
-                                  >
-                                    {renderDiceDots(warDiceValues[0])}
+                                    ) : (
+                                      <>
+                                        {rollerPlayer && (
+                                          <img
+                                            src={rollerPlayer.avatar}
+                                            alt=""
+                                            style={{
+                                              width: "16px",
+                                              height: "16px",
+                                              borderRadius: "50%",
+                                            }}
+                                          />
+                                        )}
+                                        <span
+                                          style={{
+                                            fontWeight: "bold",
+                                            color: "#4A2C18",
+                                          }}
+                                        >
+                                          {rollerPlayer
+                                            ? `${rollerPlayer.name}'s Turn`
+                                            : "🎲 Roll Dice"}
+                                        </span>
+                                      </>
+                                    )}
                                   </div>
-                                  <div
-                                    className={`dice ${warIsRolling ? "rolling-right" : ""}`}
-                                  >
-                                    {renderDiceDots(warDiceValues[1])}
-                                  </div>
-                                </div>
 
-                                {/* Previous Rolls */}
-                                {Object.keys(warRolls).length > 0 && (
+                                  {/* Dice Display */}
+                                  <div
+                                    className="dice-container"
+                                    style={{
+                                      margin: "2px 0",
+                                      justifyContent: "center",
+                                    }}
+                                  >
+                                    <div
+                                      className={`dice ${warIsRolling ? "rolling-left" : ""}`}
+                                    >
+                                      {renderDiceDots(warDiceValues[0])}
+                                    </div>
+                                    <div
+                                      className={`dice ${warIsRolling ? "rolling-right" : ""}`}
+                                    >
+                                      {renderDiceDots(warDiceValues[1])}
+                                    </div>
+                                  </div>
+
+                                  {/* Participant Rolls in Single Column with Winner Transition */}
                                   <div
                                     className="war-rolling-list"
-                                    style={{ margin: "2px 0" }}
+                                    style={{
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "2px",
+                                      width: "100%",
+                                      margin: "2px 0",
+                                    }}
                                   >
-                                    {Object.entries(warRolls).map(
-                                      ([idx, roll]) => (
+                                    {displayParticipants.map((pIdx) => {
+                                      const player = gamePlayers[pIdx];
+                                      if (!player) return null;
+                                      const roll = warRolls[pIdx];
+                                      const hasRolled = roll !== undefined;
+                                      const isHighest =
+                                        hasRolled &&
+                                        maxRollVal !== null &&
+                                        roll === maxRollVal;
+                                      const showWinnerHighlight =
+                                        (allRolled ||
+                                          warPhase === "evaluating") &&
+                                        isHighest;
+
+                                      return (
                                         <div
-                                          key={idx}
+                                          key={pIdx}
+                                          className={
+                                            showWinnerHighlight
+                                              ? "winner-item"
+                                              : ""
+                                          }
                                           style={{
                                             padding: "2px 6px",
-                                            background: "#f0f0f0",
-                                            borderRadius: "6px",
+                                            background: showWinnerHighlight
+                                              ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
+                                              : hasRolled
+                                                ? "#f0f0f0"
+                                                : "rgba(0,0,0,0.03)",
+                                            color: showWinnerHighlight
+                                              ? "#fff"
+                                              : "#333",
+                                            borderRadius: "4px",
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "space-between",
                                             fontWeight: "bold",
-                                            fontSize: "10.5px",
+                                            fontSize: "9.5px",
                                             boxSizing: "border-box",
+                                            border: showWinnerHighlight
+                                              ? "1px solid #FFD700"
+                                              : "1px solid rgba(0,0,0,0.06)",
+                                            transition: "all 0.35s ease",
                                           }}
                                         >
                                           <div
                                             style={{
                                               display: "flex",
                                               alignItems: "center",
-                                              gap: "5px",
+                                              gap: "4px",
                                             }}
                                           >
                                             <img
-                                              src={
-                                                gamePlayers[parseInt(idx)]
-                                                  ?.avatar
-                                              }
+                                              src={player.avatar}
                                               alt=""
                                               style={{
-                                                width: "16px",
-                                                height: "16px",
+                                                width: "15px",
+                                                height: "15px",
                                                 borderRadius: "50%",
                                               }}
                                             />
@@ -10340,24 +10770,59 @@ function App() {
                                                 whiteSpace: "nowrap",
                                                 overflow: "hidden",
                                                 textOverflow: "ellipsis",
-                                                maxWidth: "55px",
+                                                maxWidth: "80px",
                                               }}
                                             >
-                                              {gamePlayers[parseInt(idx)]?.name}
+                                              {player.name}
                                             </span>
+                                            {showWinnerHighlight && (
+                                              <span
+                                                style={{
+                                                  fontSize: "9px",
+                                                  color: "#FFD700",
+                                                }}
+                                              >
+                                                👑 WINNER
+                                              </span>
+                                            )}
                                           </div>
-                                          <span style={{ color: "#E91E63" }}>
-                                            🎲 {roll}
+                                          <span>
+                                            {hasRolled ? (
+                                              <span
+                                                style={{
+                                                  color: showWinnerHighlight
+                                                    ? "#fff"
+                                                    : "#E91E63",
+                                                }}
+                                              >
+                                                🎲 {roll}
+                                              </span>
+                                            ) : (
+                                              <span
+                                                style={{
+                                                  fontSize: "8.5px",
+                                                  color: "#888",
+                                                  fontStyle: "italic",
+                                                }}
+                                              >
+                                                Waiting...
+                                              </span>
+                                            )}
                                           </span>
                                         </div>
-                                      ),
-                                    )}
+                                      );
+                                    })}
                                   </div>
-                                )}
+                                </div>
 
+                                {/* Roll Button at the Bottom of the Modal */}
                                 <div
                                   className="modal-buttons"
-                                  style={{ marginTop: "4px", padding: 0 }}
+                                  style={{
+                                    marginTop: "auto",
+                                    padding: 0,
+                                    flexShrink: 0,
+                                  }}
                                 >
                                   {warPhase === "evaluating" ? (
                                     <div
@@ -10366,10 +10831,12 @@ function App() {
                                         width: "100%",
                                         textAlign: "center",
                                         padding: "4px 0",
-                                        fontSize: "11px",
+                                        fontSize: "10.5px",
+                                        fontWeight: "bold",
+                                        color: "#2E7D32",
                                       }}
                                     >
-                                      ⏳ All rolls in! Determining winner...
+                                      🎉 Transitioning to victory...
                                     </div>
                                   ) : (
                                     <button
@@ -10381,8 +10848,8 @@ function App() {
                                       }
                                       style={{
                                         width: "100%",
-                                        height: "30px",
-                                        minHeight: "30px",
+                                        height: "28px",
+                                        minHeight: "28px",
                                         background:
                                           warIsRolling ||
                                           (networkMode === "online" &&
@@ -10396,7 +10863,8 @@ function App() {
                                             ? "not-allowed"
                                             : "pointer",
                                         padding: "0 10px",
-                                        fontSize: "12px",
+                                        fontSize: "11px",
+                                        borderRadius: "6px",
                                       }}
                                     >
                                       {warIsRolling
@@ -10440,13 +10908,13 @@ function App() {
                                 <div
                                   className="modal-city-name"
                                   style={{
-                                    fontSize: "15px",
+                                    fontSize: "13px",
                                     color: "#E91E63",
-                                    marginBottom: "2px",
+                                    marginBottom: "1px",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    gap: "6px",
+                                    gap: "4px",
                                   }}
                                 >
                                   <span className="war-winner-trophy">🏆</span>
@@ -10455,12 +10923,12 @@ function App() {
                                       src={winnerPlayer.avatar}
                                       alt={winnerPlayer.name}
                                       style={{
-                                        width: "22px",
-                                        height: "22px",
+                                        width: "18px",
+                                        height: "18px",
                                         borderRadius: "50%",
-                                        border: "2px solid #FFD700",
+                                        border: "1.5px solid #FFD700",
                                         boxShadow:
-                                          "0 0 8px rgba(255, 215, 0, 0.7)",
+                                          "0 0 6px rgba(255, 215, 0, 0.7)",
                                       }}
                                     />
                                   )}
@@ -10476,7 +10944,7 @@ function App() {
                             );
                           })()}
 
-                          {/* Show all rolls */}
+                          {/* Show all rolls in single column */}
                           <div className="war-roll-list">
                             {Object.entries(warRolls).map(
                               ([playerIdx, roll]) => {
@@ -10488,15 +10956,15 @@ function App() {
                                     style={{
                                       display: "flex",
                                       justifyContent: "space-between",
-                                      padding: "3px 8px",
+                                      padding: "2px 6px",
                                       background: isWinner
                                         ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
                                         : "linear-gradient(135deg, #FFB74D 0%, #FF9800 100%)",
-                                      borderRadius: "6px",
+                                      borderRadius: "4px",
                                       color: "#fff",
                                       fontWeight: "bold",
-                                      boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-                                      fontSize: "11px",
+                                      boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                                      fontSize: "9.5px",
                                       alignItems: "center",
                                     }}
                                   >
@@ -10504,7 +10972,7 @@ function App() {
                                       style={{
                                         display: "flex",
                                         alignItems: "center",
-                                        gap: "5px",
+                                        gap: "4px",
                                       }}
                                     >
                                       <img
@@ -10516,8 +10984,8 @@ function App() {
                                           gamePlayers[parseInt(playerIdx)]?.name
                                         }
                                         style={{
-                                          width: "16px",
-                                          height: "16px",
+                                          width: "15px",
+                                          height: "15px",
                                           borderRadius: "50%",
                                         }}
                                       />
@@ -10535,7 +11003,7 @@ function App() {
 
                           <div
                             className="modal-buttons"
-                            style={{ marginTop: "4px", padding: 0 }}
+                            style={{ marginTop: "3px", padding: 0 }}
                           >
                             <button
                               className="modal-btn buy"
@@ -10543,10 +11011,10 @@ function App() {
                               style={{
                                 width: "100%",
                                 background: "#4CAF50",
-                                height: "28px",
-                                minHeight: "28px",
-                                padding: "0 12px",
-                                fontSize: "12px",
+                                height: "26px",
+                                minHeight: "26px",
+                                padding: "0 10px",
+                                fontSize: "11px",
                               }}
                             >
                               CONFIRM
@@ -11583,6 +12051,9 @@ function App() {
                 selectedProperty && (
                   <div
                     className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) closeAllModals();
+                    }}
                   >
                     <div className="buy-modal">
                       {/* Header */}
@@ -11786,6 +12257,7 @@ function App() {
                 {(fp.price || 0).toLocaleString()}
               </div>
             ))}
+          </div>
           </div>
 
           {/* Sidebar */}
@@ -12051,7 +12523,13 @@ function App() {
 
       {/* Universal Settings Modal (Accessible both in Welcome Screen and during Game) */}
       {showSettingsModal && (
-        <div className="modal-overlay" style={{ zIndex: 99999 }}>
+        <div
+          className="modal-overlay menu-modal-overlay"
+          style={{ zIndex: 1000000 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeSettings();
+          }}
+        >
           <div
             className="buy-modal deal-modal bank-modal"
             style={{
@@ -12326,6 +12804,173 @@ function App() {
                   onClick={closeSettings}
                 >
                   DONE
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Lobby Confirmation Modal */}
+      {showLeaveLobbyModal && (
+        <div
+          className="modal-overlay menu-modal-overlay"
+          style={{ zIndex: 1000000 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowLeaveLobbyModal(false);
+          }}
+        >
+          <div
+            className="buy-modal deal-modal bank-modal"
+            style={{
+              pointerEvents: "auto",
+              marginTop: "18vh",
+              minWidth: "280px",
+              boxShadow: "0 8px 30px rgba(0,0,0,0.6)",
+            }}
+          >
+            <div
+              className="modal-heading"
+              style={{
+                background:
+                  "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
+              }}
+            >
+              <span className="modal-heading-text">🚪 LEAVE LOBBY</span>
+            </div>
+            <div
+              className="modal-body"
+              style={{ textAlign: "center", padding: "18px" }}
+            >
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#4a2c18",
+                  marginBottom: "15px",
+                }}
+              >
+                Leave this room?
+                <br />
+                <span style={{ fontSize: "12px", color: "#5D4037" }}>
+                  You will disconnect and return to the main menu.
+                </span>
+              </div>
+              <div
+                className="modal-buttons"
+                style={{ justifyContent: "center", gap: "15px" }}
+              >
+                <button
+                  className="modal-btn"
+                  style={{
+                    flex: "none",
+                    minWidth: "100px",
+                    background: "#e0e0e0",
+                    color: "#333",
+                  }}
+                  onClick={() => setShowLeaveLobbyModal(false)}
+                >
+                  STAY
+                </button>
+                <button
+                  className="modal-btn cancel"
+                  style={{
+                    flex: "none",
+                    minWidth: "100px",
+                    background:
+                      "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
+                    color: "white",
+                  }}
+                  onClick={handleLeaveLobby}
+                >
+                  LEAVE
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exit App Confirmation Modal */}
+      {showExitAppModal && (
+        <div
+          className="modal-overlay menu-modal-overlay"
+          style={{ zIndex: 1000000 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowExitAppModal(false);
+          }}
+        >
+          <div
+            className="buy-modal deal-modal bank-modal"
+            style={{
+              pointerEvents: "auto",
+              marginTop: "18vh",
+              minWidth: "280px",
+              boxShadow: "0 8px 30px rgba(0,0,0,0.6)",
+            }}
+          >
+            <div
+              className="modal-heading"
+              style={{
+                background:
+                  "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
+              }}
+            >
+              <span className="modal-heading-text">🚪 EXIT PSEUDOPOLY</span>
+            </div>
+            <div
+              className="modal-body"
+              style={{ textAlign: "center", padding: "18px" }}
+            >
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#4a2c18",
+                  marginBottom: "15px",
+                }}
+              >
+                Exit PseudoPoly?
+                <br />
+                <span style={{ fontSize: "12px", color: "#5D4037" }}>
+                  Are you sure you want to close the game?
+                </span>
+              </div>
+              <div
+                className="modal-buttons"
+                style={{ justifyContent: "center", gap: "15px" }}
+              >
+                <button
+                  className="modal-btn"
+                  style={{
+                    flex: "none",
+                    minWidth: "100px",
+                    background: "#e0e0e0",
+                    color: "#333",
+                  }}
+                  onClick={() => setShowExitAppModal(false)}
+                >
+                  CANCEL
+                </button>
+                <button
+                  className="modal-btn cancel"
+                  style={{
+                    flex: "none",
+                    minWidth: "100px",
+                    background:
+                      "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
+                    color: "white",
+                  }}
+                  onClick={async () => {
+                    setShowExitAppModal(false);
+                    try {
+                      await CapApp.exitApp();
+                    } catch (e) {
+                      if (window.navigator?.app?.exitApp) {
+                        window.navigator.app.exitApp();
+                      }
+                    }
+                  }}
+                >
+                  EXIT APP
                 </button>
               </div>
             </div>

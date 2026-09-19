@@ -275,7 +275,14 @@ io.on('connection', (socket) => {
 
     // Auto-disambiguate avatar if already taken
     let finalAvatar = avatar;
-    const allAvatars = ['avatar_blue_glossy', 'avatar_orange_glossy', 'avatar_black_glossy', 'avatar_white_glossy'];
+    const allAvatars = [
+      'avatar_blue_glossy',
+      'avatar_orange_glossy',
+      'avatar_black_glossy',
+      'avatar_white_glossy',
+      'avatar_red',
+      'avatar_green',
+    ];
     let avatarTaken = room.players.some(p => p.avatar === finalAvatar && p.connected);
     if (avatarTaken) {
       const freeAvatar = allAvatars.find(a => !room.players.some(p => p.avatar === a && p.connected));
@@ -1084,6 +1091,15 @@ function handleLanding(room, playerIndex, tileIndex) {
     } else {
        room.gameState.history.unshift(`${room.players[playerIndex]?.name || 'Player'} landed on Cash Stack, but it's empty!`);
     }
+  } else if (tileIndex === 18) {
+    // 5. ROB BANK
+    room.gameState.modalState = {
+      type: 'ROB_BANK',
+      status: 'IDLE',
+      payload: { playerIndex }
+    };
+    room.gameState.isProcessingTurn = true;
+    console.log(`[SERVER] Player ${playerIndex} landed on ROB BANK`);
   }
 }
 
@@ -1149,7 +1165,9 @@ function handleRollDice(room, playerIndex, payload = {}) {
           // Clear hopping player visual and turn lock after landing processed
           setTimeout(() => {
              room.gameState.hoppingPlayer = null;
-             room.gameState.isProcessingTurn = false; // Turn processing unlocked!
+             if (!room.gameState.modalState || room.gameState.modalState.type !== 'ROB_BANK') {
+                room.gameState.isProcessingTurn = false; // Turn processing unlocked if not in Rob Bank modal!
+             }
              broadcastState(room);
           }, 800);
       }, 500); 
@@ -1601,7 +1619,7 @@ function handleAttemptRobbery(room, playerIndex) {
     } else {
       console.log(`[SERVER] ERROR: No roomCode for room, cannot broadcast RESULT`);
     }
-  }, 3000); // 3 seconds processing
+  }, 5000); // 5 seconds processing
 }
 
 function handleEndTurn(room) {

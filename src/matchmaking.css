@@ -16,7 +16,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: env(safe-area-inset-top, 8px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 8px) env(safe-area-inset-left, 16px);
+  padding: 8px 16px;
   box-sizing: border-box;
   background-color: #081120;
   font-family: 'Junegull', 'Fredoka One', 'Varela Round', sans-serif;
@@ -248,7 +248,7 @@
   width: 52px;
   height: 52px;
   min-width: 52px;
-  border-radius: 14px;
+  border-radius: 50%;
   background: #1e293b;
   display: flex;
   align-items: center;
@@ -261,6 +261,7 @@
 .mm-profile-avatar-img {
   width: 42px;
   height: 42px;
+  border-radius: 50%;
   object-fit: contain;
 }
 
@@ -310,7 +311,7 @@
 .mm-avatar-thumb {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 50%;
   background: rgba(15, 23, 42, 0.6);
   border: 2px solid transparent;
   display: flex;
@@ -319,11 +320,13 @@
   cursor: pointer;
   transition: all 0.18s ease;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .mm-avatar-thumb img {
   width: 26px;
   height: 26px;
+  border-radius: 50%;
   object-fit: contain;
 }
 
@@ -848,15 +851,15 @@
 }
 
 .mm-pin-box {
-  width: 48px;
-  height: 54px;
-  border-radius: 12px;
+  width: 58px;
+  height: 66px;
+  border-radius: 14px;
   background: rgba(15, 23, 42, 0.85);
-  border: 2px solid rgba(255, 255, 255, 0.16);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 32px;
   font-family: 'Junegull', sans-serif;
   color: #ffd700;
   transition: all 0.18s ease;
@@ -956,20 +959,29 @@
 }
 
 .mm-lobby-code-chip {
-  background: rgba(255, 215, 0, 0.15);
-  border: 1px solid rgba(255, 215, 0, 0.45);
+  background: rgba(255, 215, 0, 0.18);
+  border: 2px solid rgba(255, 215, 0, 0.6);
   color: #ffd700;
-  font-size: 11px;
-  letter-spacing: 1px;
-  padding: 4px 12px;
-  border-radius: 20px;
+  font-size: 22px;
+  letter-spacing: 2px;
+  padding: 6px 20px;
+  border-radius: 28px;
   font-weight: 700;
   font-family: 'Junegull', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   transition: all 0.2s;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.25);
+}
+
+.mm-lobby-code-chip .code-num {
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
 }
 
 .mm-lobby-code-chip.copied {

@@ -1,15 +1,17 @@
 /* Additional App Styles */
 
-/* Property War Modal - Center Responsive Optimization (No Scrollbars) */
+/* Property War Modal - Stable Full Height Optimization (No Dynamic Jumping) */
 .war-modal {
   width: 96% !important;
   max-width: 380px !important;
+  height: 94% !important;
   max-height: 94% !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
   border-radius: 12px !important;
   box-shadow: 0 10px 40px rgba(0,0,0,0.55) !important;
+  box-sizing: border-box !important;
 }
 
 .war-modal .modal-heading {
@@ -29,13 +31,19 @@
   flex-direction: column !important;
   justify-content: space-between !important;
   padding: 6px 8px !important;
-  overflow: hidden !important;
+  overflow-y: auto !important;
+  max-height: calc(100% - 32px) !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
 
 .war-modal .modal-body::-webkit-scrollbar {
   display: none !important;
+}
+
+/* Menu Modal Overlay - Highest z-index to stay above all dialogs */
+.menu-modal-overlay {
+  z-index: 1000000 !important;
 }
 
 /* Deal Modal - Center Responsive Optimization (No Scrollbars) */
@@ -284,6 +292,9 @@
 
 /* Join Phase */
 .war-join-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
   max-height: 110px !important;
   overflow-y: auto !important;
   margin-bottom: 3px !important;
@@ -295,35 +306,41 @@
 }
 
 .war-join-list > div {
-  padding: 2px 5px !important;
-  margin-bottom: 2px !important;
-  border-radius: 5px !important;
+  padding: 2px 4px !important;
+  margin-bottom: 0 !important;
+  border-radius: 4px !important;
 }
 
 .war-join-list img {
-  width: 17px !important;
-  height: 17px !important;
+  width: 15px !important;
+  height: 15px !important;
   border-radius: 50% !important;
 }
 
 .war-join-list .modal-btn {
-  padding: 2px 5px !important;
-  font-size: 8.5px !important;
-  height: 20px !important;
-  min-height: 20px !important;
-  line-height: 20px !important;
+  padding: 1px 5px !important;
+  font-size: 8px !important;
+  height: 19px !important;
+  min-height: 19px !important;
+  line-height: 19px !important;
+  border-radius: 3px !important;
 }
 
-/* Roll Phase History */
+/* Roll Phase History / List */
 .war-rolling-list {
-  max-height: 80px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  width: 100% !important;
+  max-height: 90px !important;
   overflow-y: auto !important;
   margin: 2px 0 !important;
   scrollbar-width: none !important;
   background: rgba(0, 0, 0, 0.04) !important;
   border: 1px solid rgba(0, 0, 0, 0.07) !important;
   border-radius: 6px !important;
-  padding: 2px 4px !important;
+  padding: 2px 3px !important;
+  box-sizing: border-box !important;
 }
 
 .war-rolling-list::-webkit-scrollbar {
@@ -332,17 +349,26 @@
 
 .war-rolling-list > div {
   padding: 2px 5px !important;
-  margin-bottom: 2px !important;
-  font-size: 9.5px !important;
-  border-radius: 5px !important;
+  margin-bottom: 0 !important;
+  font-size: 9px !important;
+  border-radius: 4px !important;
   background: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.06) !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.35s ease !important;
+}
+
+.war-rolling-list > div.winner-item {
+  background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #FFD700 !important;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6) !important;
+  transform: scale(1.02);
 }
 
 .war-rolling-list img {
-  width: 18px !important;
-  height: 18px !important;
+  width: 15px !important;
+  height: 15px !important;
   border-radius: 50% !important;
 }
 
@@ -483,41 +509,42 @@
 }
 
 .war-winner-section {
-  margin-bottom: 3px !important;
+  margin-bottom: 2px !important;
   flex-shrink: 0 !important;
   text-align: center !important;
 }
 
 .war-winner-section .modal-city-name {
-  font-size: 15px !important;
+  font-size: 13px !important;
   margin-bottom: 1px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 6px !important;
+  gap: 4px !important;
 }
 
 .war-winner-trophy {
-  font-size: 17px !important;
+  font-size: 14px !important;
   line-height: 1 !important;
   filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6)) !important;
 }
 
 .war-winner-prize {
-  font-size: 11px !important;
+  font-size: 9.5px !important;
   color: #5D4037 !important;
   font-weight: 700 !important;
-  margin-bottom: 3px !important;
+  margin-bottom: 2px !important;
   text-align: center !important;
 }
 
 .war-roll-list {
   display: flex !important;
   flex-direction: column !important;
-  gap: 3px !important;
-  margin: 2px 0 4px 0 !important;
-  max-height: none !important;
-  overflow: hidden !important;
+  gap: 2px !important;
+  margin: 1px 0 2px 0 !important;
+  max-height: 105px !important;
+  overflow-y: auto !important;
+  scrollbar-width: none !important;
 }
 
 .war-roll-list::-webkit-scrollbar {
@@ -525,19 +552,19 @@
 }
 
 .war-roll-list > div {
-  padding: 3px 8px !important;
+  padding: 2px 6px !important;
   margin-bottom: 0 !important;
-  font-size: 11px !important;
-  min-height: 22px !important;
-  border-radius: 6px !important;
+  font-size: 9.5px !important;
+  min-height: 18px !important;
+  border-radius: 4px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
 }
 
 .war-roll-list img {
-  width: 18px !important;
-  height: 18px !important;
+  width: 15px !important;
+  height: 15px !important;
   border-radius: 50% !important;
 }
 
@@ -551,6 +578,7 @@
 /* Mobile & Small Screen Adaptations */
 @media (max-width: 480px), (max-height: 600px) {
   .war-modal {
+    height: 98% !important;
     max-height: 98% !important;
   }
   
@@ -738,7 +766,10 @@
 }
 
 /* Landscape Mode Optimization */
-@media (max-width: 900px) and (orientation: landscape) {
+@media screen and (orientation: landscape) and (max-height: 650px),
+       screen and (orientation: landscape) and (max-width: 1200px),
+       screen and (max-height: 500px),
+       (hover: none) and (orientation: landscape) {
   .auction-modal {
     width: 92% !important;
     max-width: 360px !important;
@@ -771,10 +802,25 @@
   .buy-modal {
      max-height: 98vh !important;
   }
+  .war-modal {
+     height: 96% !important;
+     max-height: 96% !important;
+  }
   .buy-modal:not(.war-modal):not(.auction-modal):not(.deal-modal) .modal-body {
      padding: 8px !important;
      overflow-y: auto;
   }
+}
+
+/* Modal Button Font Size Optimization - Fits properly without overflow */
+.buy-modal .modal-buttons .modal-btn,
+.auction-bid-buttons .modal-btn,
+.deal-modal .modal-btn,
+.bank-modal .modal-btn,
+.war-modal .modal-buttons .modal-btn {
+  font-size: clamp(9px, 1.8vh, 11.5px) !important;
+  padding: 4px 8px !important;
+  letter-spacing: 0.3px !important;
 }
 
 /* Matchmaking Button Pending Spinner */

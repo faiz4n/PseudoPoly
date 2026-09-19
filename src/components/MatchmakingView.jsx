@@ -1,5 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import lanDiscovery from "../services/lanDiscovery";
+import {
+  CHOOSABLE_AVATARS,
+  getAvatarColor,
+  resolveAvatar,
+} from "../data/boardData";
 
 // --- CLEAN GAME SVG ICONS ---
 function UsersIcon({ size = 24, color = "currentColor" }) {
@@ -162,6 +167,7 @@ export default function MatchmakingView({
   myIdentity,
   setMyIdentity,
   players = [],
+  avatarOptions = [],
   AVATAR_COLORS = {},
   initializeHost,
   joinRoom,
@@ -182,6 +188,7 @@ export default function MatchmakingView({
   socketConnected,
   onToggleReady,
   matchmakingPending,
+  onRegisterBackHandler,
 }) {
   const [activeScreen, setActiveScreen] = useState("home");
   const [discoveredGames, setDiscoveredGames] = useState([]);
@@ -189,6 +196,31 @@ export default function MatchmakingView({
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const pinInputRef = useRef(null);
+
+  // Register back gesture handler for Matchmaking screens and sub-modals
+  useEffect(() => {
+    if (typeof onRegisterBackHandler === "function") {
+      onRegisterBackHandler(() => {
+        if (showRulesModal) {
+          setShowRulesModal(false);
+          return true;
+        }
+        if (activeScreen === "hotspot_scan") {
+          setActiveScreen("hotspot_choice");
+          return true;
+        }
+        if (activeScreen === "hotspot_choice" || activeScreen === "online_menu") {
+          setActiveScreen("mode_select");
+          return true;
+        }
+        if (activeScreen === "mode_select") {
+          setActiveScreen("home");
+          return true;
+        }
+        return false;
+      });
+    }
+  }, [activeScreen, showRulesModal, onRegisterBackHandler]);
 
   // Sync with App's gameStage (e.g. when room is joined, gameStage becomes 'lobby')
   useEffect(() => {
@@ -288,7 +320,10 @@ export default function MatchmakingView({
     connectedPlayers.length >= 2 &&
     connectedPlayers.every((p) => p.isHost || p.isReady === true);
 
-  const activeColor = AVATAR_COLORS[myIdentity.avatar] || "#ffd700";
+  const activeColor =
+    AVATAR_COLORS[myIdentity.avatar] ||
+    getAvatarColor(myIdentity.avatar) ||
+    "#ffd700";
   const TOTAL_SLOTS = 4;
 
   return (
@@ -333,7 +368,7 @@ export default function MatchmakingView({
                   }}
                 >
                   <img
-                    src={myIdentity.avatar}
+                    src={resolveAvatar(myIdentity.avatar)}
                     alt="Player Avatar"
                     className="mm-profile-avatar-img"
                   />
@@ -365,15 +400,33 @@ export default function MatchmakingView({
                   CHOOSE AVATAR
                 </span>
                 <div className="mm-avatar-picker">
-                  {(players || []).map((p, idx) => {
-                    const isSelected = myIdentity.avatar === p.avatar;
-                    const pColor = AVATAR_COLORS[p.avatar] || "#ffd700";
+                  {(avatarOptions && avatarOptions.length > 0
+                    ? avatarOptions
+                    : CHOOSABLE_AVATARS
+                  ).map((p, idx) => {
+                    const isSelected =
+                      myIdentity.avatar === p.avatar ||
+                      resolveAvatar(myIdentity.avatar) === resolveAvatar(p.avatar) ||
+                      (typeof myIdentity.avatar === "string" &&
+                        typeof p.avatar === "string" &&
+                        (myIdentity.avatar.includes(p.id || "") ||
+                          (myIdentity.avatar.includes("red") && p.id === "red") ||
+                          (myIdentity.avatar.includes("green") && p.id === "green") ||
+                          (myIdentity.avatar.includes("orange") && p.id === "orange") ||
+                          (myIdentity.avatar.includes("blue") && p.id === "blue") ||
+                          (myIdentity.avatar.includes("white") && p.id === "white") ||
+                          (myIdentity.avatar.includes("black") && p.id === "black")));
+                    const pColor =
+                      AVATAR_COLORS[p.avatar] || p.color || getAvatarColor(p.avatar);
                     return (
                       <div
-                        key={idx}
+                        key={p.id || idx}
                         className={`mm-avatar-thumb ${isSelected ? "active" : ""}`}
                         style={{
                           borderColor: isSelected ? pColor : "transparent",
+                          boxShadow: isSelected
+                            ? `0 0 10px ${pColor}99`
+                            : "none",
                         }}
                         onClick={() =>
                           setMyIdentity((prev) => ({
@@ -382,7 +435,7 @@ export default function MatchmakingView({
                           }))
                         }
                       >
-                        <img src={p.avatar} alt={`Avatar ${idx + 1}`} />
+                        <img src={resolveAvatar(p.avatar)} alt={p.name || `Avatar ${idx + 1}`} />
                       </div>
                     );
                   })}
@@ -938,8 +991,8 @@ export default function MatchmakingView({
                     onClick={handleCopyCode}
                     title="Click to copy code"
                   >
-                    <span>CODE: {roomCode}</span>
-                    <span>{isCopied ? "✓" : "📋"}</span>
+                    <span>ROOM CODE: <strong className="code-num">{roomCode}</strong></span>
+                    <span style={{ fontSize: "22px", marginLeft: "4px" }}>{isCopied ? "✓" : "📋"}</span>
                   </button>
                 )}
                 <span className="mm-lobby-count">
@@ -956,7 +1009,10 @@ export default function MatchmakingView({
                 const isMe = index === myPlayerIndex;
 
                 if (player) {
-                  const pColor = AVATAR_COLORS[player.avatar] || "#ffd700";
+                  const pColor =
+                    AVATAR_COLORS[player.avatar] ||
+                    getAvatarColor(player.avatar) ||
+                    "#ffd700";
                   const isPlayerReady = isSlotHost || player.isReady === true;
 
                   return (
@@ -972,7 +1028,7 @@ export default function MatchmakingView({
                           boxShadow: `0 0 10px ${pColor}66`,
                         }}
                       >
-                        <img src={player.avatar} alt={player.name} />
+                        <img src={resolveAvatar(player.avatar)} alt={player.name} />
                         {isSlotHost && (
                           <div className="mm-slot-crown-badge">
                             <CrownIcon size={12} />

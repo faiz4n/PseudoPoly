@@ -41,8 +41,8 @@ function createInitialGameState() {
     currentPlayer: 0,
     diceValues: [1, 1],
     isRolling: false,
-    playerPositions: [0, 0, 0, 0],
-    playerMoney: [10000, 10000, 10000, 10000],
+    playerPositions: [0, 0, 0, 0, 0, 0],
+    playerMoney: [10000, 10000, 10000, 10000, 10000, 10000],
     propertyOwnership: {},
     propertyLevels: {},
     history: ['Game started!'],
@@ -151,7 +151,7 @@ io.on('connection', (socket) => {
         roomCode: activeCode,
         hostName: room.players[0]?.name || 'Host',
         players: room.players.filter(p => p.connected).length,
-        maxPlayers: 4,
+        maxPlayers: 6,
         status: 'lobby'
       });
     } else {
@@ -159,7 +159,7 @@ io.on('connection', (socket) => {
         roomCode: '',
         hostName: 'Ready to Host',
         players: 0,
-        maxPlayers: 4,
+        maxPlayers: 6,
         status: 'open'
       });
     }
@@ -257,8 +257,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (room.players.length >= 4) {
-      socket.emit('error', { message: 'Room is full (max 4 players)!' });
+    if (room.players.length >= 6) {
+      socket.emit('error', { message: 'Room is full (max 6 players)!' });
       return;
     }
 

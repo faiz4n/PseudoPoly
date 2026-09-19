@@ -2237,29 +2237,35 @@ body {
     font-size: 11px;
   }
 
-  /* Player Panel - very compact */
+  /* Player Panel - ultra compact for up to 6 players */
   .player-panel {
-    padding: 4px;
+    padding: 3px;
     flex: 0 0 auto;
     border-radius: 7px;
+    max-height: 48vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .player-panel::-webkit-scrollbar {
+    display: none;
   }
 
   .player-item {
-    padding: 2px 4px;
-    gap: 4px;
-    min-height: 0;
+    padding: 1.5px 3px;
+    gap: 3px;
+    min-height: 18px;
   }
 
   .player-avatar {
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    min-height: 20px;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
   }
 
   .player-name,
   .player-money {
-    font-size: 9px;
+    font-size: 8.5px;
   }
 
   /* Cash Stack - Compact overrides */

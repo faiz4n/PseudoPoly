@@ -49,7 +49,9 @@ function App() {
   const [turnFinished, setTurnFinished] = useState(false); // New flag for manual turn end
   const [currentPlayer, setCurrentPlayer] = useState(0);
   const [history, setHistory] = useState(["Player 3 starts turn"]);
-  const [playerPositions, setPlayerPositions] = useState([0, 0, 0, 0]);
+  const [playerPositions, setPlayerPositions] = useState(() =>
+    Array(players.length).fill(0),
+  );
   const [hoppingPlayer, setHoppingPlayer] = useState(null);
   const [pawnTransitionDuration, setPawnTransitionDuration] = useState(185);
   const [pawnStepDelay, setPawnStepDelay] = useState(210);
@@ -1167,7 +1169,7 @@ function App() {
   }, [gameStage, serverUrl]);
 
   // Track last known positions for animation (independent of ref which can be stale)
-  const lastKnownPositionsRef = useRef([0, 0, 0, 0]);
+  const lastKnownPositionsRef = useRef(Array(players.length).fill(0));
 
   // Track when client-side animation is in progress (prevents server override)
   const isAnimatingRef = useRef(false);
@@ -4496,8 +4498,8 @@ function App() {
     // FULL GAME STATE RESET - reset game players to default list
     setGamePlayers(players);
     setConnectedPlayers([]);
-    setPlayerPositions([0, 0, 0, 0]);
-    setPlayerMoney([10000, 10000, 10000, 10000]);
+    setPlayerPositions(Array(players.length).fill(0));
+    setPlayerMoney(players.map((p) => p.money));
     setPropertyOwnership({});
     setPropertyLevels({});
     setCurrentPlayer(0);
@@ -6884,18 +6886,31 @@ function App() {
     let offsetX = 0;
     let offsetY = 0;
 
-    // Neat 2x2 offset if multiple players share the tile
+    // Neat 2x2 or 2x3 offset if multiple players share the tile
     // BUT during hopping, moving pawn stays at center so it moves smoothly without zigzagging!
     const isThisPawnHopping = hoppingPlayer === playerIndex;
     if (!isThisPawnHopping && playersOnTile.length > 1) {
       const slot = playersOnTile.indexOf(playerIndex);
-      const offsets = [
-        { x: -1.1, y: -1.1 },
-        { x: 1.1, y: -1.1 },
-        { x: -1.1, y: 1.1 },
-        { x: 1.1, y: 1.1 },
-      ];
-      const off = offsets[slot % 4];
+      let offsets;
+      if (playersOnTile.length <= 4) {
+        offsets = [
+          { x: -1.1, y: -1.1 },
+          { x: 1.1, y: -1.1 },
+          { x: -1.1, y: 1.1 },
+          { x: 1.1, y: 1.1 },
+        ];
+      } else {
+        // 6-slot layout: 2 rows of 3
+        offsets = [
+          { x: -1.35, y: -1.1 },
+          { x: 0, y: -1.1 },
+          { x: 1.35, y: -1.1 },
+          { x: -1.35, y: 1.1 },
+          { x: 0, y: 1.1 },
+          { x: 1.35, y: 1.1 },
+        ];
+      }
+      const off = offsets[slot % offsets.length];
       offsetX = off.x;
       offsetY = off.y;
     }

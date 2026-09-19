@@ -331,7 +331,7 @@ export default function MatchmakingView({
     AVATAR_COLORS[myIdentity.avatar] ||
     getAvatarColor(myIdentity.avatar) ||
     "#ffd700";
-  const TOTAL_SLOTS = 4;
+  const TOTAL_SLOTS = 6;
 
   return (
     <div className="mm-overlay">

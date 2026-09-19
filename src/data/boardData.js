@@ -168,8 +168,10 @@ export const corners = {
 
 // Players data
 export const players = [
-  { id: 3, name: 'PLAYER 2', money: 12500, avatar: avatarOrange, color: '#E64A19' },  // Orange
-  { id: 1, name: 'PLAYER 3', money: 12500, avatar: avatarBlue, color: '#2196F3' },    // Blue
-  { id: 4, name: 'FAIZAN', money: 12500, avatar: avatarWhite, color: '#E0E0E0' },     // White/Light Gray
-  { id: 2, name: 'PLAYER 4', money: 12500, avatar: avatarBlack, color: '#212121' },   // Black/Dark
+  { id: 0, name: 'PLAYER 1', money: 12500, avatar: avatarOrange, color: '#E64A19' },  // Orange
+  { id: 1, name: 'PLAYER 2', money: 12500, avatar: avatarBlue, color: '#2196F3' },    // Blue
+  { id: 2, name: 'FAIZAN', money: 12500, avatar: avatarWhite, color: '#E0E0E0' },     // White/Light Gray
+  { id: 3, name: 'PLAYER 4', money: 12500, avatar: avatarBlack, color: '#212121' },   // Black/Dark
+  { id: 4, name: 'PLAYER 5', money: 12500, avatar: avatarRed, color: '#E53935' },     // Red
+  { id: 5, name: 'PLAYER 6', money: 12500, avatar: avatarGreen, color: '#43A047' },   // Green
 ];

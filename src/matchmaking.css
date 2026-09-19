@@ -253,9 +253,9 @@
 
 /* Logo: perfectly scaled for mobile landscape so it never pushes buttons off */
 .mm-home-logo {
-  max-width: min(230px, 44vw);
-  max-height: 24vh;
-  margin-bottom: 8px;
+  max-width: min(280px, 50vw);
+  max-height: 28vh;
+  margin-bottom: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -263,10 +263,10 @@
 }
 .mm-home-logo img {
   max-width: 100%;
-  max-height: 24vh;
+  max-height: 28vh;
   height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.6));
 }
 
 .mm-home-actions {

@@ -1,9 +1,10 @@
 import React from "react";
+import { formatLogsAsText, copyToClipboard } from "../utils/logger.js";
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null, errorInfo: null, copied: false };
   }
 
   static getDerivedStateFromError(error) {
@@ -14,6 +15,23 @@ export class ErrorBoundary extends React.Component {
     console.error("[ErrorBoundary] Uncaught UI render error:", error, errorInfo);
     this.setState({ errorInfo });
   }
+
+  handleCopyError = async () => {
+    const errorDetails = [
+      `=== PSEUDOPOLY ERROR REPORT ===`,
+      `Time: ${new Date().toISOString()}`,
+      `Error: ${this.state.error?.message || this.state.error}`,
+      `Component Stack: ${this.state.errorInfo?.componentStack || 'None'}`,
+      `\n`,
+      formatLogsAsText('ALL')
+    ].join('\n');
+
+    const success = await copyToClipboard(errorDetails);
+    if (success) {
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2500);
+    }
+  };
 
   handleReload = () => {
     try {
@@ -103,11 +121,31 @@ export class ErrorBoundary extends React.Component {
             >
               {errorMsg}
             </div>
-            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
+              <button
+                onClick={this.handleCopyError}
+                style={{
+                  padding: "8px 14px",
+                  background: this.state.copied
+                    ? "#2e7d32"
+                    : "linear-gradient(135deg, #1976D2 0%, #0D47A1 100%)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "#fff",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                {this.state.copied ? "✓ Copied!" : "📋 Copy Error"}
+              </button>
               <button
                 onClick={this.handleResume}
                 style={{
-                  padding: "8px 18px",
+                  padding: "8px 16px",
                   background: "linear-gradient(135deg, #27AE60 0%, #2ECC71 100%)",
                   border: "none",
                   borderRadius: "8px",
@@ -122,7 +160,7 @@ export class ErrorBoundary extends React.Component {
               <button
                 onClick={this.handleReload}
                 style={{
-                  padding: "8px 18px",
+                  padding: "8px 14px",
                   background: "rgba(255, 255, 255, 0.15)",
                   border: "1px solid rgba(255, 255, 255, 0.2)",
                   borderRadius: "8px",
@@ -135,6 +173,7 @@ export class ErrorBoundary extends React.Component {
                 Reload
               </button>
             </div>
+
           </div>
         </div>
       );

@@ -32,3 +32,5 @@ android/app/build/
 build-apk/
 *.apk
 local.properties
+server/referenceApk/
+

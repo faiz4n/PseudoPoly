@@ -41,6 +41,7 @@ import {
   EscapedThiefIcon,
   VaultDiamondIcon,
 } from "./components/RobBankIcons";
+import LogViewerModal from "./components/LogViewerModal";
 
 function App() {
   const [diceValues, setDiceValues] = useState([6, 6]);
@@ -361,6 +362,7 @@ function App() {
   // Menu System State
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
   const [playerAnimationEnabled, setPlayerAnimationEnabled] = useState(() => {
     try {
       const stored = localStorage.getItem("pseudo_player_animation_enabled");
@@ -5123,6 +5125,10 @@ function App() {
       setShowExitConfirm(false);
       return true;
     }
+    if (showLogModal) {
+      setShowLogModal(false);
+      return true;
+    }
     if (showSettingsModal) {
       closeSettings();
       return true;
@@ -5183,6 +5189,7 @@ function App() {
     showExitAppModal,
     showLeaveLobbyModal,
     showExitConfirm,
+    showLogModal,
     showSettingsModal,
     showMenuModal,
     showBuyModal,
@@ -5201,6 +5208,7 @@ function App() {
     showArrestModal,
     showJailActionModal,
   ]);
+
 
   // Handle Android Back Gesture / Button
   const handleBackNavigation = useCallback(() => {
@@ -9480,6 +9488,21 @@ function App() {
                           ⚙️ SETTINGS
                         </button>
                         <button
+                          className="modal-btn"
+                          style={{
+                            width: "100%",
+                            background:
+                              "linear-gradient(to bottom, #37474F 0%, #263238 100%)",
+                            color: "white",
+                          }}
+                          onClick={() => {
+                            setShowMenuModal(false);
+                            setShowLogModal(true);
+                          }}
+                        >
+                          📋 GAME LOGS
+                        </button>
+                        <button
                           className="modal-btn cancel"
                           style={{
                             width: "100%",
@@ -9491,6 +9514,7 @@ function App() {
                         >
                           🚪 EXIT GAME
                         </button>
+
                       </div>
                     </div>
                   </div>
@@ -13002,6 +13026,66 @@ function App() {
                 )}
               </div>
 
+              {/* 4. In-Game Diagnostics & Logger */}
+              <div
+                style={{
+                  marginBottom: "14px",
+                  paddingTop: "14px",
+                  borderTop: "1px solid #e0d7c6",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "6px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      color: "#4a2c18",
+                      fontWeight: "bold",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>📋 Game Logs</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogModal(true)}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "20px",
+                      fontWeight: "bold",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      border: "none",
+                      background:
+                        "linear-gradient(135deg, #1976D2 0%, #0D47A1 100%)",
+                      color: "#fff",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                    }}
+                  >
+                    VIEW LOGS
+                  </button>
+                </div>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#795548",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  All in-game events and errors are automatically recorded with
+                  timestamps in device storage. You can view or copy them anytime to
+                  diagnose issues.
+                </div>
+              </div>
+
               <div
                 className="modal-buttons"
                 style={{ justifyContent: "center", marginTop: "15px" }}
@@ -13023,6 +13107,13 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Game Logs & Diagnostics Modal */}
+      <LogViewerModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+      />
+
 
       {/* Leave Lobby Confirmation Modal */}
       {showLeaveLobbyModal && (

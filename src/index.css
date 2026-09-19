@@ -2429,38 +2429,45 @@ body {
     display: block !important;
   }
 
-  /* Grid for War Lists (Users) - Keep compact, horizontal cards */
-  .war-join-list,
-  .war-rolling-list,
-  .war-roll-list {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 4px 6px !important;
+  /* War Lists (Users) - Single Column for rolling list and compact join list */
+  .war-rolling-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5px !important;
     width: 100% !important;
-    margin: 2px 0 4px 0 !important;
+    margin: 1px 0 !important;
   }
 
-  /* War List Items - strictly horizontal row so elements sit side-by-side */
+  .war-join-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    width: 100% !important;
+    margin: 1px 0 !important;
+  }
+
+  /* War List Items - ultra-compact single row with padding down to 0-1px */
   .war-join-list > div,
   .war-rolling-list > div,
   .war-roll-list > div {
-    padding: 3px 6px !important;
+    padding: 0px 4px !important;
     box-sizing: border-box !important;
-    font-size: 10px !important;
+    font-size: 8.5px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     flex-direction: row !important;
-    min-height: 34px !important;
-    max-height: 38px !important;
+    min-height: 18px !important;
+    max-height: 22px !important;
     overflow: hidden !important;
-    border-radius: 6px !important;
+    border-radius: 3px !important;
   }
 
   .war-roll-list img,
-  .war-join-list img {
-    width: 20px !important;
-    height: 20px !important;
+  .war-join-list img,
+  .war-rolling-list img {
+    width: 13px !important;
+    height: 13px !important;
     border-radius: 50% !important;
     flex-shrink: 0 !important;
   }

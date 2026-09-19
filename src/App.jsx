@@ -10115,11 +10115,12 @@ function App() {
                                     flexDirection: "row",
                                     justifyContent: "space-between",
                                     alignItems: "center",
-                                    padding: "2px 5px",
+                                    padding: "0px 3px",
+                                    minHeight: "18px",
                                     background: isJoined
                                       ? "#E8F5E9"
                                       : "#F5F5F5",
-                                    borderRadius: "4px",
+                                    borderRadius: "3px",
                                     border: isJoined
                                       ? "1px solid #4CAF50"
                                       : "1px solid #ddd",
@@ -10130,7 +10131,7 @@ function App() {
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
-                                      gap: "4px",
+                                      gap: "3px",
                                       minWidth: 0,
                                       flex: 1,
                                       overflow: "hidden",
@@ -10140,8 +10141,8 @@ function App() {
                                       src={player.avatar}
                                       alt={player.name}
                                       style={{
-                                        width: "15px",
-                                        height: "15px",
+                                        width: "13px",
+                                        height: "13px",
                                         borderRadius: "50%",
                                         flexShrink: 0,
                                       }}
@@ -10723,9 +10724,9 @@ function App() {
                                               : ""
                                           }
                                           style={{
-                                            padding: "1px 5px",
-                                            height: "19px",
-                                            minHeight: "19px",
+                                            padding: "0px 3px",
+                                            height: "18px",
+                                            minHeight: "18px",
                                             background: showWinnerHighlight
                                               ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
                                               : hasRolled
@@ -10960,15 +10961,17 @@ function App() {
                                     style={{
                                       display: "flex",
                                       justifyContent: "space-between",
-                                      padding: "2px 6px",
+                                      padding: "0px 3px",
+                                      minHeight: "18px",
+                                      boxSizing: "border-box",
                                       background: isWinner
                                         ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
                                         : "linear-gradient(135deg, #FFB74D 0%, #FF9800 100%)",
-                                      borderRadius: "4px",
+                                      borderRadius: "3px",
                                       color: "#fff",
                                       fontWeight: "bold",
                                       boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
-                                      fontSize: "9.5px",
+                                      fontSize: "8.5px",
                                       alignItems: "center",
                                     }}
                                   >
@@ -10976,7 +10979,7 @@ function App() {
                                       style={{
                                         display: "flex",
                                         alignItems: "center",
-                                        gap: "4px",
+                                        gap: "3px",
                                       }}
                                     >
                                       <img
@@ -10988,8 +10991,8 @@ function App() {
                                           gamePlayers[parseInt(playerIdx)]?.name
                                         }
                                         style={{
-                                          width: "15px",
-                                          height: "15px",
+                                          width: "13px",
+                                          height: "13px",
                                           borderRadius: "50%",
                                         }}
                                       />

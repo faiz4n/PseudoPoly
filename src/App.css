@@ -50,9 +50,12 @@
   height: 0 !important;
 }
 
-/* Menu Modal Overlay - Highest z-index to stay above all dialogs */
+/* Menu Modal Overlay - Highest z-index to stay above all dialogs, with glass blur */
 .menu-modal-overlay {
   z-index: 1000000 !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  background: rgba(0, 0, 0, 0.45) !important;
 }
 
 /* Deal Modal - Center Responsive Optimization (No Scrollbars) */

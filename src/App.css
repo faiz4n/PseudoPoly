@@ -37,8 +37,17 @@
   -ms-overflow-style: none !important;
 }
 
-.war-modal .modal-body::-webkit-scrollbar {
+.war-modal,
+.war-modal * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.war-modal::-webkit-scrollbar,
+.war-modal *::-webkit-scrollbar {
   display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Menu Modal Overlay - Highest z-index to stay above all dialogs */
@@ -617,7 +626,15 @@
   }
   
   .war-rolling-list, .war-roll-list {
-    max-height: 80px !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  .war-rolling-list::-webkit-scrollbar, .war-roll-list::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   .war-tied-player-card {

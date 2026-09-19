@@ -16,28 +16,22 @@
   background-color: #060c18;
 }
 
-/* Extended backdrop to prevent CSS blur edge feathering in corners */
+/* Extended backdrop without overall blur */
 .mm-backdrop {
   position: absolute;
-  inset: -30px;
+  inset: 0;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   z-index: 0;
-  transition: filter 0.35s ease, transform 0.35s ease;
-  will-change: filter, transform;
+  filter: none !important;
 }
 
-/* Home: clean, vibrant, unblurred */
-.mm-backdrop.unblurred {
-  filter: brightness(0.82) contrast(1.05);
-  transform: scale(1.02);
-}
-
-/* All other pages: softly blurred with the illustrated scene clearly recognizable */
+/* Home: crisp, 100% natural, unblurred, no overall blur */
+.mm-backdrop.unblurred,
 .mm-backdrop.blurred {
-  filter: blur(14px) brightness(0.52);
-  transform: scale(1.06);
+  filter: none !important;
+  transform: none !important;
 }
 
 /* Edge-to-edge dark overlay that completely fills all corners on any screen/aspect ratio */
@@ -48,13 +42,14 @@
   pointer-events: none;
 }
 
+/* On home screen: no dark filter at all, clean scene */
 .mm-dark-filter.home-filter {
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.15) 0%, rgba(4, 8, 18, 0.5) 75%, rgba(2, 5, 12, 0.8) 100%),
-              linear-gradient(to bottom, rgba(3, 7, 16, 0.4) 0%, transparent 20%, transparent 80%, rgba(2, 5, 12, 0.55) 100%);
+  display: none !important;
 }
 
+/* On other screens: soft dark filter so cards pop against the background */
 .mm-dark-filter.page-filter {
-  background: rgba(4, 9, 20, 0.42);
+  background: rgba(5, 12, 24, 0.45);
 }
 
 /* ==========================================================================
@@ -105,11 +100,13 @@
 }
 
 .mm-back-btn {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: #2563eb;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  background: rgba(37, 99, 235, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1.5px solid rgba(147, 197, 253, 0.7);
   color: white;
   display: flex;
   align-items: center;
@@ -117,14 +114,20 @@
   font-size: 20px;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-  transition: all 0.15s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.6);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
   line-height: 1;
 }
+.mm-back-btn:hover {
+  background: rgba(37, 99, 235, 0.5);
+  border-color: rgba(191, 219, 254, 0.85);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+}
 .mm-back-btn:active {
-  transform: scale(0.9);
-  background: #1d4ed8;
+  transform: scale(0.92);
+  background: rgba(37, 99, 235, 0.6);
 }
 
 .mm-header-title {
@@ -181,14 +184,19 @@
   height: 42px;
   border-radius: 50%;
   padding: 0;
-  background: rgba(13, 27, 42, 0.9);
+  background: rgba(255, 255, 255, 0.12);
   cursor: pointer;
   overflow: hidden;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.5);
   transition: transform 0.18s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.mm-home-avatar-btn:hover {
+  transform: translateY(-1px);
 }
 .mm-home-avatar-btn:active {
   transform: scale(0.92);
@@ -203,20 +211,24 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: rgba(13, 27, 42, 0.65);
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5);
   transition: all 0.18s ease;
 }
-.mm-home-settings-btn:active {
+.mm-home-settings-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+.mm-home-settings-btn:active {
+  background: rgba(255, 255, 255, 0.25);
   transform: scale(0.92);
 }
 
@@ -292,25 +304,31 @@
 
 /* How to Play secondary button */
 .mm-howto-btn {
-  background: rgba(13, 27, 42, 0.6);
-  border: 1.5px solid rgba(255, 255, 255, 0.32);
-  border-radius: 18px;
-  padding: 6px 22px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 20px;
+  padding: 7px 24px;
   font-family: 'Nunito', sans-serif;
-  font-weight: bold;
+  font-weight: 800;
   font-size: 13px;
   color: #fff;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   transition: all 0.18s;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+.mm-howto-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.7);
+  transform: translateY(-1px);
 }
 .mm-howto-btn:active {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   transform: scale(0.96);
 }
 
@@ -452,8 +470,8 @@
 .mm-mode-card {
   flex: 1;
   max-width: 250px;
-  border-radius: 18px;
-  padding: 10px 12px;
+  border-radius: 20px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -461,7 +479,9 @@
   text-align: center;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.25);
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   cursor: pointer;
 }
@@ -473,28 +493,28 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(0,0,0,0.15) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
   z-index: 1;
   pointer-events: none;
 }
 
-/* Colors matching mockup: Green (Pass&Play), Blue (Hotspot), Purple (Online) */
+/* Translucent Glass Colors - Way more transparent */
 .mm-mode-card.pass-play {
-  background-color: #27ae60;
-  border: 2px solid #2ecc71;
+  background: rgba(39, 174, 96, 0.18);
+  border: 1.5px solid rgba(46, 204, 113, 0.65);
 }
 .mm-mode-card.hotspot {
-  background-color: #1e88e5;
-  border: 2px solid #42a5f5;
+  background: rgba(30, 136, 229, 0.18);
+  border: 1.5px solid rgba(66, 165, 245, 0.65);
 }
 .mm-mode-card.online {
-  background-color: #7b1fa2;
-  border: 2px solid #ab47bc;
+  background: rgba(123, 31, 162, 0.18);
+  border: 1.5px solid rgba(171, 71, 188, 0.65);
 }
 
 .mm-mode-icon-wrap {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   background: white;
   border-radius: 50%;
   display: flex;
@@ -502,7 +522,7 @@
   justify-content: center;
   margin-bottom: 4px;
   z-index: 2;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
 }
 .mm-mode-card.pass-play .mm-mode-icon-wrap { color: #27ae60; }
@@ -511,38 +531,39 @@
 
 .mm-mode-title {
   font-family: 'Junegull', 'Fredoka One', sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   margin: 0 0 3px 0;
   z-index: 2;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
   letter-spacing: 0.5px;
 }
 
 .mm-mode-desc {
   font-size: 11px;
   line-height: 1.25;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.95);
   margin: 0 0 8px 0;
   flex: 1;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
 
 .mm-mode-play-btn {
-  background: white;
+  background: #ffffff;
   border: none;
-  border-radius: 12px;
-  padding: 6px 22px;
+  border-radius: 14px;
+  padding: 8px 30px;
   font-family: 'Nunito', sans-serif;
-  font-weight: 800;
-  font-size: 12px;
+  font-weight: 900;
+  font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   cursor: pointer;
   z-index: 2;
-  box-shadow: 0 3px 0 rgba(0,0,0,0.25);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.25), 0 4px 10px rgba(0,0,0,0.3);
   transition: all 0.1s;
   flex-shrink: 0;
 }
@@ -552,7 +573,7 @@
 
 .mm-mode-play-btn:active {
   transform: translateY(2px);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.25);
 }
 
 /* ==========================================================================
@@ -571,17 +592,17 @@
 
 .mm-choice-card {
   flex: 1;
-  max-width: 290px;
-  background: rgba(13, 27, 42, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 18px;
+  max-width: 295px;
+  background: rgba(10, 20, 36, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
 }
 .mm-choice-card.disabled {
   opacity: 0.6;
@@ -594,7 +615,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.18);
 }
 .mm-choice-card.host-choice .mm-choice-header { border-bottom: 2.5px solid #2ecc71; }
 .mm-choice-card.join-choice .mm-choice-header { border-bottom: 2.5px solid #f5a623; }
@@ -769,9 +790,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(13, 27, 42, 0.8);
+  background: rgba(10, 20, 36, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
   padding: 12px;
   text-align: center;
 }
@@ -828,9 +851,11 @@
   flex: 1.3;
   display: flex;
   flex-direction: column;
-  background: rgba(13, 27, 42, 0.8);
+  background: rgba(10, 20, 36, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
   padding: 12px;
   overflow: hidden;
 }

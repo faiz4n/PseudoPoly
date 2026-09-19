@@ -5454,7 +5454,7 @@ function App() {
       return;
     }
 
-    const fee = warMode === "A" ? 3000 : 2000;
+    const fee = 1000;
 
     // Refund fee
     setPlayerMoney((prev) => {
@@ -10614,22 +10614,22 @@ function App() {
                                     alignItems: "center",
                                     minHeight: 0,
                                     flex: 1,
-                                    overflowY: "auto",
+                                    overflow: "hidden",
                                   }}
                                 >
                                   <div
                                     className="war-roller-badge"
                                     style={{
-                                      fontSize: "11px",
+                                      fontSize: "10.5px",
                                       marginBottom: "2px",
                                       display: "inline-flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      gap: "5px",
+                                      gap: "4px",
                                       background: "rgba(233, 30, 99, 0.08)",
                                       border:
                                         "1px solid rgba(233, 30, 99, 0.22)",
-                                      padding: "2px 8px",
+                                      padding: "1px 6px",
                                       borderRadius: "6px",
                                     }}
                                   >
@@ -10640,7 +10640,7 @@ function App() {
                                           color: "#2E7D32",
                                         }}
                                       >
-                                        🏆 Rolls complete! Determining winner...
+                                        🏆 Determining winner...
                                       </span>
                                     ) : (
                                       <>
@@ -10649,8 +10649,8 @@ function App() {
                                             src={rollerPlayer.avatar}
                                             alt=""
                                             style={{
-                                              width: "16px",
-                                              height: "16px",
+                                              width: "14px",
+                                              height: "14px",
                                               borderRadius: "50%",
                                             }}
                                           />
@@ -10673,7 +10673,7 @@ function App() {
                                   <div
                                     className="dice-container"
                                     style={{
-                                      margin: "2px 0",
+                                      margin: "1px 0",
                                       justifyContent: "center",
                                     }}
                                   >
@@ -10697,7 +10697,8 @@ function App() {
                                       flexDirection: "column",
                                       gap: "2px",
                                       width: "100%",
-                                      margin: "2px 0",
+                                      margin: "1px 0",
+                                      overflow: "hidden",
                                     }}
                                   >
                                     {displayParticipants.map((pIdx) => {
@@ -10723,7 +10724,7 @@ function App() {
                                               : ""
                                           }
                                           style={{
-                                            padding: "2px 6px",
+                                            padding: "1px 5px",
                                             background: showWinnerHighlight
                                               ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
                                               : hasRolled
@@ -10737,7 +10738,9 @@ function App() {
                                             alignItems: "center",
                                             justifyContent: "space-between",
                                             fontWeight: "bold",
-                                            fontSize: "9.5px",
+                                            fontSize: "8.5px",
+                                            height: "19px",
+                                            minHeight: "19px",
                                             boxSizing: "border-box",
                                             border: showWinnerHighlight
                                               ? "1px solid #FFD700"
@@ -10749,15 +10752,15 @@ function App() {
                                             style={{
                                               display: "flex",
                                               alignItems: "center",
-                                              gap: "4px",
+                                              gap: "3px",
                                             }}
                                           >
                                             <img
                                               src={player.avatar}
                                               alt=""
                                               style={{
-                                                width: "15px",
-                                                height: "15px",
+                                                width: "13px",
+                                                height: "13px",
                                                 borderRadius: "50%",
                                               }}
                                             />
@@ -10766,7 +10769,8 @@ function App() {
                                                 whiteSpace: "nowrap",
                                                 overflow: "hidden",
                                                 textOverflow: "ellipsis",
-                                                maxWidth: "80px",
+                                                maxWidth: "75px",
+                                                fontSize: "8.5px",
                                               }}
                                             >
                                               {player.name}
@@ -10774,7 +10778,7 @@ function App() {
                                             {showWinnerHighlight && (
                                               <span
                                                 style={{
-                                                  fontSize: "9px",
+                                                  fontSize: "7.5px",
                                                   color: "#FFD700",
                                                 }}
                                               >
@@ -10789,6 +10793,7 @@ function App() {
                                                   color: showWinnerHighlight
                                                     ? "#fff"
                                                     : "#E91E63",
+                                                  fontSize: "8.5px",
                                                 }}
                                               >
                                                 🎲 {roll}
@@ -10796,12 +10801,12 @@ function App() {
                                             ) : (
                                               <span
                                                 style={{
-                                                  fontSize: "8.5px",
+                                                  fontSize: "8px",
                                                   color: "#888",
                                                   fontStyle: "italic",
                                                 }}
                                               >
-                                                Waiting...
+                                                Wait...
                                               </span>
                                             )}
                                           </span>

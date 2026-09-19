@@ -2,9 +2,9 @@
 
 /* Property War Modal - Center Responsive Optimization (No Scrollbars) */
 .war-modal {
-  width: 95% !important;
+  width: 96% !important;
   max-width: 380px !important;
-  max-height: 98% !important;
+  max-height: 94% !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
@@ -14,12 +14,13 @@
 
 .war-modal .modal-heading {
   flex-shrink: 0 !important;
-  padding: 8px 12px !important;
+  padding: 5px 8px !important;
+  min-height: 22px !important;
 }
 
 .war-modal .modal-heading-text {
-  font-size: 16px !important;
-  letter-spacing: 1px !important;
+  font-size: 13px !important;
+  letter-spacing: 0.5px !important;
 }
 
 .war-modal .modal-body {
@@ -27,7 +28,7 @@
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
-  padding: 10px 12px !important;
+  padding: 6px 8px !important;
   overflow: hidden !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
@@ -37,40 +38,245 @@
   display: none !important;
 }
 
+/* Deal Modal - Center Responsive Optimization (No Scrollbars) */
+.deal-modal {
+  width: min(96%, 360px) !important;
+  max-width: 360px !important;
+  max-height: 94% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.55) !important;
+  box-sizing: border-box !important;
+}
+
+.deal-modal-overlay,
+.bank-modal-overlay {
+  z-index: 1200 !important;
+}
+
+.deal-modal .modal-heading {
+  flex-shrink: 0 !important;
+  padding: 4px 8px !important;
+  min-height: 20px !important;
+}
+
+.deal-modal .modal-heading-text {
+  font-size: 12px !important;
+  letter-spacing: 0.5px !important;
+}
+
+.deal-modal .modal-body {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 4px 6px !important;
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.deal-modal .modal-body::-webkit-scrollbar {
+  display: none !important;
+}
+
+.deal-modal .deal-config-container {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.deal-modal .deal-column {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  max-width: calc(50% - 2px) !important;
+  padding: 2px 3px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.deal-modal .deal-column-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  padding: 1px 2px !important;
+  margin-bottom: 2px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.deal-modal .deal-header-avatar {
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0 !important;
+  border-radius: 50% !important;
+}
+
+.deal-modal .deal-column-header > span:not(.deal-subtitle) {
+  font-size: 8.5px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  font-weight: bold !important;
+}
+
+.deal-modal .deal-subtitle {
+  font-size: 6.5px !important;
+  padding: 1px 3px !important;
+  border-radius: 3px !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.deal-modal .deal-property-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 2px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  height: 42px !important;
+  max-height: 42px !important;
+  overflow-y: auto !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  padding: 1px !important;
+}
+
+.deal-modal .deal-property-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Very small, responsive tile boxes */
+.deal-modal .deal-property-box {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 1px 3px !important;
+  font-size: clamp(6px, 1.4vh, 7.5px) !important;
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
+  min-height: 13px !important;
+  max-height: 16px !important;
+  border-radius: 3px !important;
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  text-align: center !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25) !important;
+}
+
+.deal-modal .deal-empty-hint {
+  font-size: 7px !important;
+  padding: 4px 2px !important;
+  line-height: 1.1 !important;
+  text-align: center !important;
+}
+
+.deal-modal .deal-divider {
+  flex: 0 0 1px !important;
+  width: 1px !important;
+  margin: 1px 2px !important;
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+
+.deal-modal .deal-money-section {
+  padding: 1px 3px !important;
+  margin: 1px 0 !important;
+  border-radius: 4px !important;
+}
+
+.deal-modal .deal-money-label {
+  font-size: 8px !important;
+  margin-bottom: 1px !important;
+}
+
+.deal-modal .deal-slider-row {
+  gap: 3px !important;
+}
+
+.deal-modal .deal-slider-btn {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  font-size: 9px !important;
+  padding: 0 !important;
+  line-height: 16px !important;
+}
+
+.deal-modal .deal-money-slider {
+  height: 12px !important;
+}
+
+.deal-modal .deal-slider-labels {
+  font-size: 6.5px !important;
+  margin-top: 1px !important;
+}
+
+.deal-modal .modal-buttons {
+  margin-top: 2px !important;
+  padding: 0 !important;
+  gap: 6px !important;
+}
+
+.deal-modal .modal-btn {
+  height: 20px !important;
+  min-height: 20px !important;
+  line-height: 20px !important;
+  font-size: 9px !important;
+  padding: 0 8px !important;
+}
+
 /* Bulletproof Dice & Dot Sizing Across ALL Screens */
 .war-modal .dice-container {
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
-  gap: 12px !important;
-  margin: 6px 0 !important;
+  gap: 8px !important;
+  margin: 3px 0 !important;
 }
 
 .war-modal .dice {
-  width: 48px !important;
-  height: 48px !important;
-  min-width: 48px !important;
-  min-height: 48px !important;
-  max-width: 48px !important;
-  max-height: 48px !important;
-  padding: 5px !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  max-width: 38px !important;
+  max-height: 38px !important;
+  padding: 3px !important;
   gap: 2px !important;
   box-sizing: border-box !important;
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
   grid-template-rows: repeat(3, 1fr) !important;
   place-items: center !important;
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   overflow: hidden !important;
 }
 
 .war-modal .dice .dot {
-  width: 8px !important;
-  height: 8px !important;
-  min-width: 8px !important;
-  min-height: 8px !important;
-  max-width: 8px !important;
-  max-height: 8px !important;
+  width: 6px !important;
+  height: 6px !important;
+  min-width: 6px !important;
+  min-height: 6px !important;
+  max-width: 6px !important;
+  max-height: 6px !important;
   border-radius: 50% !important;
   box-sizing: border-box !important;
   margin: auto !important;
@@ -78,9 +284,9 @@
 
 /* Join Phase */
 .war-join-list {
-  max-height: 140px !important;
+  max-height: 110px !important;
   overflow-y: auto !important;
-  margin-bottom: 6px !important;
+  margin-bottom: 3px !important;
   scrollbar-width: none !important;
 }
 
@@ -89,28 +295,35 @@
 }
 
 .war-join-list > div {
-  padding: 5px 8px !important;
-  margin-bottom: 4px !important;
-  border-radius: 6px !important;
+  padding: 2px 5px !important;
+  margin-bottom: 2px !important;
+  border-radius: 5px !important;
 }
 
 .war-join-list img {
-  width: 22px !important;
-  height: 22px !important;
+  width: 17px !important;
+  height: 17px !important;
   border-radius: 50% !important;
 }
 
 .war-join-list .modal-btn {
-  padding: 4px 8px !important;
-  font-size: 10px !important;
+  padding: 2px 5px !important;
+  font-size: 8.5px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  line-height: 20px !important;
 }
 
 /* Roll Phase History */
 .war-rolling-list {
-  max-height: 105px !important;
+  max-height: 80px !important;
   overflow-y: auto !important;
-  margin-bottom: 6px !important;
+  margin: 2px 0 !important;
   scrollbar-width: none !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+  border-radius: 6px !important;
+  padding: 2px 4px !important;
 }
 
 .war-rolling-list::-webkit-scrollbar {
@@ -118,26 +331,29 @@
 }
 
 .war-rolling-list > div {
-  padding: 4px 8px !important;
-  margin-bottom: 3px !important;
-  font-size: 13px !important;
-  border-radius: 6px !important;
+  padding: 2px 5px !important;
+  margin-bottom: 2px !important;
+  font-size: 9.5px !important;
+  border-radius: 5px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 .war-rolling-list img {
-  width: 20px !important;
-  height: 20px !important;
+  width: 18px !important;
+  height: 18px !important;
   border-radius: 50% !important;
 }
 
 /* Evaluating Phase Notice (replaces roll button when all players have rolled) */
 .war-evaluating-notice {
   width: 100%;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
   color: white;
   font-weight: 800;
-  font-size: 13px;
+  font-size: 12px;
   border-radius: 8px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(245, 124, 0, 0.4);
@@ -259,33 +475,49 @@
 
 /* Result Phase */
 .war-result-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  overflow: hidden !important;
 }
 
 .war-winner-section {
-  margin-bottom: 6px !important;
-  flex-shrink: 0;
-  text-align: center;
-}
-
-.war-winner-section > div:first-child {
-  font-size: 30px !important;
-  margin-bottom: 2px !important;
+  margin-bottom: 3px !important;
+  flex-shrink: 0 !important;
+  text-align: center !important;
 }
 
 .war-winner-section .modal-city-name {
-  font-size: 18px !important;
-  margin-bottom: 2px !important;
+  font-size: 15px !important;
+  margin-bottom: 1px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+.war-winner-trophy {
+  font-size: 17px !important;
+  line-height: 1 !important;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6)) !important;
+}
+
+.war-winner-prize {
+  font-size: 11px !important;
+  color: #5D4037 !important;
+  font-weight: 700 !important;
+  margin-bottom: 3px !important;
+  text-align: center !important;
 }
 
 .war-roll-list {
-  max-height: 110px !important;
-  overflow-y: auto !important;
-  margin-bottom: 6px !important;
-  scrollbar-width: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  margin: 2px 0 4px 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
 }
 
 .war-roll-list::-webkit-scrollbar {
@@ -293,15 +525,19 @@
 }
 
 .war-roll-list > div {
-  padding: 5px 8px !important;
-  margin-bottom: 3px !important;
-  font-size: 13px !important;
+  padding: 3px 8px !important;
+  margin-bottom: 0 !important;
+  font-size: 11px !important;
+  min-height: 22px !important;
   border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 }
 
 .war-roll-list img {
-  width: 20px !important;
-  height: 20px !important;
+  width: 18px !important;
+  height: 18px !important;
   border-radius: 50% !important;
 }
 
@@ -504,14 +740,59 @@
 /* Landscape Mode Optimization */
 @media (max-width: 900px) and (orientation: landscape) {
   .auction-modal {
-    max-height: 98vh !important;
+    width: 92% !important;
+    max-width: 360px !important;
+    max-height: 96% !important;
+    overflow: hidden !important;
+    border-radius: 12px !important;
   }
+
+  .auction-modal .modal-heading {
+    padding: 6px 10px !important;
+    min-height: 24px !important;
+  }
+
+  .auction-modal .modal-heading-text {
+    font-size: 13px !important;
+  }
+
+  .auction-modal .modal-body {
+    padding: 6px 10px !important;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .auction-modal .modal-body::-webkit-scrollbar {
+    display: none !important;
+  }
+
   /* Property Modal Landscape Fixes */
   .buy-modal {
      max-height: 98vh !important;
   }
-  .buy-modal .modal-body {
+  .buy-modal:not(.war-modal):not(.auction-modal):not(.deal-modal) .modal-body {
      padding: 8px !important;
      overflow-y: auto;
   }
 }
+
+/* Matchmaking Button Pending Spinner */
+.mm-btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: mmSpin 0.75s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes mmSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+

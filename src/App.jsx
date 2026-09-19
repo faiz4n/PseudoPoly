@@ -75,6 +75,8 @@ function App() {
   const [networkMode, setNetworkMode] = useState("offline"); // 'offline', 'online'
   const [roomCode, setRoomCode] = useState(""); // The 4-letter code
   const [connectedPlayers, setConnectedPlayers] = useState([]); // List of players in room
+  const [matchmakingPending, setMatchmakingPending] = useState(null); // 'host_hotspot' | 'create_online' | 'join_code' | 'join_game' | null
+  const matchmakingTimerRef = useRef(null);
   const socketRef = useRef(null);
 
   // Jail State
@@ -633,6 +635,27 @@ function App() {
     }
   }, [playerMoney]);
 
+  // Matchmaking pending helpers & timeout handling
+  const startMatchmakingPending = (type) => {
+    if (matchmakingTimerRef.current) {
+      clearTimeout(matchmakingTimerRef.current);
+    }
+    setMatchmakingPending(type);
+    matchmakingTimerRef.current = setTimeout(() => {
+      setMatchmakingPending(null);
+      matchmakingTimerRef.current = null;
+      showToast("Connection timed out. Please check your network.");
+    }, 10000);
+  };
+
+  const clearMatchmakingPending = () => {
+    if (matchmakingTimerRef.current) {
+      clearTimeout(matchmakingTimerRef.current);
+      matchmakingTimerRef.current = null;
+    }
+    setMatchmakingPending(null);
+  };
+
   // Connect to Socket.IO server and set up event handlers
   const connectSocket = (urlOverride) => {
     const targetUrl = urlOverride || serverUrl || getInitialServerUrl();
@@ -698,11 +721,13 @@ function App() {
 
     socket.on("disconnect", () => {
       setSocketConnected(false);
+      clearMatchmakingPending();
     });
 
     socket.on("connect_error", (err) => {
       console.warn("Socket connection error:", err?.message || err);
       setSocketConnected(false);
+      clearMatchmakingPending();
     });
 
     socket.on("error", (err) => {
@@ -710,11 +735,13 @@ function App() {
         typeof err === "string" ? err : err?.message || "Server error";
       console.warn("[Socket Error]:", msg);
       showToast(msg);
+      clearMatchmakingPending();
     });
 
     socket.on(
       "room_created",
       ({ roomCode: code, playerIndex, gameState, players }) => {
+        clearMatchmakingPending();
         console.log("Room created:", code);
         setRoomCode(code);
         setMyPlayerIndex(playerIndex);
@@ -753,6 +780,7 @@ function App() {
     socket.on(
       "joined_room",
       ({ roomCode: code, playerIndex, gameState, players }) => {
+        clearMatchmakingPending();
         console.log("Joined room:", code, "as player", playerIndex);
         setRoomCode(code);
         setMyPlayerIndex(playerIndex);
@@ -1466,10 +1494,16 @@ function App() {
   }, [networkMode]);
 
   // Create a new room (Host)
-  const createRoom = () => {
+  const createRoom = (mode = "online") => {
+    if (matchmakingPending) return;
+    startMatchmakingPending(
+      mode === "hotspot" ? "host_hotspot" : "create_online",
+    );
+
     let hostUrl = undefined;
     // If running on Android device, launch native embedded Hotspot server!
     if (
+      mode === "hotspot" &&
       typeof window !== "undefined" &&
       window.AndroidHostServer &&
       window.AndroidHostServer.startHotspotServer
@@ -1506,7 +1540,7 @@ function App() {
   };
 
   // Join an existing room
-  const joinRoom = (codeOverride, targetServerUrl) => {
+  const joinRoom = (codeOverride, targetServerUrl, mode = "online") => {
     const codeToUse =
       (codeOverride !== undefined ? codeOverride : joinCode) || "";
     const cleanCode = codeToUse.trim();
@@ -1517,7 +1551,17 @@ function App() {
       return;
     }
 
-    const socket = connectSocket(targetServerUrl);
+    if (matchmakingPending) return;
+    startMatchmakingPending(
+      targetServerUrl || mode === "hotspot" ? "join_game" : "join_code",
+    );
+
+    const onlineServerUrl = formatServerUrl(
+      import.meta.env.VITE_SERVER_URL || "https://pseudopoly.onrender.com",
+    );
+    const socketTarget =
+      targetServerUrl || (mode === "online" ? onlineServerUrl : undefined);
+    const socket = connectSocket(socketTarget);
     setNetworkMode("online");
 
     const emitJoin = () => {
@@ -1532,7 +1576,7 @@ function App() {
     if (socket.connected) {
       emitJoin();
     } else {
-      const displayHost = targetServerUrl || serverUrl || "game host";
+      const displayHost = socketTarget || serverUrl || "game host";
       showToast(`Connecting to ${displayHost}...`);
       socket.once("connect", emitJoin);
     }
@@ -1559,7 +1603,7 @@ function App() {
   };
 
   // Legacy function names for compatibility
-  const initializeHost = createRoom;
+  const initializeHost = (mode = "online") => createRoom(mode);
   const joinGame = joinRoom;
   const sendAction = (action, params = {}) =>
     sendGameAction(action.toLowerCase(), params);
@@ -6649,6 +6693,7 @@ function App() {
       {/* Revamped Matchmaking & Startup Screen */}
       {gameStage !== "playing" && (
         <MatchmakingView
+          matchmakingPending={matchmakingPending}
           gameStage={gameStage}
           setGameStage={setGameStage}
           setNetworkMode={setNetworkMode}
@@ -6665,6 +6710,7 @@ function App() {
           myPlayerIndex={myPlayerIndex}
           startGame={startGame}
           onLeaveRoom={() => {
+            clearMatchmakingPending();
             if (socketRef.current) {
               try {
                 socketRef.current.emit("leave_room");

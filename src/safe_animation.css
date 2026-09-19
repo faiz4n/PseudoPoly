@@ -53,26 +53,188 @@
   100% { transform: rotate(0deg); }
 }
 
-/* Progress Bar */
-.cracking-progress {
-  width: 80%;
-  height: 10px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 5px;
+/* Three-Target Robbery Slider */
+.rob-slider-container {
+  width: 100%;
+  max-width: 310px;
   margin: 0 auto;
+  padding: 6px 6px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+.rob-targets-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.rob-target-badge {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  border-radius: 7px;
+  background: #FFFFFF;
+  border: 1.5px solid #E0E0E0;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.2);
 }
 
-.cracking-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #FFD54F, #FF6F00);
-  width: 0%;
-  animation: progress-fill 4s linear forwards;
-  box-shadow: 0 0 10px rgba(255, 160, 0, 0.5);
+.rob-target-badge .target-icon {
+  font-size: 18px;
+  line-height: 1;
+  margin-bottom: 2px;
+  transition: transform 0.2s ease;
 }
 
-@keyframes progress-fill {
-  0% { width: 0%; }
-  100% { width: 100%; }
+.rob-target-badge .target-label {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+
+.rob-target-badge .target-sub {
+  font-size: 7px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+/* Specific Target Themes */
+.rob-target-badge.target-caught {
+  border-color: #FFCDD2;
+  color: #C62828;
+}
+.rob-target-badge.target-caught.active {
+  background: #FFEBEE;
+  border-color: #E53935;
+  box-shadow: 0 0 14px rgba(229, 57, 53, 0.45);
+  transform: scale(1.06);
+}
+.rob-target-badge.target-caught.active .target-icon {
+  transform: scale(1.2);
+  animation: pulse-siren 0.4s infinite alternate;
+}
+
+.rob-target-badge.target-escaped {
+  border-color: #FFE0B2;
+  color: #E65100;
+}
+.rob-target-badge.target-escaped.active {
+  background: #FFF3E0;
+  border-color: #FB8C00;
+  box-shadow: 0 0 14px rgba(251, 140, 0, 0.45);
+  transform: scale(1.06);
+}
+.rob-target-badge.target-escaped.active .target-icon {
+  transform: scale(1.2);
+  animation: pulse-siren 0.5s infinite alternate;
+}
+
+.rob-target-badge.target-jackpot {
+  border-color: #C8E6C9;
+  color: #2E7D32;
+}
+.rob-target-badge.target-jackpot.active {
+  background: #E8F5E9;
+  border-color: #43A047;
+  box-shadow: 0 0 16px rgba(67, 160, 71, 0.55);
+  transform: scale(1.06);
+}
+.rob-target-badge.target-jackpot.active .target-icon {
+  transform: scale(1.25);
+  animation: sparkle-glow 0.5s infinite alternate;
+}
+
+@keyframes pulse-siren {
+  0% { transform: scale(1.1) rotate(-8deg); }
+  100% { transform: scale(1.25) rotate(8deg); }
+}
+
+@keyframes sparkle-glow {
+  0% { transform: scale(1.15); filter: drop-shadow(0 0 2px #FFD54F); }
+  100% { transform: scale(1.3); filter: drop-shadow(0 0 8px #FFA000); }
+}
+
+/* Slider Track & Moving Needle */
+.rob-track-wrapper {
+  position: relative;
+  width: 92%;
+  margin: 0 auto 6px;
+  padding: 6px 0;
+}
+
+.rob-slider-track {
+  height: 7px;
+  background: linear-gradient(90deg, #EF5350 0%, #FFEE58 50%, #66BB6A 100%);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.rob-track-markers {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 12%;
+  margin-top: -5px;
+  pointer-events: none;
+}
+
+.rob-track-notch {
+  width: 2px;
+  height: 9px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 1px;
+}
+
+.rob-slider-needle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #FFFFFF, #FFD54F 60%, #FF8F00);
+  border: 2px solid #37474F;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 179, 0, 0.6);
+  z-index: 5;
+  transition: left 0.06s linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rob-slider-needle::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #D32F2F;
+}
+
+.rob-slider-needle.settled {
+  animation: needle-lock 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes needle-lock {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.35); }
+  100% { transform: translate(-50%, -50%) scale(1.15); }
+}
+
+.rob-status-sub {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.4px;
+  color: #5D4037;
+  text-transform: uppercase;
+  margin-top: 2px;
 }

@@ -92,9 +92,12 @@ class LanDiscoveryService {
       } catch (e) {}
     }
     
-    // Always include the default Android hotspot gateway
+    // Always include default Android and iOS hotspot gateways
     if (!candidateHosts.includes('192.168.43.1:3001')) {
       candidateHosts.push('192.168.43.1:3001');
+    }
+    if (!candidateHosts.includes('172.20.10.1:3001')) {
+      candidateHosts.push('172.20.10.1:3001');
     }
 
     // If running in a browser or desktop, probe current host and localhost
@@ -195,6 +198,14 @@ class LanDiscoveryService {
           const msg = event.data;
 
           if (typeof msg === 'string') {
+            // Engine.IO handshake response: trigger Socket.IO connect
+            if (msg.startsWith('0')) {
+              try {
+                socket.send('40');
+                socket.send('42["query_info",{}]');
+              } catch {}
+            }
+
             // Check for room info packet: 42["room_info", {...}]
             if (msg.startsWith('42')) {
               try {
@@ -203,6 +214,7 @@ class LanDiscoveryService {
                   const info = parsed[1];
                   // ONLY register if a valid room exists on this host
                   if (info.roomCode && info.status !== 'open') {
+                    const isHotspot = cleanAddr.includes('192.168.43.1') || cleanAddr.includes('172.20.10.1');
                     this.registerDiscoveredGame({
                       id: cleanAddr,
                       ip: cleanAddr.split(':')[0],
@@ -213,7 +225,7 @@ class LanDiscoveryService {
                       maxPlayers: info.maxPlayers || 4,
                       latency: latency,
                       targetUrl: `http://${cleanAddr}`,
-                      networkType: cleanAddr.includes('192.168.43.1') ? 'hotspot' : 'wifi',
+                      networkType: isHotspot ? 'hotspot' : 'wifi',
                     });
                   }
                   clearTimeout(timer);

@@ -2059,12 +2059,12 @@ body {
   }
 
   .tile .tile-name {
-    font-size: clamp(6px, 2vh, 1px) !important;
+    font-size: clamp(1px, 2vh, 4.5px) !important;
     line-height: 1.1 !important;
     max-height: 2.5em !important;
     -webkit-text-stroke: 0px !important;
     letter-spacing: 0.15px !important;
-    padding: 1px 0px 0 !important;
+    padding: 0px 0px 0 !important;
     text-align: center !important;
     width: 100% !important;
     white-space: normal !important;
@@ -2113,11 +2113,11 @@ body {
   }
 
   .tile.vertical .tile-name {
-    font-size: clamp(6px, 2vh, 1px) !important;
+    font-size: clamp(1px, 2vh, 4.5px) !important;
     line-height: 1.1 !important;
     max-height: 2.5em !important;
     max-width: 98% !important;
-    padding: 2px 2px 0 !important;
+    padding: 0px 2px 0 !important;
     white-space: normal !important;
     overflow: hidden !important;
     word-break: normal !important;

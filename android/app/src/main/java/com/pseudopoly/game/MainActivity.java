@@ -28,13 +28,27 @@ public class MainActivity extends BridgeActivity {
         setupHotspotBridge();
     }
 
+    private android.net.wifi.WifiManager.MulticastLock multicastLock = null;
+
     private String getLocalIpAddress() {
         try {
             java.util.List<java.net.NetworkInterface> interfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces());
+            // Pass 1: Prioritize hotspot and local Wi-Fi interfaces (wlan, ap, rndis, swlan)
             for (java.net.NetworkInterface intf : interfaces) {
                 if (intf.isLoopback() || !intf.isUp()) continue;
-                java.util.List<java.net.InetAddress> addrs = java.util.Collections.list(intf.getInetAddresses());
-                for (java.net.InetAddress addr : addrs) {
+                String name = intf.getName().toLowerCase();
+                if (name.startsWith("wlan") || name.startsWith("ap") || name.startsWith("rndis") || name.startsWith("swlan") || name.startsWith("eth")) {
+                    for (java.net.InetAddress addr : java.util.Collections.list(intf.getInetAddresses())) {
+                        if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
+                            return addr.getHostAddress();
+                        }
+                    }
+                }
+            }
+            // Pass 2: Any non-loopback IPv4 address
+            for (java.net.NetworkInterface intf : interfaces) {
+                if (intf.isLoopback() || !intf.isUp()) continue;
+                for (java.net.InetAddress addr : java.util.Collections.list(intf.getInetAddresses())) {
                     if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
                         return addr.getHostAddress();
                     }
@@ -71,12 +85,29 @@ public class MainActivity extends BridgeActivity {
                             byte[] data = obj.toString().getBytes("UTF-8");
                             
                             // Broadcast to 255.255.255.255
-                            java.net.DatagramPacket packet = new java.net.DatagramPacket(
-                                data, data.length, java.net.InetAddress.getByName("255.255.255.255"), 3002
-                            );
-                            socket.send(packet);
+                            try {
+                                java.net.DatagramPacket packet = new java.net.DatagramPacket(
+                                    data, data.length, java.net.InetAddress.getByName("255.255.255.255"), 3002
+                                );
+                                socket.send(packet);
+                            } catch (Exception ignored) {}
 
-                            // Also try directed subnet broadcast if hotspot default
+                            // Also broadcast to all active network interface broadcast addresses (dynamic subnets)
+                            try {
+                                for (java.net.NetworkInterface intf : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                                    if (intf.isLoopback() || !intf.isUp()) continue;
+                                    for (java.net.InterfaceAddress ifaceAddr : intf.getInterfaceAddresses()) {
+                                        java.net.InetAddress bcast = ifaceAddr.getBroadcast();
+                                        if (bcast != null) {
+                                            try {
+                                                socket.send(new java.net.DatagramPacket(data, data.length, bcast, 3002));
+                                            } catch (Exception ignored) {}
+                                        }
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+
+                            // Also try default Android hotspot subnet broadcast
                             try {
                                 java.net.DatagramPacket subPacket = new java.net.DatagramPacket(
                                     data, data.length, java.net.InetAddress.getByName("192.168.43.255"), 3002
@@ -109,6 +140,20 @@ public class MainActivity extends BridgeActivity {
         if (isListeningUdp) return;
         isListeningUdp = true;
         discoveredUdpGames.clear();
+
+        if (multicastLock == null) {
+            try {
+                android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
+                if (wm != null) {
+                    multicastLock = wm.createMulticastLock("PseudoPolyUDP");
+                    multicastLock.setReferenceCounted(true);
+                }
+            } catch (Exception ignored) {}
+        }
+        if (multicastLock != null && !multicastLock.isHeld()) {
+            try { multicastLock.acquire(); } catch (Exception ignored) {}
+        }
+
         udpListenerThread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -151,6 +196,9 @@ public class MainActivity extends BridgeActivity {
         if (udpListenerThread != null) {
             try { udpListenerThread.interrupt(); } catch (Exception ignored) {}
             udpListenerThread = null;
+        }
+        if (multicastLock != null && multicastLock.isHeld()) {
+            try { multicastLock.release(); } catch (Exception ignored) {}
         }
     }
 

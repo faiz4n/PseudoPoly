@@ -47,6 +47,8 @@ import {
   VaultDiamondIcon,
 } from "./components/RobBankIcons";
 import LogViewerModal from "./components/LogViewerModal";
+import TileUpgradeRenderer from "./components/TileUpgradeRenderer";
+import PropertyInfoModal from "./components/PropertyInfoModal";
 
 function App() {
   const [diceValues, setDiceValues] = useState([6, 6]);
@@ -460,6 +462,7 @@ function App() {
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditStatus, setAuditStatus] = useState("idle"); // 'idle', 'rolling', 'result'
   const [auditDiceValues, setAuditDiceValues] = useState([1, 1]);
+  const isRollingAuditDice = auditStatus === "rolling";
   const [auditAmount, setAuditAmount] = useState(0);
 
   // Debug Dice State
@@ -6561,47 +6564,49 @@ function App() {
     return darkColors.includes(tileColor) ? "tile-dark" : "tile-light";
   };
 
-  // Horizontal tiles: 8.111vh, Vertical tiles: 10.428vh (NO GAPS)
+  // Proportional percentages matching master_board.webp (923 x 835)
   const getTileStyle = (index, row, tileColor) => {
-    const cornerSize = "13.5vh";
-    const tileWidthHorizontal = 8.111; // vh - exact for 9 tiles
-    const tileHeightVertical = 10.428; // vh - exact for 7 tiles
-
-    const baseStyle = { background: tileColor };
+    const cornerW = 13.5428; // %
+    const cornerH = 15.9281; // %
+    const tileW = 8.1016;    // %
+    const tileH = 9.7348;    // %
 
     switch (row) {
       case "bottom":
         return {
-          ...baseStyle,
           bottom: 0,
-          right: `calc(${cornerSize} + ${index * tileWidthHorizontal}vh)`,
+          right: `${cornerW + index * tileW}%`,
+          width: `${tileW}%`,
+          height: `${cornerH}%`,
         };
       case "left":
         return {
-          ...baseStyle,
           left: 0,
-          bottom: `calc(${cornerSize} + ${index * tileHeightVertical}vh)`,
+          bottom: `${cornerH + index * tileH}%`,
+          width: `${cornerW}%`,
+          height: `${tileH}%`,
         };
       case "top":
         return {
-          ...baseStyle,
           top: 0,
-          left: `calc(${cornerSize} + ${index * tileWidthHorizontal}vh)`,
+          left: `${cornerW + index * tileW}%`,
+          width: `${tileW}%`,
+          height: `${cornerH}%`,
         };
       case "right":
         return {
-          ...baseStyle,
           right: 0,
-          top: `calc(${cornerSize} + ${index * tileHeightVertical}vh)`,
+          top: `${cornerH + index * tileH}%`,
+          width: `${cornerW}%`,
+          height: `${tileH}%`,
         };
       default:
-        return baseStyle;
+        return {};
     }
   };
 
   // Get position for floating price animation (center of tile)
   const getFloatingPosition = (tileIndex) => {
-    // Fallback for invalid indices
     if (
       tileIndex === undefined ||
       tileIndex === null ||
@@ -6610,75 +6615,51 @@ function App() {
     ) {
       return { top: 50, left: 50 };
     }
-
-    const hTileW = 8.111;
-    const vTileH = 10.428;
-
-    // Corners
-    if (tileIndex === 0) return { top: 93, left: 93 };
-    if (tileIndex === 10) return { top: 93, left: 7 };
-    if (tileIndex === 18) return { top: 7, left: 7 };
-    if (tileIndex === 28) return { top: 7, left: 93 };
-
-    // Bottom row (1-9)
-    if (tileIndex <= 9) {
-      const offset = tileIndex - 1;
-      return { top: 93, left: 86.5 - offset * hTileW - hTileW / 2 };
-    }
-    // Left column (11-17)
-    if (tileIndex <= 17) {
-      const offset = tileIndex - 11;
-      return { top: 86.5 - offset * vTileH - vTileH / 2, left: 7 };
-    }
-    // Top row (19-27)
-    if (tileIndex <= 27) {
-      const offset = tileIndex - 19;
-      return { top: 7, left: 13.5 + offset * hTileW + hTileW / 2 };
-    }
-    // Right column (29-35)
-    const offset = tileIndex - 29;
-    return { top: 13.5 + offset * vTileH + vTileH / 2, left: 93 };
+    const center = getTileCenter(tileIndex);
+    return { top: center.y, left: center.x };
   };
 
-  // Get exact center of any tile (0-35) on the 100vh x 100vh board
+  // Get exact center of any tile (0-35) on the board matching master_board.webp
   const getTileCenter = (tileIndex) => {
-    const hTileW = 8.111;
-    const vTileH = 10.428;
+    const cornerW = 13.5428;
+    const cornerH = 15.9281;
+    const tileW = 8.1016;
+    const tileH = 9.7348;
 
     // Corner 0: Start (Bottom-Right)
-    if (tileIndex === 0) return { x: 93.25, y: 93.25 };
+    if (tileIndex === 0) return { x: 100 - cornerW / 2, y: 100 - cornerH / 2 };
 
     // Bottom Row: Tiles 1 to 9 (Right to Left)
     if (tileIndex >= 1 && tileIndex <= 9) {
       const idx = tileIndex - 1;
-      return { x: 86.5 - (idx + 0.5) * hTileW, y: 93.25 };
+      return { x: 100 - cornerW - (idx + 0.5) * tileW, y: 100 - cornerH / 2 };
     }
 
     // Corner 10: Parking (Bottom-Left)
-    if (tileIndex === 10) return { x: 6.75, y: 93.25 };
+    if (tileIndex === 10) return { x: cornerW / 2, y: 100 - cornerH / 2 };
 
     // Left Column: Tiles 11 to 17 (Bottom to Top)
     if (tileIndex >= 11 && tileIndex <= 17) {
       const idx = tileIndex - 11;
-      return { x: 6.75, y: 86.5 - (idx + 0.5) * vTileH };
+      return { x: cornerW / 2, y: 100 - cornerH - (idx + 0.5) * tileH };
     }
 
     // Corner 18: Rob Bank (Top-Left)
-    if (tileIndex === 18) return { x: 6.75, y: 6.75 };
+    if (tileIndex === 18) return { x: cornerW / 2, y: cornerH / 2 };
 
     // Top Row: Tiles 19 to 27 (Left to Right)
     if (tileIndex >= 19 && tileIndex <= 27) {
       const idx = tileIndex - 19;
-      return { x: 13.5 + (idx + 0.5) * hTileW, y: 6.75 };
+      return { x: cornerW + (idx + 0.5) * tileW, y: cornerH / 2 };
     }
 
     // Corner 28: Jail (Top-Right)
-    if (tileIndex === 28) return { x: 93.25, y: 6.75 };
+    if (tileIndex === 28) return { x: 100 - cornerW / 2, y: cornerH / 2 };
 
     // Right Column: Tiles 29 to 35 (Top to Bottom)
     if (tileIndex >= 29 && tileIndex <= 35) {
       const idx = tileIndex - 29;
-      return { x: 93.25, y: 13.5 + (idx + 0.5) * vTileH };
+      return { x: 100 - cornerW / 2, y: cornerH + (idx + 0.5) * tileH };
     }
 
     return { x: 50, y: 50 };
@@ -6802,8 +6783,8 @@ function App() {
     ));
   };
 
-  // Render Upgrades (Tiny bars for level on the tile)
-  const renderUpgrades = (tileIndex, orientation) => {
+  // Render Upgrades (3D Houses and Hotels on property color band)
+  const renderUpgrades = (tileIndex, side) => {
     const level =
       buildMode && buildPreviewLevels[tileIndex] !== undefined
         ? buildPreviewLevels[tileIndex]
@@ -6813,15 +6794,13 @@ function App() {
 
     if (level <= 0) return null;
 
+    const orientation = side === "left" || side === "right" ? "vertical" : "horizontal";
     return (
-      <div className={`tile-level-bars ${orientation}`}>
-        {[1, 2, 3, 4, 5].map((barIdx) => (
-          <div
-            key={barIdx}
-            className={`tile-bar ${level >= barIdx ? "filled" : "empty"} ${level === 5 ? "hotel" : ""}`}
-          />
-        ))}
-      </div>
+      <TileUpgradeRenderer
+        level={level}
+        orientation={orientation}
+        side={side}
+      />
     );
   };
 
@@ -7046,9 +7025,9 @@ function App() {
                 >
                   {renderUpgrades(tileIndex, "bottom")}
                   <span className="tile-name">{tile.name}</span>
-                  {tile.icon && (
+                  {tile.icon && ["audit", "property_war", "forced_auction"].includes(tile.icon) && (
                     <span className="tile-icon">
-                      <BoardIcon type={tile.icon} size={36} />
+                      <BoardIcon type={tile.icon} size={32} />
                     </span>
                   )}
                   {tile.price && (
@@ -7111,9 +7090,9 @@ function App() {
                 >
                   {renderUpgrades(tileIndex, "left")}
                   <span className="tile-name">{tile.name}</span>
-                  {tile.icon && (
+                  {tile.icon && ["audit", "property_war", "forced_auction"].includes(tile.icon) && (
                     <span className="tile-icon">
-                      <BoardIcon type={tile.icon} size={36} />
+                      <BoardIcon type={tile.icon} size={32} />
                     </span>
                   )}
                   {tile.price && (
@@ -7173,9 +7152,9 @@ function App() {
                 >
                   {renderUpgrades(tileIndex, "top")}
                   <span className="tile-name">{tile.name}</span>
-                  {tile.icon && (
+                  {tile.icon && ["audit", "property_war", "forced_auction"].includes(tile.icon) && (
                     <span className="tile-icon">
-                      <BoardIcon type={tile.icon} size={36} />
+                      <BoardIcon type={tile.icon} size={32} />
                     </span>
                   )}
                   {tile.price && (
@@ -7235,9 +7214,9 @@ function App() {
                 >
                   {renderUpgrades(tileIndex, "right")}
                   <span className="tile-name">{tile.name}</span>
-                  {tile.icon && (
+                  {tile.icon && ["audit", "property_war", "forced_auction"].includes(tile.icon) && (
                     <span className="tile-icon">
-                      <BoardIcon type={tile.icon} size={36} />
+                      <BoardIcon type={tile.icon} size={32} />
                     </span>
                   )}
                   {tile.price && (
@@ -12092,167 +12071,26 @@ function App() {
               {(showPropertyModal ||
                 (isModalClosing && closingModal === "property")) &&
                 selectedProperty && (
-                  <div
-                    className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
-                    onClick={(e) => {
-                      if (e.target === e.currentTarget) closeAllModals();
-                    }}
-                  >
-                    <div className="buy-modal">
-                      {/* Header */}
-                      <div className="modal-heading">
-                        <span className="modal-heading-text">PROPERTY</span>
-                      </div>
-
-                      {/* Body */}
-                      <div className="modal-body">
-                        <div className="modal-city-name">
-                          {selectedProperty.name}
-                        </div>
-                        <div className="modal-divider"></div>
-
-                        <div className="modal-details">
-                          {/* Rent Schedule */}
-                          <div
-                            style={{ marginBottom: "15px", fontSize: "14px" }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                fontWeight: "bold",
-                                marginBottom: "8px",
-                                borderBottom: "1px solid rgba(0,0,0,0.1)",
-                                paddingBottom: "4px",
-                              }}
-                            >
-                              <span>Level</span>
-                              <span>Rent</span>
-                            </div>
-                            {(selectedProperty?.rentLevels || []).map((rent, index) => {
-                              const currentLevel =
-                                propertyLevels[selectedProperty.tileIndex] || 0;
-                              const isCurrent = currentLevel === index;
-                              const label =
-                                index === 0
-                                  ? "Base"
-                                  : index === 5
-                                    ? "Hotel"
-                                    : `${index} House${index > 1 ? "s" : ""}`;
-                              return (
-                                <div
-                                  key={index}
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    padding: "4px 8px",
-                                    backgroundColor: isCurrent
-                                      ? "rgba(33, 150, 243, 0.15)"
-                                      : "transparent",
-                                    borderRadius: "4px",
-                                    fontWeight: isCurrent ? "bold" : "normal",
-                                    color: isCurrent ? "#1565C0" : "inherit",
-                                  }}
-                                >
-                                  <span>{label}</span>
-                                  <span>${rent.toLocaleString()}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          <div className="modal-divider"></div>
-
-                          <div
-                            className="modal-row"
-                            style={{ marginTop: "10px" }}
-                          >
-                            <span
-                              style={{ fontSize: "14px", fontWeight: "bold" }}
-                            >
-                              Cost per House
-                            </span>
-                            <span
-                              className="modal-value"
-                              style={{ fontSize: "14px", fontWeight: "bold" }}
-                            >
-                              ${selectedProperty.upgradeCost?.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="modal-row">
-                            <span
-                              style={{ fontSize: "14px", fontWeight: "bold" }}
-                            >
-                              Cost for Hotel
-                            </span>
-                            <span
-                              className="modal-value"
-                              style={{ fontSize: "14px", fontWeight: "bold" }}
-                            >
-                              $
-                              {(
-                                selectedProperty.upgradeCost * 2
-                              )?.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="modal-buttons">
-                          <button
-                            className="modal-btn cancel"
-                            onClick={() => closeAllModals()}
-                          >
-                            CLOSE
-                          </button>
-
-                          {/* Upgrade Button - DISABLED GLOBALLY AS PER REQUEST */}
-                          {false &&
-                            propertyOwnership[selectedProperty.tileIndex] !==
-                              undefined &&
-                            !TRAIN_TILES.includes(selectedProperty.tileIndex) &&
-                            hasMonopoly(
-                              selectedProperty.tileIndex,
-                              propertyOwnership[selectedProperty.tileIndex],
-                            ) && (
-                              <button
-                                className="modal-btn buy"
-                                onClick={handleUpgradeProperty}
-                                disabled={
-                                  propertyLevels[selectedProperty.tileIndex] >=
-                                    5 ||
-                                  playerMoney[currentPlayer] <
-                                    (propertyLevels[
-                                      selectedProperty.tileIndex
-                                    ] === 4
-                                      ? selectedProperty.upgradeCost * 2
-                                      : selectedProperty.upgradeCost)
-                                }
-                                style={{
-                                  background: "#4CAF50",
-                                  opacity:
-                                    propertyLevels[
-                                      selectedProperty.tileIndex
-                                    ] >= 5 ||
-                                    playerMoney[currentPlayer] <
-                                      (propertyLevels[
-                                        selectedProperty.tileIndex
-                                      ] === 4
-                                        ? selectedProperty.upgradeCost * 2
-                                        : selectedProperty.upgradeCost)
-                                      ? 0.5
-                                      : 1,
-                                }}
-                              >
-                                {propertyLevels[selectedProperty.tileIndex] ===
-                                4
-                                  ? "BUY HOTEL"
-                                  : "UPGRADE"}
-                              </button>
-                            )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <PropertyInfoModal
+                    property={selectedProperty}
+                    currentLevel={propertyLevels[selectedProperty.tileIndex] || 0}
+                    owner={propertyOwnership[selectedProperty.tileIndex]}
+                    ownerName={
+                      propertyOwnership[selectedProperty.tileIndex] !== undefined &&
+                      propertyOwnership[selectedProperty.tileIndex] !== null
+                        ? gamePlayers[propertyOwnership[selectedProperty.tileIndex]]?.name
+                        : null
+                    }
+                    ownerColor={
+                      propertyOwnership[selectedProperty.tileIndex] !== undefined &&
+                      propertyOwnership[selectedProperty.tileIndex] !== null
+                        ? gamePlayers[propertyOwnership[selectedProperty.tileIndex]]?.color
+                        : null
+                    }
+                    isMortgaged={false}
+                    isClosing={isModalClosing && closingModal === "property"}
+                    onClose={closeAllModals}
+                  />
                 )}
             </div>
 

@@ -115,26 +115,21 @@ body {
   transform: scale(calc((100vh - 10px) / 100vh));
   transform-origin: center center;
   flex-shrink: 0;
-  background: url("/board-bg.png");
-  background-size: cover;
-  background-position: center;
+  background: url("/master_board.webp") no-repeat center center;
+  background-size: 100% 100%;
 }
 
-/* Corner Spaces - White background, dark brown text */
+/* Corner Spaces - Transparent Hitboxes over Master Board */
 .corner {
   position: absolute;
-  width: var(--corner-size);
-  height: var(--corner-size);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-family: "Nunito", sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #5b260b;
-  background: white;
-  border: 1px solid #1e88e5;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   border-radius: 0;
   overflow: hidden;
   z-index: 10;
@@ -143,132 +138,62 @@ body {
 .corner.start {
   bottom: 0;
   right: 0;
-}
-
-.corner.start {
-  padding: 5px;
-}
-
-.corner-icon {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
+  width: 13.5428%;
+  height: 15.9281%;
 }
 
 .corner.parking {
   bottom: 0;
   left: 0;
-  padding: 5px;
+  width: 13.5428%;
+  height: 15.9281%;
 }
 
 .corner.robbank {
   top: 0;
   left: 0;
-  font-size: 11px;
-  justify-content: space-between;
-  padding: 8px 0;
-}
-
-.corner.robbank .rob-text {
-  font-size: 13px;
-  font-weight: 800;
-  z-index: 2;
-  position: relative;
-  background: rgba(255, 255, 255, 0.75);
-  color: #3e1e08 !important;
-  padding: 2px 8px;
-  border-radius: 4px;
-  letter-spacing: 1px;
-  text-shadow: none !important;
-}
-
-.corner-icon-center {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  transform: none;
-  object-fit: cover;
-  z-index: 0;
-}
-
-.corner.robbank .bank-text {
-  font-size: 13px;
-  font-weight: 800;
-  z-index: 2;
-  position: relative;
-  background: rgba(255, 255, 255, 0.75);
-  color: #3e1e08 !important;
-  padding: 2px 8px;
-  border-radius: 4px;
-  letter-spacing: 1px;
-  text-shadow: none !important;
+  width: 13.5428%;
+  height: 15.9281%;
 }
 
 .corner.jail {
   top: 0;
   right: 0;
-  justify-content: center;
-  align-items: center;
-  padding: 0;
+  width: 13.5428%;
+  height: 15.9281%;
 }
 
+.corner-icon,
+.corner-icon-center {
+  display: none !important;
+}
+
+.corner.robbank .rob-text,
+.corner.robbank .bank-text,
 .corner.jail .jail-text {
-  font-size: 13px;
-  font-weight: 800;
-  z-index: 2;
-  color: #3e1e08 !important;
-  background: rgba(255, 255, 255, 0.75);
-  padding: 2px 8px;
-  border-radius: 4px;
-  letter-spacing: 1px;
-  text-shadow: none !important;
-  position: relative;
+  display: none !important;
 }
 
-.corner.jail .jail-icon {
-  font-size: 28px;
-  margin-top: 5px;
-}
-
-/* Property Tiles - Single Unified Background with 3D shadow effect */
+/* Property Tiles - Transparent interactive slots over Master Board */
 .tile {
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 3px 2px;
+  padding: 1px;
   margin: 0;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 0;
-  overflow: visible;
-  box-sizing: border-box;
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.1),
-    inset 0 -4px 10px rgba(0, 0, 0, 0.1);
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
   user-select: none;
+  box-sizing: border-box;
+  overflow: visible;
+  cursor: pointer;
 }
 
-/* 3D gradient overlay: Clear at top -> Dark at bottom */
 .tile::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 50%,
-    rgba(0, 0, 0, 0.25) 100%
-  );
-  pointer-events: none;
+  display: none !important;
 }
 
 /* Tile content elements */
@@ -579,26 +504,26 @@ body {
 /* ==================== CENTER AREA ==================== */
 .board-center {
   position: absolute;
-  top: var(--corner-size);
-  left: var(--corner-size);
-  right: var(--corner-size);
-  bottom: var(--corner-size);
-  background: url("/center-bg.jpg");
-  background-size: cover;
-  background-position: center;
+  top: 15.9281%;
+  left: 13.5428%;
+  right: 13.5428%;
+  bottom: 15.9281%;
+  background: transparent !important;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.board-center > * {
+  pointer-events: auto;
 }
 
 /* Decorative elements */
 .center-decorations {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+  display: none !important;
 }
 
 .airplane {

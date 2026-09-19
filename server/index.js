@@ -7,6 +7,14 @@ import { RENT_DATA, TRAIN_RENT, TRAIN_TILES, COLOR_GROUPS } from './gameData.js'
 const app = express();
 app.use(cors());
 
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', game: 'PseudoPoly Server', activeRooms: Object.keys(rooms).length });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -171,7 +179,7 @@ io.on('connection', (socket) => {
   });
 
   // Client joins an existing room
-  socket.on('join_room', ({ roomCode, name, avatar }) => {
+  socket.on('join_room', ({ roomCode, name, avatar, playerIndex }) => {
     let cleanRoomCode = String(roomCode || '').trim();
     if (!cleanRoomCode) {
       // Auto-pick latest active room with connected players (Mini Militia 1-tap join)
@@ -187,11 +195,31 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Reconnection check
-    const reconnectIndex = room.players.findIndex(p => p.name === name && p.avatar === avatar && !p.connected);
+    // Robust Reconnection check:
+    // 1. By exact playerIndex if specified and slot is disconnected
+    let reconnectIndex = -1;
+    if (playerIndex !== undefined && playerIndex !== null && room.players[playerIndex] && !room.players[playerIndex].connected) {
+      reconnectIndex = playerIndex;
+    }
+    // 2. By originalName or current name if disconnected
+    if (reconnectIndex === -1 && name) {
+      reconnectIndex = room.players.findIndex(p => 
+        !p.connected && (
+          p.name.toLowerCase() === name.toLowerCase() ||
+          (p.originalName && p.originalName.toLowerCase() === name.toLowerCase())
+        )
+      );
+    }
+    // 3. By avatar and matching name prefix if disconnected
+    if (reconnectIndex === -1 && name && avatar) {
+      reconnectIndex = room.players.findIndex(p =>
+        !p.connected && p.avatar === avatar && p.name.toLowerCase().startsWith(name.toLowerCase())
+      );
+    }
+
     if (reconnectIndex !== -1) {
       const existingPlayer = room.players[reconnectIndex];
-      console.log(`[SERVER] Player ${name} reconnecting to ${cleanRoomCode}`);
+      console.log(`[SERVER] Player ${existingPlayer.name} (index ${reconnectIndex}) reconnecting to ${cleanRoomCode}`);
       
       existingPlayer.socketId = socket.id;
       existingPlayer.connected = true;
@@ -225,6 +253,7 @@ io.on('connection', (socket) => {
       });
       
       io.to(cleanRoomCode).emit('players_updated', { players: room.players });
+      broadcastState(room);
       return;
     }
 
@@ -253,11 +282,12 @@ io.on('connection', (socket) => {
       if (freeAvatar) finalAvatar = freeAvatar;
     }
     
-    const playerIndex = room.players.length;
+    const newPlayerIndex = room.players.length;
     
     room.players.push({
-      id: playerIndex,
+      id: newPlayerIndex,
       name: finalName,
+      originalName: name,
       avatar: finalAvatar,
       socketId: socket.id,
       isHost: false,
@@ -266,20 +296,69 @@ io.on('connection', (socket) => {
     
     socket.join(cleanRoomCode);
     socket.roomCode = cleanRoomCode;
-    socket.playerIndex = playerIndex;
+    socket.playerIndex = newPlayerIndex;
     
-    console.log(`${finalName} joined room ${cleanRoomCode} as player ${playerIndex}`);
+    console.log(`${finalName} joined room ${cleanRoomCode} as player ${newPlayerIndex}`);
     
     // Send join confirmation to the new player
     socket.emit('joined_room', {
       roomCode: cleanRoomCode,
-      playerIndex,
+      playerIndex: newPlayerIndex,
       gameState: room.gameState,
       players: room.players
     });
     
     // Broadcast updated players list to all in room
     io.to(cleanRoomCode).emit('players_updated', { players: room.players });
+  });
+
+  // Client explicitly leaves room
+  socket.on('leave_room', () => {
+    const roomCode = socket.roomCode;
+    if (!roomCode || !rooms[roomCode]) return;
+    const room = rooms[roomCode];
+    const playerIndex = socket.playerIndex !== undefined ? socket.playerIndex : room.players.findIndex(p => p.socketId === socket.id);
+    if (playerIndex === -1) return;
+
+    const player = room.players[playerIndex];
+    console.log(`[SERVER] Player ${player?.name} (P${playerIndex}) explicitly left room ${roomCode}`);
+
+    // If still in lobby:
+    if (!room.gameState || room.gameState.gameStage !== 'playing') {
+      if (player?.isHost) {
+        // Host leaves lobby -> close room immediately
+        console.log(`[SERVER] Host left lobby. Closing room ${roomCode}`);
+        io.to(roomCode).emit('room_closed', { message: 'Host left the room' });
+        delete rooms[roomCode];
+      } else {
+        // Guest leaves lobby -> remove them and re-index
+        room.players.splice(playerIndex, 1);
+        room.players.forEach((p, idx) => {
+          p.id = idx;
+          const s = io.sockets.sockets.get(p.socketId);
+          if (s) s.playerIndex = idx;
+        });
+        io.to(roomCode).emit('players_updated', { players: room.players });
+      }
+      return;
+    }
+
+    // If game is in progress:
+    if (player) {
+      player.connected = false;
+      player.kicked = true;
+      if (!room.gameState.bankruptPlayers) room.gameState.bankruptPlayers = {};
+      room.gameState.bankruptPlayers[playerIndex] = true;
+      if (room.gameState.history) {
+        room.gameState.history.unshift(`🚪 ${player.name} left the game.`);
+      }
+      if (room.gameState.currentPlayer === playerIndex) {
+        handleEndTurn(room);
+      }
+      broadcastState(room);
+      io.to(roomCode).emit('players_updated', { players: room.players });
+      io.to(roomCode).emit('player_exited', { playerIndex, playerName: player.name });
+    }
   });
 
   // Start game (host only)
@@ -329,6 +408,14 @@ io.on('connection', (socket) => {
       case 'close_modal':
         room.gameState.modalState = { type: 'NONE', status: 'IDLE', payload: {} };
         room.gameState.isProcessingTurn = false;
+        break;
+      case 'select_train_destination':
+        room.gameState.selectedTrainTile = payload ? payload.tileIndex : null;
+        io.to(room.roomCode).emit('train_destination_selected', {
+          playerIndex,
+          tileIndex: payload ? payload.tileIndex : null
+        });
+        broadcastState(room);
         break;
       case 'floating_price':
         if (payload && payload.tileIndex !== undefined) {
@@ -404,6 +491,7 @@ io.on('connection', (socket) => {
               handleEndTurn(room);
             }
 
+            io.to(room.roomCode).emit('player_kicked', { targetIndex: targetIdx, name: targetPlayer.name });
             broadcastState(room);
             io.to(room.roomCode).emit('players_updated', { players: room.players });
             io.to(room.roomCode).emit('toast', { message: `👢 ${targetPlayer.name} was kicked by the host.` });
@@ -487,7 +575,7 @@ io.on('connection', (socket) => {
       case 'chance_move':
         // Synchronized movement for Chance cards, Jail, and Fast Travel
         if (payload) {
-          const { playerIndex: movePlayerIdx, targetPos, steps, delay, cardText, isJail, oldPos } = payload;
+          const { playerIndex: movePlayerIdx, targetPos, steps, delay, cardText, isJail, oldPos, isFromTravel } = payload;
           const pIdx = movePlayerIdx !== undefined ? movePlayerIdx : playerIndex;
           const currentPos = oldPos !== undefined ? oldPos : room.gameState.playerPositions[pIdx];
           room.gameState.playerPositions[pIdx] = targetPos;
@@ -514,14 +602,15 @@ io.on('connection', (socket) => {
             room.gameState.history.unshift(`❓ ${pName}: ${cardText}`);
           }
           
-          console.log(`[SERVER] Broadcasting chance_move_animated: P${pIdx} from ${currentPos} to ${targetPos} (${steps} steps)`);
+          console.log(`[SERVER] Broadcasting chance_move_animated: P${pIdx} from ${currentPos} to ${targetPos} (${steps} steps) isFromTravel=${!!isFromTravel}`);
           io.to(room.roomCode).emit('chance_move_animated', {
             playerIndex: pIdx,
             oldPos: currentPos,
             targetPos,
             steps,
             delay: delay || 180,
-            cardText
+            cardText,
+            isFromTravel: !!isFromTravel
           });
           
           broadcastState(room);
@@ -1180,7 +1269,7 @@ function handleWarInit(room, { mode }) {
 }
 
 function handleWarJoin(room, playerIndex) {
-  const fee = room.gameState.warState.mode === 'A' ? 3000 : 2000;
+  const fee = 1000;
   
   // Check if already joined
   if (room.gameState.warState.participants.includes(playerIndex)) return;
@@ -1225,7 +1314,7 @@ function handleWarJoin(room, playerIndex) {
 }
 
 function handleWarWithdraw(room, playerIndex) {
-  const fee = room.gameState.warState.mode === 'A' ? 3000 : 2000;
+  const fee = 1000;
   
   // Check if joined
   if (!room.gameState.warState.participants.includes(playerIndex)) return;
@@ -1458,24 +1547,11 @@ function handleAttemptRobbery(room, playerIndex) {
   
   // 2. Wait and Calculate Result
   setTimeout(() => {
-    const successChance = 0.4; // 40% chance
-    const isSuccess = Math.random() < successChance;
+    // Completely random 1/3 probability for each of the 3 outcomes
+    const roll = Math.random();
     
-    if (isSuccess) {
-      // Win $1k - $10k
-      const amount = (Math.floor(Math.random() * 10) + 1) * 1000;
-      room.gameState.modalState = { 
-        type: 'ROB_BANK', 
-        status: 'RESULT', 
-        payload: { result: 'success', amount } 
-      };
-      room.gameState.playerMoney[playerIndex] += amount;
-      room.gameState.history.unshift(
-        `💰 ${room.players[playerIndex]?.name || 'Player'} robbed the bank for $${amount}!`
-      );
-      console.log(`[SERVER] Rob Bank SUCCESS for player ${playerIndex}: $${amount}`);
-    } else {
-      // Go to Jail
+    if (roll < 1 / 3) {
+      // 1. Go to Jail / Caught
       room.gameState.modalState = { 
         type: 'ROB_BANK', 
         status: 'RESULT', 
@@ -1488,6 +1564,30 @@ function handleAttemptRobbery(room, playerIndex) {
         `👮 ${room.players[playerIndex]?.name || 'Player'} got caught robbing the bank! Sent to Jail!`
       );
       console.log(`[SERVER] Rob Bank CAUGHT for player ${playerIndex}`);
+    } else if (roll < 2 / 3) {
+      // 2. Not caught, but couldn't rob either (escaped empty-handed)
+      room.gameState.modalState = { 
+        type: 'ROB_BANK', 
+        status: 'RESULT', 
+        payload: { result: 'escaped' } 
+      };
+      room.gameState.history.unshift(
+        `🏃💨 ${room.players[playerIndex]?.name || 'Player'} triggered the bank alarm and barely escaped empty-handed!`
+      );
+      console.log(`[SERVER] Rob Bank ESCAPED for player ${playerIndex}`);
+    } else {
+      // 3. Robbed the bank: random value between $1,000 and $10,000
+      const amount = Math.floor(Math.random() * 91 + 10) * 100;
+      room.gameState.modalState = { 
+        type: 'ROB_BANK', 
+        status: 'RESULT', 
+        payload: { result: 'success', amount } 
+      };
+      room.gameState.playerMoney[playerIndex] += amount;
+      room.gameState.history.unshift(
+        `💰 ${room.players[playerIndex]?.name || 'Player'} robbed the bank for $${amount.toLocaleString()}!`
+      );
+      console.log(`[SERVER] Rob Bank SUCCESS for player ${playerIndex}: $${amount}`);
     }
     room.gameState.isProcessingTurn = false;
     
@@ -1532,6 +1632,7 @@ function handleEndTurn(room) {
   room.gameState.isProcessingTurn = false;
   room.gameState.hoppingPlayer = null;
   room.gameState.landingResolved = false; // Reset for new turn
+  room.gameState.modalState = { type: 'NONE', status: 'IDLE', payload: {} }; // Clear any open modal from previous turn
   room.gameState.history.unshift(
     `${room.players[room.gameState.currentPlayer]?.name || 'Player'}'s turn`
   );
@@ -1544,7 +1645,7 @@ function handleAuctionSelect(room, playerIndex, payload) {
   if (!propertyIndex) return;
 
   // Deduct fee from initiator
-  const fee = 3000;
+  const fee = 2000;
   if (room.gameState.playerMoney[playerIndex] >= fee) {
     room.gameState.playerMoney[playerIndex] -= fee;
     room.gameState.cashStack += fee;
@@ -1780,6 +1881,6 @@ function handleAuctionComplete(room, payload) {
 }
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`Socket.IO server running on port ${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`Socket.IO server running on port ${PORT} (0.0.0.0)`);
 });

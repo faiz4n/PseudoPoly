@@ -4448,11 +4448,7 @@ function App() {
           3000,
         );
 
-        if (typeof Audio !== "undefined") {
-          try {
-            new Audio("/sounds/cash.mp3").play();
-          } catch (e) {}
-        }
+        playCollectMoneySound();
       }
     }
 
@@ -4931,7 +4927,7 @@ function App() {
     try {
       const audio = new Audio(cashRegisterSound);
       audio.volume = 0.5;
-      audio.play();
+      audio.play().catch((e) => console.log("Audio play failed", e));
     } catch (e) {}
 
     // Open deal modal in player selection phase

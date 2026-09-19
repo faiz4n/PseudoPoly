@@ -79,19 +79,28 @@ export function AuditIcon({ size = 34, className = '' }) {
 }
 
 // 4. Chance Icon (Reference App 3D Tumbling Red Dice)
-export function ChanceIcon({ size = 36, className = '' }) {
-  return (
-    <img
-      src={chanceImg}
-      alt="Chance"
-      style={{
+export function ChanceIcon({ size, className = '' }) {
+  const style = size
+    ? {
         width: `${size}px`,
         height: 'auto',
         maxHeight: `${size}px`,
         objectFit: 'contain',
-        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
-      }}
-      className={className}
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
+      }
+    : {
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
+      };
+
+  return (
+    <img
+      src={chanceImg}
+      alt="Chance"
+      style={style}
+      className={`chance-tile-img ${className}`}
       draggable={false}
     />
   );
@@ -141,19 +150,28 @@ export function ForcedAuctionIcon({ size = 34, className = '' }) {
 }
 
 // 7. Community Chest Icon (Reference App Gold Treasure Chest)
-export function ChestIcon({ size = 36, className = '' }) {
-  return (
-    <img
-      src={chestImg}
-      alt="Chest"
-      style={{
+export function ChestIcon({ size, className = '' }) {
+  const style = size
+    ? {
         width: `${size}px`,
         height: 'auto',
         maxHeight: `${size}px`,
         objectFit: 'contain',
-        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
-      }}
-      className={className}
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
+      }
+    : {
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
+      };
+
+  return (
+    <img
+      src={chestImg}
+      alt="Chest"
+      style={style}
+      className={`chest-tile-img ${className}`}
       draggable={false}
     />
   );
@@ -199,7 +217,7 @@ export default function BoardIcon({ type, size = 36, className = '' }) {
       return <AuditIcon size={size} className={className} />;
     case 'chance':
     case '❓':
-      return <ChanceIcon size={size} className={className} />;
+      return <ChanceIcon size={size === 22 || size === 36 ? undefined : size} className={className} />;
     case 'property_war':
     case '⚔️':
       return <PropertyWarIcon size={size} className={className} />;
@@ -208,7 +226,7 @@ export default function BoardIcon({ type, size = 36, className = '' }) {
       return <ForcedAuctionIcon size={size} className={className} />;
     case 'chest':
     case '📦':
-      return <ChestIcon size={size} className={className} />;
+      return <ChestIcon size={size === 22 || size === 36 ? undefined : size} className={className} />;
     case 'yacht':
     case '🛥️':
       return <YachtIcon size={size} className={className} />;

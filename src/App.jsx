@@ -460,6 +460,7 @@ function App() {
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditStatus, setAuditStatus] = useState("idle"); // 'idle', 'rolling', 'result'
   const [auditDiceValues, setAuditDiceValues] = useState([1, 1]);
+  const isRollingAuditDice = auditStatus === "rolling";
   const [auditAmount, setAuditAmount] = useState(0);
 
   // Debug Dice State

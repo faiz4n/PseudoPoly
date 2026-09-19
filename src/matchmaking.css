@@ -1,29 +1,15 @@
-/* ==========================================================================
-   PSEUDOPOLY - COMPLETE LANDSCAPE-FIRST GAME MENU & MATCHMAKING SYSTEM
-   Designed specifically for mobile phones held horizontally (16:9 - 20:9)
-   Zero unnecessary scrolling, zero visible scrollbars, tactile game controls.
-   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
 
-/* ==========================================================================
-   1. OVERLAY & DYNAMIC GAME BACKDROP
-   ========================================================================== */
 .mm-overlay {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
   z-index: 2000;
   display: flex;
-  justify-content: center;
   align-items: center;
-  padding: 8px 16px;
-  box-sizing: border-box;
-  background-color: #081120;
-  font-family: 'Junegull', 'Fredoka One', 'Varela Round', sans-serif;
+  justify-content: center;
+  font-family: 'Nunito', sans-serif;
   color: #ffffff;
   overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 .mm-backdrop {
@@ -31,611 +17,877 @@
   inset: 0;
   background-size: cover;
   background-position: center;
-  filter: brightness(0.3) blur(8px);
-  transform: scale(1.06);
-  z-index: 1;
+  background-repeat: no-repeat;
+  z-index: -1;
 }
 
 .mm-backdrop::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(13, 27, 42, 0.45) 0%, rgba(5, 10, 20, 0.9) 100%);
+  background: radial-gradient(circle at center, rgba(13, 27, 42, 0.45) 0%, rgba(5, 10, 20, 0.85) 100%);
 }
 
-/* ==========================================================================
-   2. MAIN LANDSCAPE SHELL / CONTAINER
-   ========================================================================== */
 .mm-container {
   position: relative;
-  z-index: 10;
   width: 100%;
-  max-width: 1040px;
   height: 100%;
-  max-height: 96vh;
-  background: rgba(13, 27, 42, 0.93);
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
-  border-radius: 20px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  padding: 12px 18px;
-  box-sizing: border-box;
+  max-width: 900px;
+  max-height: 500px;
   display: flex;
   flex-direction: column;
-  animation: mmFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 16px;
+  box-sizing: border-box;
+  animation: mmFadeIn 0.3s ease-out;
+  background: rgba(13, 27, 42, 0.93);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
 }
 
-@keyframes mmFadeIn {
-  from { opacity: 0; transform: scale(0.97); }
-  to { opacity: 1; transform: scale(1); }
+/* Home screen: transparent container, no card */
+.mm-container.mm-container--home {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  max-width: 100%;
+  max-height: 100%;
 }
 
-/* ==========================================================================
-   3. HEADER NAVIGATION BAR
-   ========================================================================== */
+/* Header */
 .mm-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 40px;
-  min-height: 40px;
-  margin-bottom: 8px;
-  position: relative;
-}
-
-.mm-header-title {
-  font-size: 20px;
-  letter-spacing: 1.5px;
-  color: #ffd700;
-  text-shadow: 0 2px 10px rgba(255, 215, 0, 0.45);
-  margin: 0;
-  text-align: center;
-  flex: 1;
-  text-transform: uppercase;
-}
-
-.mm-header-subtitle {
-  font-size: 11px;
-  color: #94a3b8;
-  letter-spacing: 0.5px;
-  font-family: 'Nunito', sans-serif;
-  margin-top: -2px;
-}
-
-.mm-header-spacer {
-  width: 36px;
-  height: 36px;
+  margin-bottom: 24px;
+  flex-shrink: 0;
 }
 
 .mm-back-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #e2e8f0;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
+  background: #3b82f6;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
   cursor: pointer;
-  font-size: 16px;
-  transition: all 0.18s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-
-.mm-back-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
 .mm-back-btn:active {
-  transform: scale(0.92);
-  background: rgba(255, 255, 255, 0.25);
+  transform: scale(0.9);
 }
 
-/* ==========================================================================
-   4. SCREEN 1: HOMEPAGE (LANDSCAPE SPLIT VIEW)
-   ========================================================================== */
-.mm-home-grid {
-  display: grid;
-  grid-template-columns: 1.15fr 1fr;
-  gap: 20px;
-  height: 100%;
-  align-items: center;
-  padding: 4px 10px;
-  box-sizing: border-box;
+.mm-header-title {
+  font-family: 'Junegull', 'Fredoka One', 'Varela Round', sans-serif;
+  font-size: 28px;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  letter-spacing: 1px;
 }
 
-.mm-home-brand {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  padding-right: 10px;
-}
-
-.mm-brand-badge {
-  background: rgba(255, 215, 0, 0.15);
-  border: 1px solid rgba(255, 215, 0, 0.45);
-  color: #ffd700;
-  font-size: 10px;
-  letter-spacing: 2px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.mm-brand-title {
-  font-size: clamp(32px, 6.5vw, 46px);
-  line-height: 1.05;
-  color: #ffffff;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), 0 0 24px rgba(59, 130, 246, 0.45);
-  letter-spacing: 2px;
-  margin: 0 0 8px 0;
-  background: linear-gradient(135deg, #ffffff 35%, #ffd700 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.mm-brand-desc {
-  font-size: 12px;
+.mm-header-subtitle {
+  font-size: 14px;
   color: #cbd5e1;
-  font-family: 'Nunito', sans-serif;
-  margin: 0 0 16px 0;
-  line-height: 1.35;
-  max-width: 440px;
+  text-align: center;
+  margin-top: 4px;
 }
 
-.mm-play-btn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
-  border: none;
-  border-radius: 14px;
-  padding: 12px 28px;
-  font-size: 18px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 1.5px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-  overflow: hidden;
+.mm-header-spacer {
+  width: 44px;
 }
 
-.mm-play-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 26px rgba(16, 185, 129, 0.6);
-}
-
-.mm-play-btn:active {
-  transform: scale(0.95) translateY(2px);
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
-}
-
-.mm-play-btn.pulse {
-  animation: mmBtnPulse 2s infinite;
-}
-
-@keyframes mmBtnPulse {
-  0%, 100% { box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45); }
-  50% { box-shadow: 0 8px 30px rgba(16, 185, 129, 0.75); }
-}
-
-/* Home Right Pane - Identity & Actions */
-.mm-home-profile {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.mm-profile-top {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.mm-profile-avatar-frame {
-  width: 52px;
-  height: 52px;
-  min-width: 52px;
-  border-radius: 50%;
-  background: #1e293b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  transition: border-color 0.2s;
-}
-
-.mm-profile-avatar-img {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  object-fit: contain;
-}
-
-.mm-profile-info {
+/* Home Screen */
+.mm-home-hero {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.mm-home-topbar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mm-home-avatar-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid #f5a623;
+  padding: 0;
+  background: rgba(13, 27, 42, 0.9);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s;
+}
+.mm-home-avatar-btn:active {
+  transform: scale(0.95);
+}
+.mm-home-avatar-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mm-home-settings-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s;
+}
+.mm-home-settings-btn:active {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(0.95);
+}
+
+.mm-tool-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: #cbd5e1;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.mm-tool-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mm-home-logo {
+  margin-bottom: 32px;
+  max-width: 300px;
+  animation: mmFadeIn 0.5s ease-out;
+}
+.mm-home-logo img {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6));
+}
+
+.mm-home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.mm-play-btn {
+  background: linear-gradient(135deg, #f5a623 0%, #f7c948 50%, #e6930a 100%);
+  border: none;
+  border-radius: 32px;
+  padding: 16px 48px;
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 28px;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 0 #b37300, 0 10px 20px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.1s;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: 1.5px;
+}
+.mm-play-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #b37300, 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+.mm-play-btn.pulse {
+  animation: mmBtnPulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mm-howto-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  padding: 10px 24px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: bold;
+  font-size: 16px;
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.mm-howto-btn:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Profile Drawer */
+.mm-profile-drawer-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  display: flex;
+  animation: mmFadeIn 0.2s ease-out;
+}
+
+.mm-profile-drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 300px;
+  max-width: 80%;
+  background: rgba(13, 27, 42, 0.97);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: mmDrawerSlide 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 11;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.mm-profile-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.mm-profile-avatar-frame {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 4px solid #f5a623;
+  margin: 0 auto 24px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.mm-profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mm-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .mm-field-label {
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: #94a3b8;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: bold;
   text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 4px;
 }
 
 .mm-nickname-input {
-  background: rgba(15, 23, 42, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  color: #ffffff;
-  font-size: 14px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 0.5px;
-  padding: 6px 10px;
-  outline: none;
+  padding: 12px;
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 16px;
+  font-weight: bold;
   width: 100%;
   box-sizing: border-box;
-  transition: all 0.2s;
 }
-
 .mm-nickname-input:focus {
-  border-color: #ffd700;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.35);
-  background: rgba(15, 23, 42, 0.95);
+  outline: none;
+  border-color: #f5a623;
 }
 
 .mm-avatar-picker {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 .mm-avatar-thumb {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.6);
   border: 2px solid transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0;
   cursor: pointer;
-  transition: all 0.18s ease;
-  box-sizing: border-box;
   overflow: hidden;
-}
-
-.mm-avatar-thumb img {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  object-fit: contain;
-}
-
-.mm-avatar-thumb:hover {
-  transform: scale(1.06);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.mm-avatar-thumb.active {
-  background: rgba(255, 255, 255, 0.12);
-  transform: scale(1.1);
-}
-
-.mm-home-actions-bar {
-  display: flex;
-  gap: 10px;
-  margin-top: 2px;
-}
-
-.mm-tool-btn {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #e2e8f0;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 0.5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
   transition: all 0.2s;
 }
-
-.mm-tool-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.25);
+.mm-avatar-thumb.active {
+  border-color: #f5a623;
+  transform: scale(1.1);
+}
+.mm-avatar-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.mm-tool-btn:active {
-  transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* ==========================================================================
-   5. SCREEN 2: GAME MODE SELECT (3 HORIZONTAL CARDS)
-   ========================================================================== */
+/* Mode Select */
 .mm-modes-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  height: calc(100% - 48px);
-  align-items: stretch;
-  padding: 2px 4px;
-  box-sizing: border-box;
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  padding: 10px;
 }
 
-.mm-mode-box {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  padding: 16px 14px;
+.mm-mode-card {
+  flex: 1;
+  border-radius: 24px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-start;
-  cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  align-items: center;
+  text-align: center;
   position: relative;
   overflow: hidden;
-  box-sizing: border-box;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.mm-mode-card:active {
+  transform: scale(0.95);
 }
 
-.mm-mode-box:hover {
-  transform: translateY(-2px);
+.mm-mode-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.2) 100%);
+  z-index: 1;
 }
 
-.mm-mode-box:active {
-  transform: scale(0.96) translateY(2px);
+.mm-mode-card.pass-play {
+  background-color: #e67e22;
+  border: 2px solid #f39c12;
+}
+.mm-mode-card.hotspot {
+  background-color: #27ae60;
+  border: 2px solid #2ecc71;
+}
+.mm-mode-card.online {
+  background-color: #8e44ad;
+  border: 2px solid #9b59b6;
 }
 
-.mm-mode-box.offline:hover {
-  border-color: #34d399;
-  background: rgba(16, 185, 129, 0.12);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
-}
-
-.mm-mode-box.hotspot:hover {
-  border-color: #fbbf24;
-  background: rgba(245, 158, 11, 0.14);
-  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
-}
-
-.mm-mode-box.online:hover {
-  border-color: #60a5fa;
-  background: rgba(59, 130, 246, 0.12);
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
-}
-
-.mm-mode-top {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.mm-mode-icon-circle {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+.mm-mode-icon-wrap {
+  width: 64px;
+  height: 64px;
+  background: white;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 16px;
+  z-index: 2;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
-
-.mm-mode-box.offline .mm-mode-icon-circle { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-.mm-mode-box.hotspot .mm-mode-icon-circle { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-.mm-mode-box.online .mm-mode-icon-circle { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-
-.mm-mode-tag {
-  font-size: 9px;
-  letter-spacing: 1px;
-  padding: 3px 8px;
-  border-radius: 20px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.mm-mode-box.offline .mm-mode-tag { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-.mm-mode-box.hotspot .mm-mode-tag { background: rgba(245, 158, 11, 0.25); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.5); }
-.mm-mode-box.online .mm-mode-tag { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.mm-mode-card.pass-play .mm-mode-icon-wrap { color: #e67e22; font-size: 32px; }
+.mm-mode-card.hotspot .mm-mode-icon-wrap { color: #27ae60; font-size: 32px; }
+.mm-mode-card.online .mm-mode-icon-wrap { color: #8e44ad; font-size: 32px; }
 
 .mm-mode-title {
-  font-size: 17px;
-  letter-spacing: 0.8px;
-  color: #ffffff;
-  margin: 0 0 6px 0;
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 24px;
+  margin: 0 0 8px 0;
+  z-index: 2;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .mm-mode-desc {
-  font-size: 11px;
-  line-height: 1.35;
-  color: #94a3b8;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 24px;
+  flex: 1;
+  z-index: 2;
+}
+
+.mm-mode-play-btn {
+  background: white;
+  border: none;
+  border-radius: 16px;
+  padding: 12px 32px;
   font-family: 'Nunito', sans-serif;
-  margin: 0;
+  font-weight: 800;
+  font-size: 16px;
+  text-transform: uppercase;
+  cursor: pointer;
+  z-index: 2;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+  transition: all 0.1s;
+}
+.mm-mode-card.pass-play .mm-mode-play-btn { color: #e67e22; }
+.mm-mode-card.hotspot .mm-mode-play-btn { color: #27ae60; }
+.mm-mode-card.online .mm-mode-play-btn { color: #8e44ad; }
+
+.mm-mode-play-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 rgba(0,0,0,0.2);
 }
 
-.mm-mode-cta {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  margin-top: 10px;
+/* Hotspot Choice / Online */
+.mm-hotspot-choice-grid,
+.mm-online-grid {
   display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.mm-mode-box.offline .mm-mode-cta { color: #34d399; }
-.mm-mode-box.hotspot .mm-mode-cta { color: #fbbf24; }
-.mm-mode-box.online .mm-mode-cta { color: #60a5fa; }
-
-/* ==========================================================================
-   6. SCREEN 3: HOTSPOT CHOICE (HOST vs JOIN)
-   ========================================================================== */
-.mm-hotspot-choice-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  height: calc(100% - 48px);
+  gap: 24px;
+  flex: 1;
+  justify-content: center;
   align-items: stretch;
-  padding: 4px 8px;
-  box-sizing: border-box;
 }
 
 .mm-choice-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
-  border-radius: 18px;
-  padding: 16px 18px;
+  flex: 1;
+  max-width: 320px;
+  background: rgba(13, 27, 42, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  box-sizing: border-box;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
-
-.mm-choice-card:hover {
-  transform: translateY(-2px);
-}
-
-.mm-choice-card:active {
-  transform: scale(0.97) translateY(2px);
-}
-
-.mm-choice-card.host-choice:hover {
-  border-color: #fbbf24;
-  background: rgba(245, 158, 11, 0.12);
-  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.25);
-}
-
-.mm-choice-card.join-choice:hover {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
-  box-shadow: 0 10px 30px rgba(56, 189, 248, 0.25);
+.mm-choice-card.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+  filter: grayscale(0.5);
 }
 
 .mm-choice-header {
+  padding: 20px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 10px;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.2);
 }
+.mm-choice-card.host-choice .mm-choice-header { border-bottom: 3px solid #2ecc71; }
+.mm-choice-card.join-choice .mm-choice-header { border-bottom: 3px solid #f5a623; }
 
 .mm-choice-icon {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 24px;
 }
-
-.mm-choice-card.host-choice .mm-choice-icon { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-.mm-choice-card.join-choice .mm-choice-icon { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+.mm-choice-card.host-choice .mm-choice-icon { color: #2ecc71; }
+.mm-choice-card.join-choice .mm-choice-icon { color: #f5a623; }
 
 .mm-choice-title {
-  font-size: 19px;
-  letter-spacing: 1px;
-  color: #ffffff;
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 22px;
   margin: 0;
 }
-
 .mm-choice-sub {
-  font-size: 11px;
-  color: #94a3b8;
-  font-family: 'Nunito', sans-serif;
-  margin: 2px 0 0 0;
+  font-size: 13px;
+  color: #cbd5e1;
+  margin: 4px 0 0;
 }
 
 .mm-choice-perks {
+  padding: 20px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 8px 0;
+  gap: 12px;
 }
 
 .mm-choice-perk {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: #cbd5e1;
-  font-family: 'Nunito', sans-serif;
+  gap: 12px;
+  font-size: 14px;
+  color: #e2e8f0;
 }
-
-.mm-choice-perk span.check {
-  color: #10b981;
+.mm-choice-perk .check {
+  color: #2ecc71;
   font-weight: bold;
 }
 
 .mm-choice-btn {
-  border: none;
+  margin: 0 20px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  padding: 10px 16px;
-  font-size: 15px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 1px;
+  padding: 14px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  color: white;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
   transition: all 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
-
 .mm-choice-card.host-choice .mm-choice-btn {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+  background: #27ae60;
+  border-color: #2ecc71;
 }
-
 .mm-choice-card.join-choice .mm-choice-btn {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+  background: #e67e22;
+  border-color: #f39c12;
 }
 
-/* ==========================================================================
-   7. SCREEN 4: LAN SCANNING & FOUND GAMES (RADAR)
-   ========================================================================== */
+.mm-choice-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.mm-choice-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hotspot Scan / Radar */
 .mm-scan-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.3fr;
-  gap: 20px;
-  height: calc(100% - 48px);
-  align-items: stretch;
-  padding: 2px 4px;
-  box-sizing: border-box;
+  display: flex;
+  gap: 24px;
+  flex: 1;
 }
 
 .mm-radar-pane {
-  background: rgba(255, 255, 255, 0.04);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 27, 42, 0.5);
+  border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mm-radar-circle-wrap {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.mm-radar-wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #2ecc71;
+  animation: mmRadarWave 2s infinite linear;
+  opacity: 0;
+}
+.mm-radar-wave:nth-child(2) { animation-delay: 0.6s; }
+.mm-radar-wave:nth-child(3) { animation-delay: 1.2s; }
+
+.mm-radar-center {
+  width: 48px;
+  height: 48px;
+  background: #27ae60;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  z-index: 2;
+  box-shadow: 0 0 20px #2ecc71;
+}
+
+.mm-radar-status {
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 20px;
+  color: #2ecc71;
+  margin: 0 0 8px 0;
+}
+
+.mm-radar-hint {
+  font-size: 14px;
+  color: #94a3b8;
+  text-align: center;
+  max-width: 80%;
+}
+
+.mm-games-pane {
+  flex: 1.5;
+  background: rgba(13, 27, 42, 0.7);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.mm-games-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 8px;
+}
+.mm-games-list::-webkit-scrollbar { width: 6px; }
+.mm-games-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+.mm-game-item {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mm-game-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mm-game-item-host {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.mm-game-item-sub {
+  font-size: 12px;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mm-game-item-sub .dot {
+  width: 6px;
+  height: 6px;
+  background: #2ecc71;
+  border-radius: 50%;
+}
+
+.mm-join-item-btn {
+  background: #27ae60;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+.mm-join-item-btn:active { transform: scale(0.95); }
+
+.mm-no-games {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  gap: 16px;
+}
+.mm-no-games-text {
+  font-size: 16px;
+}
+
+.mm-scan-again-btn {
+  background: transparent;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+/* PIN Code Input */
+.mm-pin-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  margin: auto;
+}
+
+.mm-pin-hidden-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mm-pin-boxes {
+  display: flex;
+  gap: 16px;
+}
+
+.mm-pin-box {
+  width: 64px;
+  height: 72px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 32px;
+  color: white;
+  transition: all 0.2s;
+}
+.mm-pin-box.active {
+  border-color: #f5a623;
+  box-shadow: 0 0 16px rgba(245, 166, 35, 0.4);
+  transform: scale(1.05);
+}
+.mm-pin-box.filled {
+  border-color: #2ecc71;
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.mm-pin-actions-row {
+  display: flex;
+  gap: 16px;
+}
+
+.mm-paste-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px 24px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mm-paste-btn:active { background: rgba(255, 255, 255, 0.2); }
+
+/* Lobby */
+.mm-lobby-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 27, 42, 0.7);
+  backdrop-filter: blur(16px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.mm-lobby-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.mm-lobby-leave-btn {
+  background: #e74c3c;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #c0392b;
+}
+.mm-lobby-leave-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #c0392b;
+}
+
+.mm-lobby-badge-group {
+  display: flex;
+  gap: 12px;
+}
+
+.mm-lobby-badge {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #cbd5e1;
+}
+
+.mm-lobby-code-chip {
+  background: rgba(245, 166, 35, 0.15);
+  border: 2px solid #f5a623;
+  border-radius: 12px;
+  padding: 8px 24px;
+  text-align: center;
+}
+.mm-lobby-code-chip .code-num {
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 24px;
+  color: #f5a623;
+  letter-spacing: 4px;
+}
+
+.mm-lobby-count {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mm-lobby-slots-row {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.mm-slot-card {
+  flex: 1;
+  max-width: 180px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -643,770 +895,242 @@
   justify-content: center;
   padding: 16px;
   position: relative;
-  overflow: hidden;
-}
-
-.mm-radar-circle-wrap {
-  width: 100px;
-  height: 100px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 10px;
-}
-
-.mm-radar-wave {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 2px solid #38bdf8;
-  animation: mmRadarPulse 2.4s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
-  opacity: 0;
-}
-
-.mm-radar-wave:nth-child(2) { animation-delay: 0.8s; }
-.mm-radar-wave:nth-child(3) { animation-delay: 1.6s; }
-
-@keyframes mmRadarPulse {
-  0% { transform: scale(0.3); opacity: 0.8; }
-  100% { transform: scale(1.3); opacity: 0; }
-}
-
-.mm-radar-center {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: #0284c7;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  box-shadow: 0 0 16px rgba(2, 132, 199, 0.6);
-}
-
-.mm-radar-status {
-  font-size: 13px;
-  color: #e2e8f0;
-  letter-spacing: 0.5px;
-  text-align: center;
-  margin: 0;
-}
-
-.mm-radar-hint {
-  font-size: 10px;
-  color: #94a3b8;
-  font-family: 'Nunito', sans-serif;
-  text-align: center;
-  margin-top: 4px;
-}
-
-.mm-games-pane {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.mm-games-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  max-height: 180px;
-  scrollbar-width: none;
-}
-.mm-games-list::-webkit-scrollbar { display: none; }
-
-.mm-game-item {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1.5px solid rgba(56, 189, 248, 0.35);
-  border-radius: 12px;
-  padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  animation: mmFadeIn 0.2s;
-}
-
-.mm-game-item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.mm-game-item-host {
-  font-size: 15px;
-  color: #ffffff;
-  letter-spacing: 0.5px;
-}
-
-.mm-game-item-sub {
-  font-size: 10px;
-  color: #94a3b8;
-  font-family: 'Nunito', sans-serif;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mm-game-item-sub span.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  display: inline-block;
-}
-
-.mm-join-item-btn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
-  border: none;
-  border-radius: 10px;
-  padding: 8px 20px;
-  font-size: 14px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 1px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-  transition: all 0.2s;
-}
-
-.mm-join-item-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
-}
-
-.mm-join-item-btn:active {
-  transform: scale(0.94);
-}
-
-.mm-no-games {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  text-align: center;
-  gap: 6px;
-}
-
-.mm-no-games-text {
-  font-size: 13px;
-  color: #cbd5e1;
-}
-
-.mm-scan-again-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  border-radius: 10px;
-  padding: 8px 18px;
-  font-size: 12px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  margin-top: 6px;
-  transition: all 0.2s;
-}
-
-.mm-scan-again-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-/* ==========================================================================
-   8. SCREEN 5: ONLINE ROOMS MENU (SYMMETRICAL LANDSCAPE GRID & PIN BOXES)
-   ========================================================================== */
-.mm-online-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  height: calc(100% - 48px);
-  align-items: stretch;
-  padding: 4px 8px;
-  box-sizing: border-box;
-}
-
-.mm-pin-container {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin: 14px 0 10px 0;
-  position: relative;
-  cursor: text;
-}
-
-.mm-pin-hidden-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  width: 0;
-  height: 0;
-}
-
-.mm-pin-box {
-  width: 58px;
-  height: 66px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.85);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  font-family: 'Junegull', sans-serif;
-  color: #ffd700;
-  transition: all 0.18s ease;
-  box-sizing: border-box;
-}
-
-.mm-pin-box.active {
-  border-color: #38bdf8;
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
-  transform: scale(1.05);
-}
-
-.mm-pin-box.filled {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.08);
-}
-
-.mm-pin-actions-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-top: 8px;
-}
-
-.mm-paste-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #cbd5e1;
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-size: 13px;
-  font-family: 'Junegull', sans-serif;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.mm-paste-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
-}
-
-/* ==========================================================================
-   9. SCREEN 6: MULTIPLAYER LOBBY (LANDSCAPE 4-SLOT ROW)
-   ========================================================================== */
-.mm-lobby-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  justify-content: space-between;
-}
-
-.mm-lobby-top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 38px;
-  margin-bottom: 6px;
-}
-
-.mm-lobby-leave-btn {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #f87171;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.mm-lobby-leave-btn:hover {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: #ef4444;
-}
-
-.mm-lobby-leave-btn:active {
-  transform: scale(0.92);
-}
-
-.mm-lobby-badge-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mm-lobby-badge {
-  background: rgba(245, 158, 11, 0.2);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  color: #fbbf24;
-  font-size: 10px;
-  letter-spacing: 1px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-weight: 700;
-}
-
-.mm-lobby-code-chip {
-  background: rgba(255, 215, 0, 0.18);
-  border: 2px solid rgba(255, 215, 0, 0.6);
-  color: #ffd700;
-  font-size: 22px;
-  letter-spacing: 2px;
-  padding: 6px 20px;
-  border-radius: 28px;
-  font-weight: 700;
-  font-family: 'Junegull', sans-serif;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-  box-shadow: 0 0 16px rgba(255, 215, 0, 0.25);
-}
-
-.mm-lobby-code-chip .code-num {
-  font-size: 28px;
-  font-weight: 900;
-  color: #ffffff;
-  letter-spacing: 3px;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
-}
-
-.mm-lobby-code-chip.copied {
-  background: rgba(16, 185, 129, 0.25);
-  border-color: #10b981;
-  color: #34d399;
-}
-
-.mm-lobby-count {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  padding: 4px 10px;
-  border-radius: 20px;
-}
-
-/* 4 Horizontal Slots */
-.mm-lobby-slots-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  height: 140px;
-  align-items: stretch;
-  margin: 4px 0;
-}
-
-.mm-slot-card {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 8px 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  box-sizing: border-box;
-  transition: all 0.2s;
+  transition: all 0.3s;
 }
 
 .mm-slot-card.occupied {
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(30, 41, 59, 0.85);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
 }
-
 .mm-slot-card.is-me {
-  box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
+  border-color: #f5a623;
+  background: rgba(245, 166, 35, 0.1);
 }
 
 .mm-slot-avatar-wrap {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
-  background: #0f172a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 6px;
   position: relative;
-  overflow: hidden;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
 }
-
 .mm-slot-avatar-wrap img {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #cbd5e1;
+}
+.mm-slot-card.is-me .mm-slot-avatar-wrap img {
+  border-color: #f5a623;
 }
 
 .mm-slot-crown-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  background: #fbbf24;
-  color: #78350f;
+  top: -10px;
+  right: -10px;
+  background: #f5a623;
+  color: white;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
 
 .mm-slot-name {
-  font-size: 13px;
-  color: #ffffff;
-  letter-spacing: 0.5px;
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 18px;
+  margin-bottom: 8px;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 90%;
-  margin-bottom: 5px;
+  word-break: break-all;
 }
 
 .mm-slot-status-pill {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 4px 12px;
   border-radius: 12px;
-  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
 }
-
-.mm-slot-status-pill.host {
-  background: rgba(251, 191, 36, 0.2);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.5);
-}
-
 .mm-slot-status-pill.ready {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.5);
-}
-
-.mm-slot-status-pill.not-ready {
-  background: rgba(249, 115, 22, 0.2);
-  color: #fb923c;
-  border: 1px solid rgba(249, 115, 22, 0.5);
-}
-
-.mm-slot-card.empty {
-  border: 1.5px dashed rgba(255, 255, 255, 0.15);
-  background: rgba(15, 23, 42, 0.35);
+  background: #2ecc71;
 }
 
 .mm-empty-radar-icon {
-  animation: mmSpin 8s linear infinite;
-  color: #64748b;
-  margin-bottom: 6px;
-}
-
-@keyframes mmSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  font-size: 40px;
+  color: rgba(255, 255, 255, 0.2);
+  margin-bottom: 12px;
+  animation: mmSpinner 3s infinite linear;
 }
 
 .mm-empty-slot-text {
-  font-size: 11px;
-  color: #64748b;
-  letter-spacing: 0.5px;
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: bold;
 }
 
-/* Lobby Bottom Action Bar */
 .mm-lobby-footer {
+  margin-top: 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 16px;
 }
 
 .mm-lobby-msg {
-  font-size: 12px;
-  color: #cbd5e1;
-  font-family: 'Nunito', sans-serif;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 16px;
+  color: #e2e8f0;
 }
 
 .mm-ready-toggle-btn {
+  background: #3b82f6;
   border: none;
   border-radius: 12px;
-  padding: 10px 24px;
-  font-size: 15px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 1px;
+  padding: 12px 32px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: white;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  box-shadow: 0 4px 0 #2563eb;
   transition: all 0.2s;
 }
-
-.mm-ready-toggle-btn.is-ready {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+.mm-ready-toggle-btn.ready {
+  background: #e74c3c;
+  box-shadow: 0 4px 0 #c0392b;
 }
-
-.mm-ready-toggle-btn.not-ready {
-  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.4);
+.mm-ready-toggle-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
 }
 
 .mm-start-game-btn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #f5a623 0%, #f7c948 50%, #e6930a 100%);
   border: none;
   border-radius: 12px;
-  padding: 10px 30px;
-  font-size: 16px;
-  font-family: 'Junegull', sans-serif;
-  letter-spacing: 1.5px;
+  padding: 12px 32px;
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 20px;
+  color: white;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+  box-shadow: 0 4px 0 #b37300;
   transition: all 0.2s;
 }
-
-.mm-start-game-btn.disabled {
-  background: #334155;
-  color: #94a3b8;
-  opacity: 0.6;
+.mm-start-game-btn:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+.mm-start-game-btn:disabled {
+  opacity: 0.5;
+  filter: grayscale(1);
   cursor: not-allowed;
-  box-shadow: none;
 }
 
-.mm-start-game-btn.pulse {
-  animation: mmBtnPulse 1.8s infinite;
+.mm-btn-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: mmSpinner 1s infinite linear;
 }
 
-/* ==========================================================================
-   10. MODALS (RULES & SETTINGS)
-   ========================================================================== */
+/* Modals */
 .mm-modal-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.78);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px;
-  box-sizing: border-box;
+  z-index: 100;
+  animation: mmFadeIn 0.2s ease-out;
 }
 
 .mm-modal-content {
   background: #0f172a;
-  border: 1.5px solid rgba(255, 255, 255, 0.16);
-  border-radius: 18px;
-  width: 100%;
-  max-width: 560px;
-  padding: 16px 20px;
-  box-sizing: border-box;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 24px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
 }
 
 .mm-modal-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 16px;
 }
 
 .mm-modal-title {
-  font-size: 18px;
-  color: #ffd700;
-  letter-spacing: 1px;
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 24px;
   margin: 0;
 }
 
 .mm-modal-close {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.1);
   border: none;
-  color: #ffffff;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
+  color: white;
+  font-size: 18px;
   cursor: pointer;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mm-rules-text {
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   color: #cbd5e1;
-  font-family: 'Nunito', sans-serif;
-  max-height: 180px;
   overflow-y: auto;
   padding-right: 8px;
 }
+.mm-rules-text::-webkit-scrollbar { width: 6px; }
+.mm-rules-text::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
 
-/* ==========================================================================
-   11. FINE-TUNED RESPONSIVE MEDIA QUERIES FOR LANDSCAPE DEVICES
-   ========================================================================== */
-/* Compact landscape phones (e.g. height <= 370px, iPhone SE Landscape / older Androids) */
-@media screen and (max-height: 370px) {
-  .mm-container {
-    padding: 8px 14px;
-  }
-  .mm-header {
-    height: 34px;
-    min-height: 34px;
-    margin-bottom: 4px;
-  }
-  .mm-header-title {
-    font-size: 17px;
-  }
-  .mm-back-btn {
-    width: 30px;
-    height: 30px;
-    font-size: 14px;
-  }
-  .mm-brand-title {
-    font-size: 30px;
-    margin-bottom: 4px;
-  }
-  .mm-brand-desc {
-    font-size: 11px;
-    margin-bottom: 10px;
-  }
-  .mm-play-btn {
-    padding: 9px 22px;
-    font-size: 16px;
-  }
-  .mm-profile-avatar-frame {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-  }
-  .mm-profile-avatar-img {
-    width: 34px;
-    height: 34px;
-  }
-  .mm-avatar-thumb {
-    width: 32px;
-    height: 32px;
-  }
-  .mm-avatar-thumb img {
-    width: 22px;
-    height: 22px;
-  }
-  .mm-modes-grid, .mm-hotspot-choice-grid, .mm-scan-grid, .mm-online-grid {
-    gap: 10px;
-  }
-  .mm-mode-box, .mm-choice-card {
-    padding: 12px 10px;
-  }
-  .mm-lobby-slots-row {
-    height: 120px;
-    gap: 8px;
-  }
-  .mm-slot-avatar-wrap {
-    width: 42px;
-    height: 42px;
-  }
-  .mm-slot-avatar-wrap img {
-    width: 32px;
-    height: 32px;
-  }
-  .mm-slot-name {
-    font-size: 11px;
-    margin-bottom: 3px;
-  }
-  .mm-start-game-btn {
-    padding: 8px 22px;
-    font-size: 14px;
-  }
-  .mm-ready-toggle-btn {
-    padding: 8px 18px;
-    font-size: 13px;
-  }
+/* Animations */
+@keyframes mmFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-/* Large landscape screens & Tablets (width >= 900px, height >= 500px) */
-@media screen and (min-width: 900px) and (min-height: 500px) {
-  .mm-container {
-    padding: 20px 28px;
-    max-height: 88vh;
-  }
-  .mm-header {
-    height: 48px;
-    margin-bottom: 14px;
-  }
-  .mm-header-title {
-    font-size: 24px;
-  }
-  .mm-brand-title {
-    font-size: 52px;
-  }
-  .mm-brand-desc {
-    font-size: 14px;
-  }
-  .mm-lobby-slots-row {
-    height: 160px;
-    gap: 16px;
-  }
-  .mm-slot-avatar-wrap {
-    width: 62px;
-    height: 62px;
-  }
-  .mm-slot-avatar-wrap img {
-    width: 50px;
-    height: 50px;
-  }
+@keyframes mmBtnPulse {
+  0% { box-shadow: 0 6px 0 #b37300, 0 0 0 0 rgba(245, 166, 35, 0.4); }
+  70% { box-shadow: 0 6px 0 #b37300, 0 0 0 20px rgba(245, 166, 35, 0); }
+  100% { box-shadow: 0 6px 0 #b37300, 0 0 0 0 rgba(245, 166, 35, 0); }
 }
 
-/* Matchmaking Button Pending Spinner */
-.mm-btn-spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  border-top-color: #ffffff;
-  animation: mmSpin 0.75s linear infinite;
-  margin-right: 8px;
-  vertical-align: middle;
+@keyframes mmRadarWave {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
 }
 
-@keyframes mmSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes mmSpinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.mm-choice-card.disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-  pointer-events: none;
+@keyframes mmDrawerSlide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
-
-button:disabled .mm-btn-spinner {
-  border-top-color: #ffd700;
-}
-

@@ -5,6 +5,8 @@ import {
   getAvatarColor,
   resolveAvatar,
 } from "../data/boardData";
+import titleLogo from "../assets/title_logo.png";
+import homeBg from "../assets/home_bg.jpg";
 
 // --- CLEAN GAME SVG ICONS ---
 function UsersIcon({ size = 24, color = "currentColor" }) {
@@ -194,6 +196,7 @@ export default function MatchmakingView({
   const [discoveredGames, setDiscoveredGames] = useState([]);
   const [scanStatus, setScanStatus] = useState("Searching for nearby games...");
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showProfileDrawer, setShowProfileDrawer] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const pinInputRef = useRef(null);
 
@@ -203,6 +206,10 @@ export default function MatchmakingView({
       onRegisterBackHandler(() => {
         if (showRulesModal) {
           setShowRulesModal(false);
+          return true;
+        }
+        if (showProfileDrawer) {
+          setShowProfileDrawer(false);
           return true;
         }
         if (activeScreen === "hotspot_scan") {
@@ -220,7 +227,7 @@ export default function MatchmakingView({
         return false;
       });
     }
-  }, [activeScreen, showRulesModal, onRegisterBackHandler]);
+  }, [activeScreen, showRulesModal, showProfileDrawer, onRegisterBackHandler]);
 
   // Sync with App's gameStage (e.g. when room is joined, gameStage becomes 'lobby')
   useEffect(() => {
@@ -330,72 +337,74 @@ export default function MatchmakingView({
     <div className="mm-overlay">
       <div
         className="mm-backdrop"
-        style={{ backgroundImage: startupBg ? `url(${startupBg})` : "none" }}
+        style={{
+          backgroundImage: activeScreen === "home"
+            ? `url(${homeBg})`
+            : startupBg
+              ? `url(${startupBg})`
+              : "none",
+          filter: activeScreen === "home"
+            ? "brightness(0.55) blur(2px)"
+            : "brightness(0.3) blur(8px)",
+        }}
       />
 
-      <div className="mm-container">
+      <div className={`mm-container ${activeScreen === "home" ? "mm-container--home" : ""}`}>
+
         {/* =================================================================
-            SCREEN 1: HOMEPAGE (LANDSCAPE SPLIT VIEW)
+            PROFILE DRAWER OVERLAY
             ================================================================= */}
-        {activeScreen === "home" && (
-          <div className="mm-home-grid">
-            {/* Left Brand Area */}
-            <div className="mm-home-brand">
-              <span className="mm-brand-badge">MULTIPLAYER BOARD GAME</span>
-              <h1 className="mm-brand-title">PSEUDO POLY</h1>
-              <p className="mm-brand-desc">
-                Fast-paced, high-stakes real estate trading. Buy properties,
-                collect rent, and bankrupt your rivals!
-              </p>
-
+        {showProfileDrawer && (
+          <div
+            className="mm-profile-drawer-overlay"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowProfileDrawer(false);
+            }}
+          >
+            <div className={`mm-profile-drawer ${showProfileDrawer ? "open" : ""}`}>
               <button
-                className="mm-play-btn pulse"
-                onClick={() => setActiveScreen("mode_select")}
+                className="mm-profile-close-btn"
+                onClick={() => setShowProfileDrawer(false)}
               >
-                <span>PLAY NOW</span>
-                <span style={{ fontSize: "15px" }}>▶</span>
+                ✕
               </button>
-            </div>
 
-            {/* Right Player Identity & Quick Tools */}
-            <div className="mm-home-profile">
-              <div className="mm-profile-top">
-                <div
-                  className="mm-profile-avatar-frame"
-                  style={{
-                    border: `2.5px solid ${activeColor}`,
-                    boxShadow: `0 0 14px ${activeColor}88`,
-                  }}
-                >
-                  <img
-                    src={resolveAvatar(myIdentity.avatar)}
-                    alt="Player Avatar"
-                    className="mm-profile-avatar-img"
-                  />
-                </div>
-                <div className="mm-profile-info">
-                  <span className="mm-field-label">YOUR NICKNAME</span>
-                  <input
-                    type="text"
-                    className="mm-nickname-input"
-                    maxLength={14}
-                    value={myIdentity.name}
-                    onChange={(e) =>
-                      setMyIdentity((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                    }
-                    placeholder="Enter Name"
-                  />
-                </div>
+              <div
+                className="mm-profile-avatar-frame"
+                style={{
+                  border: `3px solid ${activeColor}`,
+                  boxShadow: `0 0 18px ${activeColor}88`,
+                }}
+              >
+                <img
+                  src={resolveAvatar(myIdentity.avatar)}
+                  alt="Player Avatar"
+                  className="mm-profile-avatar-img"
+                />
+              </div>
+
+              <div className="mm-profile-info">
+                <span className="mm-field-label">YOUR NICKNAME</span>
+                <input
+                  type="text"
+                  className="mm-nickname-input"
+                  maxLength={14}
+                  value={myIdentity.name}
+                  onChange={(e) =>
+                    setMyIdentity((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter Name"
+                />
               </div>
 
               {/* Avatar Selector Strip */}
               <div>
                 <span
                   className="mm-field-label"
-                  style={{ marginBottom: "6px", display: "block" }}
+                  style={{ marginBottom: "8px", display: "block" }}
                 >
                   CHOOSE AVATAR
                 </span>
@@ -441,27 +450,63 @@ export default function MatchmakingView({
                   })}
                 </div>
               </div>
-
-              {/* Secondary Actions Bar */}
-              <div className="mm-home-actions-bar">
-                <button className="mm-tool-btn" onClick={onOpenSettings}>
-                  <SettingsIcon size={16} />
-                  <span>Settings</span>
-                </button>
-                <button
-                  className="mm-tool-btn"
-                  onClick={() => setShowRulesModal(true)}
-                >
-                  <HelpIcon size={16} />
-                  <span>How to Play</span>
-                </button>
-              </div>
             </div>
           </div>
         )}
 
         {/* =================================================================
-            SCREEN 2: GAME MODE SELECT (3 HORIZONTAL CARDS)
+            SCREEN 1: HOMEPAGE — HERO LAYOUT
+            ================================================================= */}
+        {activeScreen === "home" && (
+          <div className="mm-home-hero">
+            {/* Top bar: Avatar left, Settings right */}
+            <div className="mm-home-topbar">
+              <button
+                className="mm-home-avatar-btn"
+                onClick={() => setShowProfileDrawer(true)}
+                style={{
+                  border: `2px solid ${activeColor}`,
+                  boxShadow: `0 0 10px ${activeColor}66`,
+                }}
+              >
+                <img src={resolveAvatar(myIdentity.avatar)} alt="Profile" />
+              </button>
+
+              <button
+                className="mm-home-settings-btn"
+                onClick={onOpenSettings}
+              >
+                <SettingsIcon size={20} color="#ffffff" />
+              </button>
+            </div>
+
+            {/* Center: Logo + Actions */}
+            <div className="mm-home-logo">
+              <img src={titleLogo} alt="PseudoPoly" />
+            </div>
+
+            <div className="mm-home-actions">
+              <button
+                className="mm-play-btn pulse"
+                onClick={() => setActiveScreen("mode_select")}
+              >
+                <span style={{ fontSize: "18px" }}>▶</span>
+                <span>PLAY</span>
+              </button>
+
+              <button
+                className="mm-howto-btn"
+                onClick={() => setShowRulesModal(true)}
+              >
+                <DiceIcon size={18} color="#ffffff" />
+                <span>HOW TO PLAY</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================
+            SCREEN 2: GAME MODE SELECT — 3 COLORED CARDS
             ================================================================= */}
         {activeScreen === "mode_select" && (
           <div
@@ -473,86 +518,62 @@ export default function MatchmakingView({
                 onClick={() => setActiveScreen("home")}
                 title="Back to title"
               >
-                ←
+                ‹
               </button>
-              <h2 className="mm-header-title">SELECT GAME MODE</h2>
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <h2 className="mm-header-title">CHOOSE A MODE</h2>
+                <p className="mm-header-subtitle">How do you want to play?</p>
+              </div>
               <div className="mm-header-spacer" />
             </div>
 
             <div className="mm-modes-grid">
               {/* Mode 1: Pass & Play */}
               <div
-                className="mm-mode-box offline"
+                className="mm-mode-card pass-play"
                 onClick={() => {
                   setNetworkMode("offline");
                   setGameStage("playing");
                 }}
               >
-                <div className="mm-mode-top">
-                  <div className="mm-mode-icon-circle">
-                    <UsersIcon size={24} />
-                  </div>
-                  <span className="mm-mode-tag">OFFLINE</span>
+                <div className="mm-mode-icon-wrap">
+                  <UsersIcon size={28} color="#E67E22" />
                 </div>
-                <div>
-                  <div className="mm-mode-title">Pass & Play</div>
-                  <p className="mm-mode-desc">
-                    Play together on this device. Take turns rolling the dice
-                    and building monopolies!
-                  </p>
-                </div>
-                <div className="mm-mode-cta">
-                  <span>PLAY NOW</span>
-                  <span>→</span>
-                </div>
+                <div className="mm-mode-title">Pass and Play</div>
+                <p className="mm-mode-desc">
+                  Play on the same device with friends
+                </p>
+                <button className="mm-mode-play-btn">Play</button>
               </div>
 
-              {/* Mode 2: Hotspot Multiplayer (Mini Militia Style) */}
+              {/* Mode 2: Hotspot Multiplayer */}
               <div
-                className="mm-mode-box hotspot"
+                className="mm-mode-card hotspot"
                 onClick={() => setActiveScreen("hotspot_choice")}
               >
-                <div className="mm-mode-top">
-                  <div className="mm-mode-icon-circle">
-                    <WifiIcon size={24} />
-                  </div>
-                  <span className="mm-mode-tag">LOCAL LAN</span>
+                <div className="mm-mode-icon-wrap">
+                  <WifiIcon size={28} color="#27AE60" />
                 </div>
-                <div>
-                  <div className="mm-mode-title">Hotspot Multiplayer</div>
-                  <p className="mm-mode-desc">
-                    Mini Militia style LAN: Host on phone hotspot or Wi-Fi.
-                    Auto-discovery, zero internet required!
-                  </p>
-                </div>
-                <div className="mm-mode-cta">
-                  <span>OPEN LOBBY</span>
-                  <span>→</span>
-                </div>
+                <div className="mm-mode-title">Hotspot Multiplayer</div>
+                <p className="mm-mode-desc">
+                  Play with friends nearby using hotspot
+                </p>
+                <button className="mm-mode-play-btn">Play</button>
               </div>
 
               {/* Mode 3: Online Play */}
               <div
-                className="mm-mode-box online"
+                className="mm-mode-card online"
                 onClick={() => setActiveScreen("online_menu")}
               >
-                <div className="mm-mode-top">
-                  <div className="mm-mode-icon-circle">
-                    <GlobeIcon size={24} />
-                  </div>
-                  <span className="mm-mode-tag">ONLINE ROOMS</span>
+                <div className="mm-mode-icon-wrap">
+                  <GlobeIcon size={28} color="#8E44AD" />
                 </div>
-                <div>
-                  <div className="mm-mode-title">Online Play</div>
-                  <p className="mm-mode-desc">
-                    Play with friends over the internet. Create or join custom
-                    private rooms.
-                  </p>
-                </div>
-                <div className="mm-mode-cta">
-                  <span>BROWSE ROOMS</span>
-                  <span>→</span>
-                </div>
+                <div className="mm-mode-title">Online Rooms</div>
+                <p className="mm-mode-desc">
+                  Create or join a room and play online
+                </p>
+                <button className="mm-mode-play-btn">Play</button>
               </div>
             </div>
           </div>
@@ -571,9 +592,12 @@ export default function MatchmakingView({
                 onClick={() => setActiveScreen("mode_select")}
                 title="Back to mode select"
               >
-                ←
+                ‹
               </button>
-              <h2 className="mm-header-title">HOTSPOT MULTIPLAYER</h2>
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <h2 className="mm-header-title">Hotspot Multiplayer</h2>
+                <p className="mm-header-subtitle">Play with friends nearby using a mobile hotspot</p>
+              </div>
               <div className="mm-header-spacer" />
             </div>
 
@@ -589,9 +613,9 @@ export default function MatchmakingView({
                       <WifiIcon size={28} />
                     </div>
                     <div>
-                      <h3 className="mm-choice-title">HOST GAME</h3>
+                      <h3 className="mm-choice-title">CREATE GAME</h3>
                       <p className="mm-choice-sub">
-                        Create a local room on this phone
+                        Start a new game and let your friends join
                       </p>
                     </div>
                   </div>
@@ -625,8 +649,7 @@ export default function MatchmakingView({
                     </>
                   ) : (
                     <>
-                      <span>START HOSTING</span>
-                      <span>✨</span>
+                      <span>Create Game</span>
                     </>
                   )}
                 </button>
@@ -645,7 +668,7 @@ export default function MatchmakingView({
                     <div>
                       <h3 className="mm-choice-title">JOIN GAME</h3>
                       <p className="mm-choice-sub">
-                        Search for games on this Wi-Fi / Hotspot
+                        Enter the game code from your friend's device
                       </p>
                     </div>
                   </div>
@@ -690,7 +713,7 @@ export default function MatchmakingView({
                 onClick={() => setActiveScreen("hotspot_choice")}
                 title="Back"
               >
-                ←
+                ‹
               </button>
               <h2 className="mm-header-title">NEARBY GAMES</h2>
               <div className="mm-header-spacer" />
@@ -800,7 +823,7 @@ export default function MatchmakingView({
         )}
 
         {/* =================================================================
-            SCREEN 5: ONLINE ROOMS MENU (SYMMETRICAL LANDSCAPE GRID)
+            SCREEN 5: ONLINE ROOMS MENU
             ================================================================= */}
         {activeScreen === "online_menu" && (
           <div
@@ -812,14 +835,17 @@ export default function MatchmakingView({
                 onClick={() => setActiveScreen("mode_select")}
                 title="Back to mode select"
               >
-                ←
+                ‹
               </button>
-              <h2 className="mm-header-title">ONLINE ROOMS</h2>
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <h2 className="mm-header-title">Online Rooms</h2>
+                <p className="mm-header-subtitle">Create a room or join an existing one</p>
+              </div>
               <div className="mm-header-spacer" />
             </div>
 
             <div className="mm-online-grid">
-              {/* Host Card */}
+              {/* Create Room Card */}
               <div
                 className={`mm-choice-card host-choice ${matchmakingPending ? "disabled" : ""}`}
                 onClick={
@@ -973,28 +999,29 @@ export default function MatchmakingView({
         )}
 
         {/* =================================================================
-            SCREEN 6: MULTIPLAYER LOBBY (LANDSCAPE 4-SLOT ROW)
+            SCREEN 6: MULTIPLAYER LOBBY (4 HORIZONTAL PLAYER SLOTS)
             ================================================================= */}
         {activeScreen === "lobby" && (
           <div className="mm-lobby-container">
-            {/* Lobby Top Bar */}
+            {/* Top Bar: Leave, Network Badge, Room Code, Player Count */}
             <div className="mm-lobby-top-bar">
               <button className="mm-lobby-leave-btn" onClick={onLeaveRoom}>
-                ← LEAVE LOBBY
+                ← LEAVE
               </button>
 
               <div className="mm-lobby-badge-group">
                 <span className="mm-lobby-badge">🟢 LOCAL LAN</span>
-                {roomCode && (
-                  <button
-                    className={`mm-lobby-code-chip ${isCopied ? "copied" : ""}`}
-                    onClick={handleCopyCode}
-                    title="Click to copy code"
-                  >
-                    <span>ROOM CODE: <strong className="code-num">{roomCode}</strong></span>
-                    <span style={{ fontSize: "22px", marginLeft: "4px" }}>{isCopied ? "✓" : "📋"}</span>
-                  </button>
-                )}
+
+                <button
+                  className="mm-lobby-code-chip"
+                  onClick={handleCopyCode}
+                  title="Click to copy room code"
+                >
+                  ROOM CODE:{" "}
+                  <span className="code-num">{roomCode || "----"}</span>{" "}
+                  {isCopied ? "✓" : "📋"}
+                </button>
+
                 <span className="mm-lobby-count">
                   {connectedPlayers.length} / {TOTAL_SLOTS} PLAYERS
                 </span>
@@ -1003,66 +1030,78 @@ export default function MatchmakingView({
 
             {/* 4 Horizontal Player Slots */}
             <div className="mm-lobby-slots-row">
-              {Array.from({ length: TOTAL_SLOTS }).map((_, index) => {
-                const player = connectedPlayers[index] || null;
-                const isSlotHost = index === 0;
-                const isMe = index === myPlayerIndex;
+              {Array.from({ length: TOTAL_SLOTS }).map((_, slotIdx) => {
+                const player = connectedPlayers[slotIdx];
+                const isMe = slotIdx === myPlayerIndex;
+                const slotColor = player
+                  ? AVATAR_COLORS[player.avatar] ||
+                    getAvatarColor(player.avatar) ||
+                    "#ffd700"
+                  : "#334155";
 
                 if (player) {
-                  const pColor =
-                    AVATAR_COLORS[player.avatar] ||
-                    getAvatarColor(player.avatar) ||
-                    "#ffd700";
-                  const isPlayerReady = isSlotHost || player.isReady === true;
-
                   return (
                     <div
-                      key={index}
+                      key={slotIdx}
                       className={`mm-slot-card occupied ${isMe ? "is-me" : ""}`}
-                      style={{ borderTop: `3px solid ${pColor}` }}
+                      style={{ borderColor: slotColor }}
                     >
-                      <div
-                        className="mm-slot-avatar-wrap"
-                        style={{
-                          border: `2px solid ${pColor}`,
-                          boxShadow: `0 0 10px ${pColor}66`,
-                        }}
-                      >
-                        <img src={resolveAvatar(player.avatar)} alt={player.name} />
-                        {isSlotHost && (
+                      <div className="mm-slot-avatar-wrap">
+                        <img
+                          src={resolveAvatar(player.avatar)}
+                          alt={player.name}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                          }}
+                        />
+                        {slotIdx === 0 && (
                           <div className="mm-slot-crown-badge">
-                            <CrownIcon size={12} />
+                            <CrownIcon size={14} />
                           </div>
                         )}
                       </div>
 
-                      <div className="mm-slot-name" title={player.name}>
-                        {player.name} {isMe && "(You)"}
+                      <div className="mm-slot-name">
+                        {player.name || `Player ${slotIdx + 1}`}
+                        {isMe ? " (You)" : ""}
                       </div>
 
-                      <span
-                        className={`mm-slot-status-pill ${isSlotHost ? "host" : isPlayerReady ? "ready" : "not-ready"}`}
+                      <div
+                        className="mm-slot-status-pill"
+                        style={{
+                          background: player.isHost
+                            ? "linear-gradient(135deg, #f5a623, #e6930a)"
+                            : player.isReady
+                              ? "#27ae60"
+                              : "#e67e22",
+                        }}
                       >
-                        {isSlotHost
+                        {player.isHost
                           ? "HOST"
-                          : isPlayerReady
+                          : player.isReady
                             ? "READY"
                             : "NOT READY"}
-                      </span>
+                      </div>
                     </div>
                   );
                 }
 
-                // Empty Slot Waiting
+                // Empty slot
                 return (
-                  <div key={index} className="mm-slot-card empty">
+                  <div key={slotIdx} className="mm-slot-card empty">
                     <div className="mm-empty-radar-icon">
-                      <RadarIcon size={24} />
+                      <RadarIcon size={20} color="#475569" />
                     </div>
-                    <div className="mm-empty-slot-text">
-                      Slot {index + 1} Open
-                    </div>
-                    <span style={{ fontSize: "9px", color: "#64748b" }}>
+                    <span className="mm-empty-slot-text">
+                      Slot {slotIdx + 1} Open
+                    </span>
+                    <span
+                      className="mm-empty-slot-text"
+                      style={{ fontSize: "9px", opacity: 0.5 }}
+                    >
                       Waiting...
                     </span>
                   </div>
@@ -1070,52 +1109,30 @@ export default function MatchmakingView({
               })}
             </div>
 
-            {/* Lobby Action Footer */}
+            {/* Footer: Status + Action */}
             <div className="mm-lobby-footer">
               <div className="mm-lobby-msg">
-                {!canStartGame ? (
-                  <span>
-                    ⚠️ Need at least 2 players and everyone ready to start.
-                  </span>
-                ) : (
-                  <span style={{ color: "#34d399" }}>
-                    ✓ All players ready! Ready to roll!
-                  </span>
-                )}
+                {canStartGame
+                  ? "✓ All players ready! Ready to roll!"
+                  : "⚠️ Need at least 2 players and everyone ready to start."}
               </div>
 
-              {/* Host Action or Joiner Action */}
-              <div>
-                {isHost ? (
-                  <button
-                    className={`mm-start-game-btn ${canStartGame ? "pulse" : "disabled"}`}
-                    disabled={!canStartGame}
-                    onClick={() => {
-                      if (canStartGame) {
-                        startGame();
-                      } else {
-                        showToast("Waiting for all players to be ready!");
-                      }
-                    }}
-                  >
-                    <span>START GAME</span>
-                    <DiceIcon size={18} />
-                  </button>
-                ) : (
-                  <button
-                    className={`mm-ready-toggle-btn ${isMeReady ? "is-ready" : "not-ready"}`}
-                    onClick={() => {
-                      if (onToggleReady) {
-                        onToggleReady();
-                      } else {
-                        showToast("Ready state updated");
-                      }
-                    }}
-                  >
-                    <span>{isMeReady ? "I'M READY ✓" : "TAP TO READY ✕"}</span>
-                  </button>
-                )}
-              </div>
+              {isHost ? (
+                <button
+                  className="mm-start-game-btn"
+                  disabled={!canStartGame}
+                  onClick={startGame}
+                >
+                  START GAME 🎲
+                </button>
+              ) : (
+                <button
+                  className={`mm-ready-toggle-btn ${isMeReady ? "ready" : ""}`}
+                  onClick={onToggleReady}
+                >
+                  {isMeReady ? "I'M READY ✓" : "TAP TO READY ✕"}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1126,14 +1143,13 @@ export default function MatchmakingView({
         {showRulesModal && (
           <div
             className="mm-modal-overlay"
-            onClick={() => setShowRulesModal(false)}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowRulesModal(false);
+            }}
           >
-            <div
-              className="mm-modal-content"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="mm-modal-content">
               <div className="mm-modal-header">
-                <h3 className="mm-modal-title">HOW TO PLAY PSEUDO POLY</h3>
+                <h3 className="mm-modal-title">How to Play</h3>
                 <button
                   className="mm-modal-close"
                   onClick={() => setShowRulesModal(false)}
@@ -1141,27 +1157,26 @@ export default function MatchmakingView({
                   ✕
                 </button>
               </div>
-
               <div className="mm-rules-text">
                 <p>
-                  <b>1. Roll & Move:</b> Take turns rolling dice to move around
-                  the board.
+                  <strong>1. Roll & Move:</strong> Roll two dice and move your
+                  pawn around the board. Passing GO earns you $200.
                 </p>
                 <p>
-                  <b>2. Properties:</b> Land on unowned properties to buy them.
-                  When opponents land on your tiles, they pay you rent!
+                  <strong>2. Properties:</strong> Land on unowned properties to
+                  buy them. If another player owns it, you pay rent!
                 </p>
                 <p>
-                  <b>3. Monopolies:</b> Own all properties of a color group to
-                  collect double rent and build upgrades.
+                  <strong>3. Monopolies:</strong> Own all properties in a color
+                  group to double rent and start building houses and hotels.
                 </p>
                 <p>
-                  <b>4. Special Tiles:</b> Rob the Bank for instant cash, avoid
-                  The Audit tax inspection, and ride trains across town!
+                  <strong>4. Special Tiles:</strong> Chance & Community Chest
+                  cards, Income Tax, Free Parking jackpot, and Jail.
                 </p>
                 <p>
-                  <b>5. Victory:</b> Drive all opponents to bankruptcy to win
-                  the game!
+                  <strong>5. Victory:</strong> The last player standing wins!
+                  Bankrupt your opponents by collecting massive rents.
                 </p>
               </div>
             </div>

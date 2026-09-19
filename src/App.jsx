@@ -7048,7 +7048,7 @@ function App() {
                   <span className="tile-name">{tile.name}</span>
                   {tile.icon && (
                     <span className="tile-icon">
-                      <BoardIcon type={tile.icon} />
+                      <BoardIcon type={tile.icon} size={36} />
                     </span>
                   )}
                   {tile.price && (
@@ -7113,7 +7113,7 @@ function App() {
                   <span className="tile-name">{tile.name}</span>
                   {tile.icon && (
                     <span className="tile-icon">
-                      <BoardIcon type={tile.icon} />
+                      <BoardIcon type={tile.icon} size={36} />
                     </span>
                   )}
                   {tile.price && (
@@ -7175,7 +7175,7 @@ function App() {
                   <span className="tile-name">{tile.name}</span>
                   {tile.icon && (
                     <span className="tile-icon">
-                      <BoardIcon type={tile.icon} />
+                      <BoardIcon type={tile.icon} size={36} />
                     </span>
                   )}
                   {tile.price && (
@@ -7237,7 +7237,7 @@ function App() {
                   <span className="tile-name">{tile.name}</span>
                   {tile.icon && (
                     <span className="tile-icon">
-                      <BoardIcon type={tile.icon} />
+                      <BoardIcon type={tile.icon} size={36} />
                     </span>
                   )}
                   {tile.price && (

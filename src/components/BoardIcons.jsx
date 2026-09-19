@@ -4,7 +4,7 @@ import chanceImg from '../assets/chance_dice.png';
 import chestImg from '../assets/chest_box.png';
 
 // 1. Cash Stack Icon (Reverted original Banknotes with gold coins)
-export function CashStackIcon({ size = 22, className = '' }) {
+export function CashStackIcon({ size = 36, className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <defs>
@@ -30,18 +30,27 @@ export function CashStackIcon({ size = 22, className = '' }) {
 }
 
 // 2. Train / Railroad Icon (Reference App Modern Subway Train)
-export function TrainIcon({ size = 32, className = '' }) {
-  return (
-    <img
-      src={trainImg}
-      alt="Train"
-      style={{
+export function TrainIcon({ size, className = '' }) {
+  const style = size
+    ? {
         width: `${size}px`,
         height: 'auto',
         maxHeight: `${size}px`,
         objectFit: 'contain',
         filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))',
-      }}
+      }
+    : {
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))',
+      };
+
+  return (
+    <img
+      src={trainImg}
+      alt="Train"
+      style={style}
       className={`railroad-train-img ${className}`}
       draggable={false}
     />
@@ -49,7 +58,7 @@ export function TrainIcon({ size = 32, className = '' }) {
 }
 
 // 3. The Audit Icon (Tax clipboard / document)
-export function AuditIcon({ size = 22, className = '' }) {
+export function AuditIcon({ size = 34, className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <defs>
@@ -70,7 +79,7 @@ export function AuditIcon({ size = 22, className = '' }) {
 }
 
 // 4. Chance Icon (Reference App 3D Tumbling Red Dice)
-export function ChanceIcon({ size = 22, className = '' }) {
+export function ChanceIcon({ size = 36, className = '' }) {
   return (
     <img
       src={chanceImg}
@@ -89,7 +98,7 @@ export function ChanceIcon({ size = 22, className = '' }) {
 }
 
 // 5. Property War Icon (Crossed Swords)
-export function PropertyWarIcon({ size = 22, className = '' }) {
+export function PropertyWarIcon({ size = 34, className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <defs>
@@ -110,7 +119,7 @@ export function PropertyWarIcon({ size = 22, className = '' }) {
 }
 
 // 6. Forced Auction Icon (Gavel & Sound Block)
-export function ForcedAuctionIcon({ size = 22, className = '' }) {
+export function ForcedAuctionIcon({ size = 34, className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <defs>
@@ -132,7 +141,7 @@ export function ForcedAuctionIcon({ size = 22, className = '' }) {
 }
 
 // 7. Community Chest Icon (Reference App Gold Treasure Chest)
-export function ChestIcon({ size = 22, className = '' }) {
+export function ChestIcon({ size = 36, className = '' }) {
   return (
     <img
       src={chestImg}
@@ -151,7 +160,7 @@ export function ChestIcon({ size = 22, className = '' }) {
 }
 
 // 8. Yacht Icon (Center Board Decoration)
-export function YachtIcon({ size = 32, className = '' }) {
+export function YachtIcon({ size = 34, className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
       <defs>
@@ -174,7 +183,7 @@ export function YachtIcon({ size = 32, className = '' }) {
 }
 
 // 9. Master Icon Dispatcher
-export default function BoardIcon({ type, size = 22, className = '' }) {
+export default function BoardIcon({ type, size = 36, className = '' }) {
   if (!type) return null;
 
   switch (type) {
@@ -184,7 +193,7 @@ export default function BoardIcon({ type, size = 22, className = '' }) {
     case 'train':
     case 'railroad':
     case '🚅':
-      return <TrainIcon size={size} className={className} />;
+      return <TrainIcon size={size === 22 || size === 36 ? undefined : size} className={className} />;
     case 'audit':
     case '🧾':
       return <AuditIcon size={size} className={className} />;

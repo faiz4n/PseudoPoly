@@ -64,9 +64,22 @@
 
 /* Deal Modal - Center Responsive Optimization (No Scrollbars) */
 .deal-modal {
-  width: min(96%, 360px) !important;
-  max-width: 360px !important;
-  max-height: 94% !important;
+  width: min(96%, 480px) !important;
+  max-width: 480px !important;
+  max-height: 96% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+}
+
+.bank-modal {
+  width: min(94%, 390px) !important;
+  max-width: 390px !important;
+  max-height: 96% !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: visible !important;
@@ -81,189 +94,510 @@
   z-index: 1200 !important;
 }
 
-.deal-modal .modal-heading {
+.deal-modal .modal-heading,
+.bank-modal .modal-heading {
   flex-shrink: 0 !important;
 }
 
-.deal-modal .modal-heading-text {
+.deal-modal .modal-heading-text,
+.bank-modal .modal-heading-text {
   letter-spacing: 0.5px !important;
 }
 
-.deal-modal .modal-body {
+.deal-modal .modal-body,
+.bank-modal .modal-body {
   flex: 1 1 auto !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
-  padding: 4px 6px !important;
-  overflow: hidden !important;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-  box-sizing: border-box !important;
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-.deal-modal .modal-body::-webkit-scrollbar {
-  display: none !important;
-}
-
-.deal-modal .deal-config-container {
-  display: flex !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  gap: 2px !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-}
-
-.deal-modal .deal-column {
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
-  max-width: calc(50% - 2px) !important;
-  padding: 2px 3px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-.deal-modal .deal-column-header {
-  display: flex !important;
-  align-items: center !important;
-  gap: 3px !important;
-  padding: 1px 2px !important;
-  margin-bottom: 2px !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-}
-
-.deal-modal .deal-header-avatar {
-  width: 16px !important;
-  height: 16px !important;
-  flex-shrink: 0 !important;
-  border-radius: 50% !important;
-}
-
-.deal-modal .deal-column-header > span:not(.deal-subtitle) {
-  font-size: 8.5px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  min-width: 0 !important;
-  font-weight: bold !important;
-}
-
-.deal-modal .deal-subtitle {
-  font-size: 6.5px !important;
-  padding: 1px 3px !important;
-  border-radius: 3px !important;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-}
-
-.deal-modal .deal-property-list {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 2px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  min-width: 0 !important;
-  height: 42px !important;
-  max-height: 42px !important;
+  padding: 4px 8px !important;
   overflow-y: auto !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
-  padding: 1px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
-.deal-modal .deal-property-list::-webkit-scrollbar {
+.deal-modal .modal-body::-webkit-scrollbar,
+.bank-modal .modal-body::-webkit-scrollbar {
   display: none !important;
 }
 
-/* Very small, responsive tile boxes */
-.deal-modal .deal-property-box {
-  min-width: 0 !important;
-  max-width: 100% !important;
+/* ==================== REFERENCE DEAL MODAL UI ==================== */
+.deal-player-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+  gap: 8px !important;
+  padding: 6px 4px !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  padding: 1px 3px !important;
-  font-size: clamp(6px, 1.4vh, 7.5px) !important;
+}
+
+.deal-player-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 8px 6px !important;
+  background: rgba(255, 252, 242, 0.9) !important;
+  border: 2px solid #dfcfb2 !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+  transition: transform 0.1s ease, border-color 0.15s ease !important;
+}
+
+.deal-player-card:hover,
+.deal-player-card:active {
+  transform: scale(0.98) !important;
+  border-color: #2e7d32 !important;
+  background: #ffffff !important;
+}
+
+.deal-player-card img {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  border: 1.5px solid #d7ccc8 !important;
+}
+
+.deal-player-card .name {
+  font-family: "Junegull", sans-serif !important;
+  font-size: 12px !important;
+  color: #3e2723 !important;
   font-weight: 700 !important;
-  line-height: 1.15 !important;
-  min-height: 13px !important;
-  max-height: 16px !important;
-  border-radius: 3px !important;
-  display: block !important;
+}
+
+.deal-player-card .stats {
+  display: flex !important;
+  gap: 4px !important;
+  font-family: "Nunito", sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+/* Two Columns Layout */
+.deal-columns-wrapper {
+  display: flex !important;
+  width: 100% !important;
+  gap: 6px !important;
+  box-sizing: border-box !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.deal-card-column {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  background: rgba(255, 252, 242, 0.92) !important;
+  border: 1.5px solid #dfcfb2 !important;
+  border-radius: 8px !important;
+  padding: 4px 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
+
+.deal-col-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding-bottom: 3px !important;
+  border-bottom: 1px solid rgba(160, 120, 60, 0.2) !important;
+  margin-bottom: 3px !important;
+}
+
+.deal-col-user {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+}
+
+.deal-col-user img {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+}
+
+.deal-col-user span {
+  font-family: "Junegull", sans-serif !important;
+  font-size: 11px !important;
+  color: #3e2723 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  text-align: center !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.7) !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.25) !important;
 }
 
-.deal-modal .deal-empty-hint {
-  font-size: 7px !important;
-  padding: 4px 2px !important;
-  line-height: 1.1 !important;
-  text-align: center !important;
-}
-
-.deal-modal .deal-divider {
-  flex: 0 0 1px !important;
-  width: 1px !important;
-  margin: 1px 2px !important;
-  background: rgba(0, 0, 0, 0.15) !important;
-}
-
-.deal-modal .deal-money-section {
-  padding: 1px 3px !important;
-  margin: 1px 0 !important;
+.deal-col-cash-badge {
+  font-family: "Junegull", sans-serif !important;
+  font-size: 10px !important;
+  color: #1b5e20 !important;
+  font-weight: 700 !important;
+  background: rgba(76, 175, 80, 0.12) !important;
+  padding: 1px 4px !important;
   border-radius: 4px !important;
+  flex-shrink: 0 !important;
 }
 
-.deal-modal .deal-money-label {
-  font-size: 8px !important;
-  margin-bottom: 1px !important;
+/* Scrollable Property Selection List */
+.deal-prop-scroll-list {
+  flex: 1 1 auto !important;
+  max-height: 64px !important;
+  overflow-y: auto !important;
+  scrollbar-width: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2.5px !important;
+  padding: 1px 0 !important;
 }
 
-.deal-modal .deal-slider-row {
-  gap: 3px !important;
+.deal-prop-scroll-list::-webkit-scrollbar {
+  display: none !important;
 }
 
-.deal-modal .deal-slider-btn {
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
-  font-size: 9px !important;
-  padding: 0 !important;
-  line-height: 16px !important;
+.deal-prop-chip {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 2px 5px !important;
+  background: #ffffff !important;
+  border: 1px solid #d7ccc8 !important;
+  border-radius: 5px !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+  user-select: none !important;
 }
 
-.deal-modal .deal-money-slider {
+.deal-prop-chip:active {
+  transform: scale(0.97) !important;
+}
+
+.deal-prop-chip.selected {
+  border: 1.5px solid #2e7d32 !important;
+  background: #e8f5e9 !important;
+  box-shadow: 0 1px 3px rgba(46, 125, 50, 0.25) !important;
+}
+
+.deal-prop-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+}
+
+.deal-prop-color-bar {
+  width: 6px !important;
   height: 12px !important;
+  border-radius: 2px !important;
+  flex-shrink: 0 !important;
 }
 
-.deal-modal .deal-slider-labels {
-  font-size: 6.5px !important;
-  margin-top: 1px !important;
-}
-
-.deal-modal .modal-buttons {
-  margin-top: 2px !important;
-  padding: 0 !important;
-  gap: 6px !important;
-}
-
-.deal-modal .modal-btn {
-  height: 20px !important;
-  min-height: 20px !important;
-  line-height: 20px !important;
+.deal-prop-name {
+  font-family: "Nunito", sans-serif !important;
   font-size: 9px !important;
-  padding: 0 8px !important;
+  font-weight: 800 !important;
+  color: #3e2723 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
+
+.deal-prop-val {
+  font-family: "Junegull", sans-serif !important;
+  font-size: 9px !important;
+  color: #6d4c41 !important;
+  font-weight: 700 !important;
+  flex-shrink: 0 !important;
+}
+
+.deal-prop-chip.selected .deal-prop-val {
+  color: #1b5e20 !important;
+}
+
+.deal-col-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding-top: 3px !important;
+  margin-top: 2px !important;
+  border-top: 1px dashed rgba(160, 120, 60, 0.25) !important;
+  font-size: 9.5px !important;
+  font-family: "Nunito", sans-serif !important;
+  font-weight: 800 !important;
+  color: #4e342e !important;
+}
+
+.deal-col-footer .val {
+  font-family: "Junegull", sans-serif !important;
+  color: #1b5e20 !important;
+}
+
+/* Surcharge Cash Adjustment Box */
+.deal-surcharge-box {
+  background: rgba(255, 252, 242, 0.95) !important;
+  border: 1.5px solid #dfcfb2 !important;
+  border-radius: 8px !important;
+  padding: 3px 6px !important;
+  margin: 3px 0 !important;
+  text-align: center !important;
+}
+
+.deal-surcharge-status {
+  font-family: "Junegull", sans-serif !important;
+  font-size: 11px !important;
+  margin-bottom: 2px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+}
+
+.deal-surcharge-quick-row {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-bottom: 2px !important;
+}
+
+.deal-quick-btn {
+  font-family: "Junegull", sans-serif !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+  padding: 2px 5px !important;
+  border: 1px solid #c7b799 !important;
+  border-radius: 4px !important;
+  background: #fdfbf7 !important;
+  color: #4e342e !important;
+  cursor: pointer !important;
+  transition: all 0.1s ease !important;
+}
+
+.deal-quick-btn:active {
+  transform: scale(0.94) !important;
+  background: #ece3d2 !important;
+}
+
+.deal-quick-btn.balance {
+  background: linear-gradient(180deg, #42a5f5 0%, #1e88e5 100%) !important;
+  color: #ffffff !important;
+  border-color: #1565c0 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+.deal-surcharge-slider-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.deal-surcharge-slider-row input[type="range"] {
+  flex: 1 !important;
+  height: 6px !important;
+  accent-color: #1e88e5 !important;
+}
+
+/* ==================== REFERENCE BANK MODAL UI ==================== */
+.bank-info-card {
+  background: rgba(255, 252, 242, 0.95) !important;
+  border: 2px solid #dfcfb2 !important;
+  border-radius: 12px !important;
+  padding: 6px 12px !important;
+  margin: 2px auto 8px !important;
+  width: 94% !important;
+  box-sizing: border-box !important;
+}
+
+.bank-info-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 3px 0 !important;
+  font-family: "Nunito", sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #4e342e !important;
+}
+
+.bank-info-row:not(:last-child) {
+  border-bottom: 1px solid rgba(160, 120, 60, 0.18) !important;
+}
+
+.bank-info-row .val {
+  font-family: "Junegull", sans-serif !important;
+  font-size: 13px !important;
+  color: #1b5e20 !important;
+}
+
+.bank-info-row .val.debt {
+  color: #c62828 !important;
+}
+
+/* 2x2 Buttons Grid */
+.bank-grid-actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px !important;
+  width: 94% !important;
+  margin: 0 auto !important;
+}
+
+.bank-action-btn {
+  min-height: 36px !important;
+  height: 36px !important;
+  box-sizing: border-box !important;
+  padding: 0 10px !important;
+  font-family: "Junegull", sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.4px !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
+  background: transparent !important;
+  border-style: solid !important;
+  border-width: 8px 16px !important;
+  border-image-slice: 28 40 fill !important;
+  border-image-repeat: stretch !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  transition: transform 0.1s ease, filter 0.15s ease !important;
+}
+
+.bank-action-btn:active {
+  transform: scale(0.96) !important;
+}
+
+.bank-action-btn.blue {
+  border-image-source: url("/modal_ui/btn_blue.png") !important;
+}
+
+.bank-action-btn.green {
+  border-image-source: url("/modal_ui/btn_green.png") !important;
+}
+
+.bank-action-btn.red {
+  border-image-source: url("/modal_ui/btn_red.png") !important;
+}
+
+.bank-action-btn img {
+  width: 18px !important;
+  height: 18px !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4)) !important;
+}
+
+/* Loan presets */
+.bank-presets-row {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  margin: 4px 0 !important;
+}
+
+.bank-preset-chip {
+  font-family: "Junegull", sans-serif !important;
+  font-size: 10px !important;
+  padding: 2px 8px !important;
+  background: rgba(255, 252, 242, 0.95) !important;
+  border: 1.5px solid #dfcfb2 !important;
+  border-radius: 6px !important;
+  color: #3e2723 !important;
+  cursor: pointer !important;
+  transition: all 0.1s ease !important;
+}
+
+.bank-preset-chip.active {
+  background: #2e7d32 !important;
+  color: #ffffff !important;
+  border-color: #1b5e20 !important;
+}
+
+/* Step Buttons for Range Sliders */
+.deal-step-btn {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  min-height: 26px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.1s ease !important;
+  user-select: none !important;
+  flex-shrink: 0 !important;
+}
+
+.deal-step-btn:active {
+  transform: scale(0.9) !important;
+}
+
+.deal-step-btn img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* Bank Property Lists (Mortgage / Redeem) */
+.bank-prop-scroll-list {
+  width: 94% !important;
+  max-height: 110px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  padding: 2px 0 !important;
+  margin: 2px auto 6px !important;
+  box-sizing: border-box !important;
+  scrollbar-width: none !important;
+}
+
+.bank-prop-scroll-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+.bank-empty-hint {
+  font-family: "Nunito", sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #795548 !important;
+  text-align: center !important;
+  padding: 14px 8px !important;
+  margin: 4px auto !important;
+  width: 92% !important;
+  background: rgba(255, 252, 242, 0.75) !important;
+  border-radius: 8px !important;
+  border: 1px dashed #d7ccc8 !important;
+  box-sizing: border-box !important;
+}
+
+/* Tile Mortgage Badge */
+.tile-mortgage-badge {
+  position: absolute !important;
+  top: 2px !important;
+  right: 2px !important;
+  background: #d32f2f !important;
+  color: #ffffff !important;
+  font-family: "Junegull", sans-serif !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  padding: 1px 3px !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+}
+
 
 /* Bulletproof Dice & Dot Sizing Across ALL Screens */
 .war-modal .dice-container {

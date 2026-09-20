@@ -206,10 +206,13 @@ function App() {
 
   // Bank & Loan System State
   const [showBankModal, setShowBankModal] = useState(false);
-  const [bankPhase, setBankPhase] = useState("entry"); // 'entry' | 'loan'
+  const [bankPhase, setBankPhase] = useState("entry"); // 'entry' | 'loan' | 'credit' | 'mortgage' | 'redeem'
   const [loanSliderValue, setLoanSliderValue] = useState(0);
   const [playerLoans, setPlayerLoans] = useState({}); // { playerIndex: { principalAmount, repayAmount, lapsRemaining, loanStartTile } }
   const [showBankDebitModal, setShowBankDebitModal] = useState(false);
+  const [mortgagedProperties, setMortgagedProperties] = useState({}); // { [tileIndex]: true }
+  const [selectedMortgageTiles, setSelectedMortgageTiles] = useState([]);
+  const [selectedRedeemTiles, setSelectedRedeemTiles] = useState([]);
 
   // Game State Ref (for accessing latest state in event listeners)
   const gameStateRef = useRef({
@@ -223,6 +226,7 @@ function App() {
     playerPositions,
     playerMoney,
     propertyOwnership,
+    mortgagedProperties: {},
     propertyLevels,
     history,
     hoppingPlayer,
@@ -243,6 +247,7 @@ function App() {
       playerPositions,
       playerMoney,
       propertyOwnership,
+      mortgagedProperties,
       propertyLevels,
       history,
       hoppingPlayer,
@@ -260,6 +265,7 @@ function App() {
     playerPositions,
     playerMoney,
     propertyOwnership,
+    mortgagedProperties,
     propertyLevels,
     history,
     hoppingPlayer,
@@ -1295,6 +1301,7 @@ function App() {
     }
 
     if (state.propertyOwnership) setPropertyOwnership(state.propertyOwnership);
+    if (state.mortgagedProperties) setMortgagedProperties(state.mortgagedProperties);
     if (state.propertyLevels) setPropertyLevels(state.propertyLevels);
     if (state.turnFinished !== undefined) setTurnFinished(state.turnFinished);
     if (state.isProcessingTurn !== undefined)
@@ -1926,6 +1933,9 @@ function App() {
 
   // Helper: Calculate Rent
   const calculateRent = (tileIndex, ownershipOverride = null) => {
+    if (mortgagedProperties && mortgagedProperties[tileIndex]) {
+      return 0;
+    }
     const currentOwnership = ownershipOverride || propertyOwnership;
 
     // 1. Check if it's a Train
@@ -4313,6 +4323,9 @@ function App() {
     setHistory(["Game started!"]);
     setBankruptPlayers({});
     setPlayerLoans({});
+    setMortgagedProperties({});
+    setSelectedMortgageTiles([]);
+    setSelectedRedeemTiles([]);
     setCashStack(0);
     setBattlePot(0);
     setNetworkMode("offline");
@@ -4456,6 +4469,129 @@ function App() {
       ...prev.slice(0, 9),
     ]);
     setShowBankModal(false);
+  };
+
+  // Toggle selection of property for mortgage
+  const handleToggleMortgageTile = (tileIndex) => {
+    setSelectedMortgageTiles((prev) =>
+      prev.includes(tileIndex)
+        ? prev.filter((t) => t !== tileIndex)
+        : [...prev, tileIndex],
+    );
+  };
+
+  // Confirm mortgaging selected properties
+  const handleConfirmMortgage = () => {
+    if (selectedMortgageTiles.length === 0) return;
+
+    let totalCashGained = 0;
+    const newMortgaged = { ...mortgagedProperties };
+    selectedMortgageTiles.forEach((tileIdx) => {
+      const prop = getPropertyByTileIndex(tileIdx);
+      const val = Math.round((prop?.price || 0) / 2);
+      totalCashGained += val;
+      newMortgaged[tileIdx] = true;
+    });
+
+    setMortgagedProperties(newMortgaged);
+    setPlayerMoney((prev) => {
+      const updated = [...prev];
+      updated[currentPlayer] += totalCashGained;
+      if (networkMode === "online") {
+        sendGameAction("update_state", {
+          playerMoney: updated,
+          mortgagedProperties: newMortgaged,
+        });
+      }
+      return updated;
+    });
+
+    const key = getUniqueKey();
+    setFloatingPrices((prev) => [
+      ...prev,
+      {
+        price: totalCashGained,
+        tileIndex: playerPositions[currentPlayer],
+        key,
+        isPositive: true,
+      },
+    ]);
+    setTimeout(() => {
+      setFloatingPrices((prev) => prev.filter((fp) => fp.key !== key));
+    }, 3000);
+
+    playBuySound();
+    setHistory((prev) => [
+      `🏦 ${gamePlayers[currentPlayer]?.name} mortgaged ${selectedMortgageTiles.length} propert${selectedMortgageTiles.length > 1 ? "ies" : "y"} for +$${totalCashGained.toLocaleString()}`,
+      ...prev.slice(0, 9),
+    ]);
+
+    setSelectedMortgageTiles([]);
+    setBankPhase("entry");
+  };
+
+  // Toggle selection of property for redemption
+  const handleToggleRedeemTile = (tileIndex) => {
+    setSelectedRedeemTiles((prev) =>
+      prev.includes(tileIndex)
+        ? prev.filter((t) => t !== tileIndex)
+        : [...prev, tileIndex],
+    );
+  };
+
+  // Confirm redeeming mortgaged properties
+  const handleConfirmRedeem = () => {
+    if (selectedRedeemTiles.length === 0) return;
+
+    let totalCost = 0;
+    const newMortgaged = { ...mortgagedProperties };
+    selectedRedeemTiles.forEach((tileIdx) => {
+      const prop = getPropertyByTileIndex(tileIdx);
+      const cost = Math.round((prop?.price || 0) * 0.55); // 50% principal + 10% interest
+      totalCost += cost;
+      delete newMortgaged[tileIdx];
+    });
+
+    if (playerMoney[currentPlayer] < totalCost) {
+      showToast("Not enough money to redeem selected properties.");
+      return;
+    }
+
+    setMortgagedProperties(newMortgaged);
+    setPlayerMoney((prev) => {
+      const updated = [...prev];
+      updated[currentPlayer] -= totalCost;
+      if (networkMode === "online") {
+        sendGameAction("update_state", {
+          playerMoney: updated,
+          mortgagedProperties: newMortgaged,
+        });
+      }
+      return updated;
+    });
+
+    const key = getUniqueKey();
+    setFloatingPrices((prev) => [
+      ...prev,
+      {
+        price: totalCost,
+        tileIndex: playerPositions[currentPlayer],
+        key,
+        isPositive: false,
+      },
+    ]);
+    setTimeout(() => {
+      setFloatingPrices((prev) => prev.filter((fp) => fp.key !== key));
+    }, 3000);
+
+    playBuySound();
+    setHistory((prev) => [
+      `🏦 ${gamePlayers[currentPlayer]?.name} redeemed ${selectedRedeemTiles.length} propert${selectedRedeemTiles.length > 1 ? "ies" : "y"} for -$${totalCost.toLocaleString()}`,
+      ...prev.slice(0, 9),
+    ]);
+
+    setSelectedRedeemTiles([]);
+    setBankPhase("entry");
   };
 
   // Handle player bankruptcy
@@ -7061,8 +7197,15 @@ function App() {
                       className={`tile-price ${ownerStyle ? "owned" : ""}`}
                       style={ownerStyle || {}}
                     >
-                      {ownerStyle ? calculateRent(tileIndex) : tile.price}
+                      {ownerStyle
+                        ? mortgagedProperties[tileIndex]
+                          ? "MORTG"
+                          : calculateRent(tileIndex)
+                        : tile.price}
                     </span>
+                  )}
+                  {mortgagedProperties[tileIndex] && (
+                    <span className="tile-mortgage-badge">M</span>
                   )}
                   {/* Green Plus for Auction Selection */}
                   {pendingAuctionProperty?.tileIndex === tileIndex && (
@@ -7126,8 +7269,15 @@ function App() {
                       className={`tile-price ${ownerStyle ? "owned" : ""}`}
                       style={ownerStyle || {}}
                     >
-                      {ownerStyle ? calculateRent(tileIndex) : tile.price}
+                      {ownerStyle
+                        ? mortgagedProperties[tileIndex]
+                          ? "MORTG"
+                          : calculateRent(tileIndex)
+                        : tile.price}
                     </span>
+                  )}
+                  {mortgagedProperties[tileIndex] && (
+                    <span className="tile-mortgage-badge">M</span>
                   )}
                   {pendingAuctionProperty?.tileIndex === tileIndex && (
                     <div
@@ -7188,8 +7338,15 @@ function App() {
                       className={`tile-price ${ownerStyle ? "owned" : ""}`}
                       style={ownerStyle || {}}
                     >
-                      {ownerStyle ? calculateRent(tileIndex) : tile.price}
+                      {ownerStyle
+                        ? mortgagedProperties[tileIndex]
+                          ? "MORTG"
+                          : calculateRent(tileIndex)
+                        : tile.price}
                     </span>
+                  )}
+                  {mortgagedProperties[tileIndex] && (
+                    <span className="tile-mortgage-badge">M</span>
                   )}
                   {pendingAuctionProperty?.tileIndex === tileIndex && (
                     <div
@@ -7250,8 +7407,15 @@ function App() {
                       className={`tile-price ${ownerStyle ? "owned" : ""}`}
                       style={ownerStyle || {}}
                     >
-                      {ownerStyle ? calculateRent(tileIndex) : tile.price}
+                      {ownerStyle
+                        ? mortgagedProperties[tileIndex]
+                          ? "MORTG"
+                          : calculateRent(tileIndex)
+                        : tile.price}
                     </span>
+                  )}
+                  {mortgagedProperties[tileIndex] && (
+                    <span className="tile-mortgage-badge">M</span>
                   )}
                   {pendingAuctionProperty?.tileIndex === tileIndex && (
                     <div
@@ -7620,12 +7784,15 @@ function App() {
               {showDealModal && (
                 <div className="modal-overlay deal-modal-overlay">
                   <div className="buy-modal deal-modal">
+                    <button
+                      className="modal-close-btn"
+                      onClick={handleDealCancel}
+                      aria-label="Close"
+                    />
                     {/* Header */}
                     <div className="modal-heading">
                       <span className="modal-heading-text">
-                        {dealPhase === "select"
-                          ? "Choose Player"
-                          : "Make a Deal"}
+                        {dealPhase === "select" ? "Choose Player" : "Deal"}
                       </span>
                     </div>
 
@@ -7635,180 +7802,354 @@ function App() {
                         /* Player Selection Phase */
                         <div className="deal-player-grid">
                           {gamePlayers.map((player, idx) => {
-                            if (idx === currentPlayer) return null; // Skip active player
+                            if (idx === currentPlayer || bankruptPlayers[idx])
+                              return null;
+                            const propsCount = Object.keys(
+                              propertyOwnership,
+                            ).filter((t) => propertyOwnership[t] === idx).length;
                             return (
                               <div
                                 key={idx}
-                                className="deal-player-item"
+                                className="deal-player-card"
                                 onClick={() => handleDealPlayerSelect(idx)}
                               >
-                                <img
-                                  src={player.avatar}
-                                  alt={player.name}
-                                  className="deal-player-avatar"
-                                />
-                                <span className="deal-player-name">
-                                  {player.name}
-                                </span>
+                                <img src={player.avatar} alt={player.name} />
+                                <span className="name">{player.name}</span>
+                                <div className="stats">
+                                  <span className="deal-col-cash-badge">
+                                    ${(playerMoney[idx] || 0).toLocaleString()}
+                                  </span>
+                                  <span style={{ color: "#6d4c41" }}>
+                                    {propsCount} props
+                                  </span>
+                                </div>
                               </div>
                             );
                           })}
                         </div>
                       ) : (
                         /* Configuration Phase */
-                        <div className="deal-config-container">
-                          {/* Left Column - Active Player (Giving) */}
-                          <div className="deal-column deal-give-column">
-                            <div className="deal-column-header">
-                              <img
-                                src={gamePlayers[currentPlayer]?.avatar}
-                                alt=""
-                                className="deal-header-avatar"
-                              />
-                              <span>{gamePlayers[currentPlayer]?.name}</span>
-                              <span className="deal-subtitle">You Give</span>
-                            </div>
-                            <div className="deal-property-list">
-                              {dealGiveProperties.map((tileIndex) => {
-                                const tile = getPropertyByTileIndex(tileIndex);
-                                return (
-                                  <div
-                                    key={tileIndex}
-                                    className="deal-property-box"
-                                    style={{
-                                      background: tile?.color || "#888",
-                                    }}
-                                    title={tile?.name || `Tile ${tileIndex}`}
-                                  >
-                                    {tile?.name || `Tile ${tileIndex}`}
-                                  </div>
-                                );
-                              })}
-                              {dealGiveProperties.length === 0 && (
-                                <div className="deal-empty-hint">
-                                  Tap your properties on the board
+                        <>
+                          <div className="deal-columns-wrapper">
+                            {/* Left Column - Active Player (Giving) */}
+                            <div className="deal-card-column">
+                              <div className="deal-col-header">
+                                <div className="deal-col-user">
+                                  <img
+                                    src={gamePlayers[currentPlayer]?.avatar}
+                                    alt=""
+                                  />
+                                  <span>
+                                    {gamePlayers[currentPlayer]?.name}
+                                  </span>
                                 </div>
+                                <span className="deal-col-cash-badge">
+                                  $
+                                  {(
+                                    playerMoney[currentPlayer] || 0
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="deal-prop-scroll-list">
+                                {Object.keys(propertyOwnership)
+                                  .map(Number)
+                                  .filter(
+                                    (t) => propertyOwnership[t] === currentPlayer,
+                                  )
+                                  .map((tIdx) => {
+                                    const prop = getPropertyByTileIndex(tIdx);
+                                    if (!prop) return null;
+                                    const isSelected =
+                                      dealGiveProperties.includes(tIdx);
+                                    return (
+                                      <div
+                                        key={tIdx}
+                                        className={`deal-prop-chip ${isSelected ? "selected" : ""}`}
+                                        onClick={() => {
+                                          setDealGiveProperties((prev) =>
+                                            prev.includes(tIdx)
+                                              ? prev.filter((t) => t !== tIdx)
+                                              : [...prev, tIdx],
+                                          );
+                                        }}
+                                      >
+                                        <div className="deal-prop-left">
+                                          <span
+                                            className="deal-prop-color-bar"
+                                            style={{
+                                              background: prop.color || "#888",
+                                            }}
+                                          />
+                                          <span className="deal-prop-name">
+                                            {prop.name}
+                                          </span>
+                                        </div>
+                                        <span className="deal-prop-val">
+                                          ${prop.price || 0}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                {Object.keys(propertyOwnership).filter(
+                                  (t) => propertyOwnership[t] === currentPlayer,
+                                ).length === 0 && (
+                                  <div className="bank-empty-hint">
+                                    No properties owned
+                                  </div>
+                                )}
+                              </div>
+                              <div className="deal-col-footer">
+                                <span>Value:</span>
+                                <span className="val">
+                                  $
+                                  {dealGiveProperties
+                                    .reduce((sum, t) => {
+                                      const p = getPropertyByTileIndex(t);
+                                      return sum + (p?.price || 0);
+                                    }, 0)
+                                    .toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Right Column - Target Player (Receiving) */}
+                            <div className="deal-card-column">
+                              <div className="deal-col-header">
+                                <div className="deal-col-user">
+                                  <img
+                                    src={
+                                      gamePlayers[selectedDealPlayer]?.avatar
+                                    }
+                                    alt=""
+                                  />
+                                  <span>
+                                    {gamePlayers[selectedDealPlayer]?.name}
+                                  </span>
+                                </div>
+                                <span className="deal-col-cash-badge">
+                                  $
+                                  {(
+                                    playerMoney[selectedDealPlayer] || 0
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="deal-prop-scroll-list">
+                                {Object.keys(propertyOwnership)
+                                  .map(Number)
+                                  .filter(
+                                    (t) =>
+                                      propertyOwnership[t] ===
+                                      selectedDealPlayer,
+                                  )
+                                  .map((tIdx) => {
+                                    const prop = getPropertyByTileIndex(tIdx);
+                                    if (!prop) return null;
+                                    const isSelected =
+                                      dealReceiveProperties.includes(tIdx);
+                                    return (
+                                      <div
+                                        key={tIdx}
+                                        className={`deal-prop-chip ${isSelected ? "selected" : ""}`}
+                                        onClick={() => {
+                                          setDealReceiveProperties((prev) =>
+                                            prev.includes(tIdx)
+                                              ? prev.filter((t) => t !== tIdx)
+                                              : [...prev, tIdx],
+                                          );
+                                        }}
+                                      >
+                                        <div className="deal-prop-left">
+                                          <span
+                                            className="deal-prop-color-bar"
+                                            style={{
+                                              background: prop.color || "#888",
+                                            }}
+                                          />
+                                          <span className="deal-prop-name">
+                                            {prop.name}
+                                          </span>
+                                        </div>
+                                        <span className="deal-prop-val">
+                                          ${prop.price || 0}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                {Object.keys(propertyOwnership).filter(
+                                  (t) =>
+                                    propertyOwnership[t] === selectedDealPlayer,
+                                ).length === 0 && (
+                                  <div className="bank-empty-hint">
+                                    No properties owned
+                                  </div>
+                                )}
+                              </div>
+                              <div className="deal-col-footer">
+                                <span>Value:</span>
+                                <span className="val">
+                                  $
+                                  {dealReceiveProperties
+                                    .reduce((sum, t) => {
+                                      const p = getPropertyByTileIndex(t);
+                                      return sum + (p?.price || 0);
+                                    }, 0)
+                                    .toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Cash Surcharge Box */}
+                          <div className="deal-surcharge-box">
+                            <div className="deal-surcharge-status">
+                              {dealMoneyOffer === 0 ? (
+                                <span style={{ color: "#5d4037" }}>
+                                  No Money Exchange
+                                </span>
+                              ) : dealMoneyOffer > 0 ? (
+                                <span style={{ color: "#c62828" }}>
+                                  You Pay: ${dealMoneyOffer.toLocaleString()}
+                                </span>
+                              ) : (
+                                <span style={{ color: "#2e7d32" }}>
+                                  You Request: $
+                                  {Math.abs(dealMoneyOffer).toLocaleString()}
+                                </span>
                               )}
                             </div>
-                          </div>
-
-                          {/* Divider */}
-                          <div className="deal-divider"></div>
-
-                          {/* Right Column - Selected Player (Receiving) */}
-                          <div className="deal-column deal-receive-column">
-                            <div className="deal-column-header">
-                              <img
-                                src={gamePlayers[selectedDealPlayer]?.avatar}
-                                alt=""
-                                className="deal-header-avatar"
+                            <div className="deal-surcharge-quick-row">
+                              <button
+                                className="deal-quick-btn"
+                                onClick={() =>
+                                  setDealMoneyOffer((prev) =>
+                                    Math.max(
+                                      -(playerMoney[selectedDealPlayer] || 0),
+                                      prev - 500,
+                                    ),
+                                  )
+                                }
+                              >
+                                -500
+                              </button>
+                              <button
+                                className="deal-quick-btn"
+                                onClick={() =>
+                                  setDealMoneyOffer((prev) =>
+                                    Math.max(
+                                      -(playerMoney[selectedDealPlayer] || 0),
+                                      prev - 100,
+                                    ),
+                                  )
+                                }
+                              >
+                                -100
+                              </button>
+                              <button
+                                className="deal-quick-btn balance"
+                                onClick={() => {
+                                  const giveVal = dealGiveProperties.reduce(
+                                    (sum, t) =>
+                                      sum +
+                                      (getPropertyByTileIndex(t)?.price || 0),
+                                    0,
+                                  );
+                                  const getVal = dealReceiveProperties.reduce(
+                                    (sum, t) =>
+                                      sum +
+                                      (getPropertyByTileIndex(t)?.price || 0),
+                                    0,
+                                  );
+                                  const diff = getVal - giveVal;
+                                  const maxGive =
+                                    playerMoney[currentPlayer] || 0;
+                                  const maxGet =
+                                    playerMoney[selectedDealPlayer] || 0;
+                                  const balanced = Math.max(
+                                    -maxGet,
+                                    Math.min(maxGive, diff),
+                                  );
+                                  setDealMoneyOffer(balanced);
+                                }}
+                                title="Auto-balance trade values"
+                              >
+                                BALANCE
+                              </button>
+                              <button
+                                className="deal-quick-btn"
+                                onClick={() =>
+                                  setDealMoneyOffer((prev) =>
+                                    Math.min(
+                                      playerMoney[currentPlayer] || 0,
+                                      prev + 100,
+                                    ),
+                                  )
+                                }
+                              >
+                                +100
+                              </button>
+                              <button
+                                className="deal-quick-btn"
+                                onClick={() =>
+                                  setDealMoneyOffer((prev) =>
+                                    Math.min(
+                                      playerMoney[currentPlayer] || 0,
+                                      prev + 500,
+                                    ),
+                                  )
+                                }
+                              >
+                                +500
+                              </button>
+                            </div>
+                            <div className="deal-surcharge-slider-row">
+                              <button
+                                className="deal-step-btn"
+                                onClick={() =>
+                                  setDealMoneyOffer((prev) =>
+                                    Math.max(
+                                      -(playerMoney[selectedDealPlayer] || 0),
+                                      prev - 100,
+                                    ),
+                                  )
+                                }
+                                aria-label="Decrease offer"
+                              >
+                                <img src="/modal_ui/minus_btn.png" alt="-" />
+                              </button>
+                              <input
+                                type="range"
+                                min={-(playerMoney[selectedDealPlayer] || 0)}
+                                max={playerMoney[currentPlayer] || 0}
+                                step="100"
+                                value={dealMoneyOffer}
+                                onChange={(e) =>
+                                  setDealMoneyOffer(
+                                    parseInt(e.target.value) || 0,
+                                  )
+                                }
+                                className="deal-money-slider"
                               />
-                              <span>
-                                {gamePlayers[selectedDealPlayer]?.name}
-                              </span>
-                              <span className="deal-subtitle">You Get</span>
-                            </div>
-                            <div className="deal-property-list">
-                              {dealReceiveProperties.map((tileIndex) => {
-                                const tile = getPropertyByTileIndex(tileIndex);
-                                return (
-                                  <div
-                                    key={tileIndex}
-                                    className="deal-property-box"
-                                    style={{
-                                      background: tile?.color || "#888",
-                                    }}
-                                    title={tile?.name || `Tile ${tileIndex}`}
-                                  >
-                                    {tile?.name || `Tile ${tileIndex}`}
-                                  </div>
-                                );
-                              })}
-                              {dealReceiveProperties.length === 0 && (
-                                <div className="deal-empty-hint">
-                                  Tap their properties on the board
-                                </div>
-                              )}
+                              <button
+                                className="deal-step-btn"
+                                onClick={() =>
+                                  setDealMoneyOffer((prev) =>
+                                    Math.min(
+                                      playerMoney[currentPlayer] || 0,
+                                      prev + 100,
+                                    ),
+                                  )
+                                }
+                                aria-label="Increase offer"
+                              >
+                                <img src="/modal_ui/plus_btn.png" alt="+" />
+                              </button>
                             </div>
                           </div>
-                        </div>
-                      )}
-
-                      {/* Money Slider (only in configure phase) - Bidirectional */}
-                      {dealPhase === "configure" && (
-                        <div className="deal-money-section">
-                          <div className="deal-money-label">
-                            {dealMoneyOffer === 0 ? (
-                              <span>No money exchange</span>
-                            ) : dealMoneyOffer > 0 ? (
-                              <span style={{ color: "#f44336" }}>
-                                You give: ${dealMoneyOffer.toLocaleString()}
-                              </span>
-                            ) : (
-                              <span style={{ color: "#4CAF50" }}>
-                                You get: $
-                                {Math.abs(dealMoneyOffer).toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-                          <div className="deal-slider-row">
-                            <button
-                              className="deal-slider-btn"
-                              onClick={() =>
-                                setDealMoneyOffer((prev) =>
-                                  Math.max(
-                                    -(playerMoney[selectedDealPlayer] || 0),
-                                    prev - 100,
-                                  ),
-                                )
-                              }
-                              style={{ background: "#4CAF50" }}
-                            >
-                              −
-                            </button>
-                            <input
-                              type="range"
-                              min={-(playerMoney[selectedDealPlayer] || 0)}
-                              max={playerMoney[currentPlayer] || 0}
-                              step="100"
-                              value={dealMoneyOffer}
-                              onChange={(e) =>
-                                setDealMoneyOffer(parseInt(e.target.value))
-                              }
-                              className="deal-money-slider"
-                              style={{
-                                background:
-                                  dealMoneyOffer === 0
-                                    ? "#888"
-                                    : dealMoneyOffer > 0
-                                      ? `linear-gradient(to right, #888 50%, #f44336 50%)`
-                                      : `linear-gradient(to left, #888 50%, #4CAF50 50%)`,
-                              }}
-                            />
-                            <button
-                              className="deal-slider-btn"
-                              onClick={() =>
-                                setDealMoneyOffer((prev) =>
-                                  Math.min(
-                                    playerMoney[currentPlayer] || 0,
-                                    prev + 100,
-                                  ),
-                                )
-                              }
-                              style={{ background: "#f44336" }}
-                            >
-                              +
-                            </button>
-                          </div>
-                          <div className="deal-slider-labels">
-                            <span style={{ color: "#4CAF50" }}>← Get</span>
-                            <span style={{ color: "#f44336" }}>Give →</span>
-                          </div>
-                        </div>
+                        </>
                       )}
 
                       {/* Action Buttons */}
-                      <div className="modal-buttons">
+                      <div className="modal-buttons" style={{ marginTop: "4px" }}>
                         <button
                           className="modal-btn cancel"
                           onClick={handleDealCancel}
@@ -7844,92 +8185,186 @@ function App() {
 
               {/* Deal Review Modal (for recipient) */}
               {showDealReviewModal && incomingDeal && (
-                <div className="modal-overlay">
+                <div className="modal-overlay deal-modal-overlay">
                   <div className="buy-modal deal-modal deal-review-modal">
                     <div className="modal-heading">
                       <span className="modal-heading-text">Deal Offer</span>
                     </div>
                     <div className="modal-body">
-                      <div className="deal-review-header">
-                        {gamePlayers[incomingDeal.proposer]?.name} wants to
+                      <div
+                        style={{
+                          textAlign: "center",
+                          fontFamily: "Junegull, sans-serif",
+                          fontSize: "13px",
+                          color: "#4e342e",
+                          margin: "2px 0 6px",
+                        }}
+                      >
+                        {gamePlayers[incomingDeal.proposer]?.name} offers a
                         trade!
                       </div>
 
-                      <div className="deal-config-container">
+                      <div className="deal-columns-wrapper">
                         {/* What you give */}
-                        <div className="deal-column">
-                          <div className="deal-column-header">
+                        <div className="deal-card-column">
+                          <div className="deal-col-header">
                             <span
-                              className="deal-subtitle"
-                              style={{ color: "#f44336" }}
+                              className="name"
+                              style={{ color: "#c62828", fontWeight: "900" }}
                             >
                               You Give
                             </span>
                           </div>
-                          <div className="deal-property-list">
-                            {(incomingDeal.receiveProperties || []).map((tileIndex) => {
-                              const tile = getPropertyByTileIndex(tileIndex);
-                              return (
-                                <div
-                                  key={tileIndex}
-                                  className="deal-property-box"
-                                  style={{ background: tile?.color || "#888" }}
-                                >
-                                  {tile?.name}
+                          <div className="deal-prop-scroll-list">
+                            {(incomingDeal.receiveProperties || []).map(
+                              (tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                return (
+                                  <div
+                                    key={tIdx}
+                                    className="deal-prop-chip selected"
+                                  >
+                                    <div className="deal-prop-left">
+                                      <span
+                                        className="deal-prop-color-bar"
+                                        style={{
+                                          background: prop?.color || "#888",
+                                        }}
+                                      />
+                                      <span className="deal-prop-name">
+                                        {prop?.name}
+                                      </span>
+                                    </div>
+                                    <span className="deal-prop-val">
+                                      ${prop?.price || 0}
+                                    </span>
+                                  </div>
+                                );
+                              },
+                            )}
+                            {incomingDeal.moneyOffer < 0 && (
+                              <div
+                                className="deal-prop-chip"
+                                style={{
+                                  border: "1px solid #ef5350",
+                                  background: "#ffebee",
+                                }}
+                              >
+                                <div className="deal-prop-left">
+                                  <img
+                                    src="/modal_ui/coin_stack.png"
+                                    style={{ width: "14px", height: "14px" }}
+                                    alt=""
+                                  />
+                                  <span
+                                    className="deal-prop-name"
+                                    style={{ color: "#c62828" }}
+                                  >
+                                    Cash Request
+                                  </span>
                                 </div>
-                              );
-                            })}
+                                <span
+                                  className="deal-prop-val"
+                                  style={{ color: "#c62828" }}
+                                >
+                                  $
+                                  {Math.abs(
+                                    incomingDeal.moneyOffer,
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            {(incomingDeal.receiveProperties || []).length ===
+                              0 &&
+                              incomingDeal.moneyOffer >= 0 && (
+                                <div className="bank-empty-hint">
+                                  Nothing requested
+                                </div>
+                              )}
                           </div>
                         </div>
 
-                        <div className="deal-divider">
-                          <span className="deal-arrow deal-arrow-give">→</span>
-                          <span className="deal-arrow deal-arrow-receive">
-                            ←
-                          </span>
-                        </div>
-
                         {/* What you receive */}
-                        <div className="deal-column">
-                          <div className="deal-column-header">
+                        <div className="deal-card-column">
+                          <div className="deal-col-header">
                             <span
-                              className="deal-subtitle"
-                              style={{ color: "#4CAF50" }}
+                              className="name"
+                              style={{ color: "#2e7d32", fontWeight: "900" }}
                             >
                               You Get
                             </span>
                           </div>
-                          <div className="deal-property-list">
-                            {(incomingDeal.giveProperties || []).map((tileIndex) => {
-                              const tile = getPropertyByTileIndex(tileIndex);
+                          <div className="deal-prop-scroll-list">
+                            {(incomingDeal.giveProperties || []).map((tIdx) => {
+                              const prop = getPropertyByTileIndex(tIdx);
                               return (
                                 <div
-                                  key={tileIndex}
-                                  className="deal-property-box"
-                                  style={{ background: tile?.color || "#888" }}
+                                  key={tIdx}
+                                  className="deal-prop-chip selected"
                                 >
-                                  {tile?.name}
+                                  <div className="deal-prop-left">
+                                    <span
+                                      className="deal-prop-color-bar"
+                                      style={{
+                                        background: prop?.color || "#888",
+                                      }}
+                                    />
+                                    <span className="deal-prop-name">
+                                      {prop?.name}
+                                    </span>
+                                  </div>
+                                  <span className="deal-prop-val">
+                                    ${prop?.price || 0}
+                                  </span>
                                 </div>
                               );
                             })}
                             {incomingDeal.moneyOffer > 0 && (
                               <div
-                                className="deal-property-box"
-                                style={{ background: "#4CAF50" }}
+                                className="deal-prop-chip"
+                                style={{
+                                  border: "1px solid #81c784",
+                                  background: "#e8f5e9",
+                                }}
                               >
-                                +${incomingDeal.moneyOffer.toLocaleString()}
+                                <div className="deal-prop-left">
+                                  <img
+                                    src="/modal_ui/coin_stack.png"
+                                    style={{ width: "14px", height: "14px" }}
+                                    alt=""
+                                  />
+                                  <span
+                                    className="deal-prop-name"
+                                    style={{ color: "#2e7d32" }}
+                                  >
+                                    Cash Offer
+                                  </span>
+                                </div>
+                                <span
+                                  className="deal-prop-val"
+                                  style={{ color: "#2e7d32" }}
+                                >
+                                  +$
+                                  {incomingDeal.moneyOffer.toLocaleString()}
+                                </span>
                               </div>
                             )}
+                            {(incomingDeal.giveProperties || []).length === 0 &&
+                              incomingDeal.moneyOffer <= 0 && (
+                                <div className="bank-empty-hint">
+                                  Nothing offered
+                                </div>
+                              )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="modal-buttons">
+                      <div className="modal-buttons" style={{ marginTop: "6px" }}>
                         <button
                           className="modal-btn cancel"
                           onClick={handleDealDeny}
                         >
-                          DENY
+                          DECLINE
                         </button>
                         <button
                           className="modal-btn buy"
@@ -8005,19 +8440,28 @@ function App() {
                     <button
                       className="modal-close-btn"
                       onClick={() => {
-                        if (openedFromWar) {
+                        if (bankPhase !== "entry") {
+                          setBankPhase("entry");
+                        } else if (openedFromWar) {
                           setShowBankModal(false);
                           setOpenedFromWar(false);
                           setShowWarModal(true);
                         } else {
                           setShowBankModal(false);
-                          setBankPhase("entry");
                         }
                       }}
                       aria-label="Close"
                     />
                     <div className="modal-heading">
-                      <span className="modal-heading-text">Bank</span>
+                      <span className="modal-heading-text">
+                        {bankPhase === "mortgage"
+                          ? "Mortgage"
+                          : bankPhase === "redeem"
+                            ? "Redeem"
+                            : bankPhase === "credit" || bankPhase === "loan"
+                              ? "Credit"
+                              : "Bank"}
+                      </span>
                     </div>
                     <div className="modal-body">
                       {bankPhase === "entry" ? (
@@ -8026,95 +8470,105 @@ function App() {
                             src="/modal_ui/safe_door.png"
                             alt="Bank Vault"
                             style={{
-                              width: "48px",
-                              height: "48px",
-                              margin: "0 auto 4px",
+                              width: "42px",
+                              height: "42px",
+                              margin: "0 auto 2px",
                               display: "block",
                               objectFit: "contain",
                             }}
                           />
-                          <div
-                            className="modal-details"
-                            style={{
-                              textAlign: "center",
-                              marginBottom: "12px",
-                            }}
-                          >
-                            {!playerLoans[currentPlayer] ? (
-                              <div
-                                style={{
-                                  fontFamily: "Junegull, sans-serif",
-                                  fontSize: "20px",
-                                  color: "#4a2c18",
-                                }}
-                              >
-                                Need some extra cash?
-                              </div>
-                            ) : (
-                              <div
-                                style={{
-                                  background: "rgba(255,255,255,0.05)",
-                                  padding: "15px",
-                                  borderRadius: "10px",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontFamily: "Junegull, sans-serif",
-                                    fontSize: "20px",
-                                    color: "#4a2c18",
-                                    marginBottom: "10px",
-                                  }}
-                                >
-                                  Active Loan Summary
+
+                          {/* Bank Status Summary Card */}
+                          <div className="bank-info-card">
+                            {playerLoans[currentPlayer] ? (
+                              <>
+                                <div className="bank-info-row">
+                                  <span>Your Credit:</span>
+                                  <span className="val">
+                                    $
+                                    {playerLoans[
+                                      currentPlayer
+                                    ].principalAmount.toLocaleString()}
+                                  </span>
                                 </div>
-                                <div
-                                  className="modal-row"
-                                  style={{
-                                    fontSize: "15px",
-                                    marginBottom: "8px",
-                                  }}
-                                >
-                                  <span>Repay Amount:</span>
-                                  <span
-                                    className="modal-value"
-                                    style={{ color: "#f44336" }}
-                                  >
+                                <div className="bank-info-row">
+                                  <span>To Return:</span>
+                                  <span className="val debt">
                                     $
                                     {playerLoans[
                                       currentPlayer
                                     ].repayAmount.toLocaleString()}
                                   </span>
                                 </div>
-                                <div
-                                  className="modal-row"
-                                  style={{
-                                    fontSize: "15px",
-                                    marginBottom: "8px",
-                                  }}
-                                >
-                                  <span>Laps Remaining:</span>
-                                  <span className="modal-value">
+                                <div className="bank-info-row">
+                                  <span>Laps Left:</span>
+                                  <span className="val">
                                     {playerLoans[currentPlayer].lapsRemaining}
                                   </span>
                                 </div>
-                                <div
-                                  className="modal-row"
-                                  style={{ fontSize: "15px" }}
-                                >
-                                  <span>Repay Tile:</span>
-                                  <span className="modal-value">
-                                    {getTileName(
-                                      playerLoans[currentPlayer].loanStartTile,
-                                    )}
-                                  </span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="bank-info-row">
+                                  <span>Credit Limit:</span>
+                                  <span className="val">$3,000</span>
                                 </div>
-                              </div>
+                                <div className="bank-info-row">
+                                  <span>Interest Rate:</span>
+                                  <span className="val">30%</span>
+                                </div>
+                                <div className="bank-info-row">
+                                  <span>Term:</span>
+                                  <span className="val">3 Laps</span>
+                                </div>
+                              </>
                             )}
                           </div>
-                          <div className="modal-buttons">
+
+                          {/* 2x2 Grid of Actions Matching Reference APK */}
+                          <div className="bank-grid-actions">
                             <button
-                              className="modal-btn cancel"
+                              className="bank-action-btn blue"
+                              onClick={() => {
+                                setSelectedMortgageTiles([]);
+                                setBankPhase("mortgage");
+                              }}
+                            >
+                              <img src="/modal_ui/mortgage_icon.png" alt="" />
+                              <span>Mortgage</span>
+                            </button>
+                            <button
+                              className="bank-action-btn blue"
+                              onClick={() => {
+                                setSelectedRedeemTiles([]);
+                                setBankPhase("redeem");
+                              }}
+                            >
+                              <img src="/modal_ui/piggy_bank.png" alt="" />
+                              <span>Redeem</span>
+                            </button>
+                            {playerLoans[currentPlayer] ? (
+                              <button
+                                className="bank-action-btn green"
+                                onClick={handleRepayLoanManual}
+                              >
+                                <img src="/modal_ui/coin_stack.png" alt="" />
+                                <span>Repay</span>
+                              </button>
+                            ) : (
+                              <button
+                                className="bank-action-btn green"
+                                onClick={() => {
+                                  setLoanSliderValue(1000);
+                                  setBankPhase("credit");
+                                }}
+                              >
+                                <img src="/modal_ui/bank_icon.png" alt="" />
+                                <span>Credit</span>
+                              </button>
+                            )}
+                            <button
+                              className="bank-action-btn red"
                               onClick={() => {
                                 setShowBankModal(false);
                                 if (openedFromWar) {
@@ -8123,118 +8577,94 @@ function App() {
                                 }
                               }}
                             >
-                              QUIT
+                              <span>Back</span>
                             </button>
-                            {playerLoans[currentPlayer] ? (
-                              <button
-                                className="modal-btn buy"
-                                onClick={handleRepayLoanManual}
-                              >
-                                REPAY LOAN
-                              </button>
-                            ) : (
-                              <button
-                                className="modal-btn buy"
-                                onClick={() => setBankPhase("loan")}
-                              >
-                                TAKE LOAN
-                              </button>
-                            )}
                           </div>
                         </>
-                      ) : (
+                      ) : bankPhase === "credit" || bankPhase === "loan" ? (
                         <>
-                          <div className="loan-config-section">
-                            <div
-                              className="modal-details"
-                              style={{
-                                background: "rgba(255,255,255,0.1)",
-                                padding: "15px",
-                                borderRadius: "10px",
-                                marginBottom: "15px",
-                              }}
-                            >
-                              <div
-                                className="modal-row"
-                                style={{ fontSize: "16px" }}
-                              >
-                                <span>Repay Term:</span>
-                                <span className="modal-value">3 Laps</span>
-                              </div>
-                              <div
-                                className="modal-row"
-                                style={{ fontSize: "16px" }}
-                              >
-                                <span>Interest Rate:</span>
-                                <span className="modal-value">30%</span>
-                              </div>
-                              <div className="modal-divider"></div>
-                              <div className="modal-row">
-                                <span>Receive:</span>
-                                <span
-                                  className="modal-value"
-                                  style={{ color: "#4CAF50" }}
-                                >
-                                  ${loanSliderValue.toLocaleString()}
-                                </span>
-                              </div>
-                              <div className="modal-row">
-                                <span>Repay:</span>
-                                <span
-                                  className="modal-value"
-                                  style={{ color: "#f44336" }}
-                                >
-                                  $
-                                  {Math.round(
-                                    loanSliderValue * 1.3,
-                                  ).toLocaleString()}
-                                </span>
-                              </div>
+                          <div className="bank-info-card">
+                            <div className="bank-info-row">
+                              <span>Credit Term:</span>
+                              <span className="val">3 Laps</span>
                             </div>
-
-                            <div className="deal-money-section">
-                              <div className="deal-slider-row">
-                                <button
-                                  className="deal-slider-btn"
-                                  onClick={() =>
-                                    setLoanSliderValue((prev) =>
-                                      Math.max(0, prev - 100),
-                                    )
-                                  }
-                                  style={{ background: "#f44336" }}
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="3000"
-                                  step="100"
-                                  value={loanSliderValue}
-                                  onChange={(e) =>
-                                    setLoanSliderValue(parseInt(e.target.value))
-                                  }
-                                  className="deal-money-slider"
-                                  style={{ background: "#888" }}
-                                />
-                                <button
-                                  className="deal-slider-btn"
-                                  onClick={() =>
-                                    setLoanSliderValue((prev) =>
-                                      Math.min(3000, prev + 100),
-                                    )
-                                  }
-                                  style={{ background: "#4CAF50" }}
-                                >
-                                  +
-                                </button>
-                              </div>
+                            <div className="bank-info-row">
+                              <span>Interest Rate:</span>
+                              <span className="val">30%</span>
+                            </div>
+                            <div className="bank-info-row">
+                              <span>Your Credit:</span>
+                              <span className="val">
+                                ${loanSliderValue.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="bank-info-row">
+                              <span>Debt:</span>
+                              <span className="val debt">
+                                $
+                                {Math.round(
+                                  loanSliderValue * 1.3,
+                                ).toLocaleString()}
+                              </span>
                             </div>
                           </div>
+
+                          {/* Preset Amounts */}
+                          <div className="bank-presets-row">
+                            {[500, 1000, 2000, 3000].map((amt) => (
+                              <button
+                                key={amt}
+                                className={`bank-preset-chip ${loanSliderValue === amt ? "active" : ""}`}
+                                onClick={() => setLoanSliderValue(amt)}
+                              >
+                                ${amt.toLocaleString()}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Range Slider with Reference - and + Buttons */}
                           <div
-                            className="modal-buttons"
-                            style={{ marginTop: "20px" }}
+                            className="deal-surcharge-slider-row"
+                            style={{ margin: "4px auto 8px", width: "94%" }}
                           >
+                            <button
+                              className="deal-step-btn"
+                              onClick={() =>
+                                setLoanSliderValue((prev) =>
+                                  Math.max(0, prev - 100),
+                                )
+                              }
+                              aria-label="Decrease loan"
+                            >
+                              <img src="/modal_ui/minus_btn.png" alt="-" />
+                            </button>
+                            <input
+                              type="range"
+                              min="0"
+                              max="3000"
+                              step="100"
+                              value={loanSliderValue}
+                              onChange={(e) =>
+                                setLoanSliderValue(
+                                  parseInt(e.target.value) || 0,
+                                )
+                              }
+                              className="deal-money-slider"
+                            />
+                            <button
+                              className="deal-step-btn"
+                              onClick={() =>
+                                setLoanSliderValue((prev) =>
+                                  Math.min(3000, prev + 100),
+                                )
+                              }
+                              aria-label="Increase loan"
+                            >
+                              <img src="/modal_ui/plus_btn.png" alt="+" />
+                            </button>
+                          </div>
+
+                          <div className="modal-buttons" style={{ marginTop: "4px" }}>
                             <button
                               className="modal-btn cancel"
                               onClick={() => {
@@ -8258,7 +8688,227 @@ function App() {
                             </button>
                           </div>
                         </>
-                      )}
+                      ) : bankPhase === "mortgage" ? (
+                        <>
+                          {(() => {
+                            const eligibleMortgageProps = Object.keys(
+                              propertyOwnership,
+                            )
+                              .map(Number)
+                              .filter(
+                                (tIdx) =>
+                                  propertyOwnership[tIdx] === currentPlayer &&
+                                  !mortgagedProperties[tIdx] &&
+                                  (propertyLevels[tIdx] || 0) === 0,
+                              );
+                            const mortgageTotalGained =
+                              selectedMortgageTiles.reduce((sum, tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                return sum + Math.round((prop?.price || 0) / 2);
+                              }, 0);
+
+                            return (
+                              <>
+                                {eligibleMortgageProps.length === 0 ? (
+                                  <div className="bank-empty-hint">
+                                    No eligible properties to mortgage (sell any
+                                    buildings first).
+                                  </div>
+                                ) : (
+                                  <div className="bank-prop-scroll-list">
+                                    {eligibleMortgageProps.map((tIdx) => {
+                                      const prop = getPropertyByTileIndex(tIdx);
+                                      const val = Math.round(
+                                        (prop?.price || 0) / 2,
+                                      );
+                                      const isSelected =
+                                        selectedMortgageTiles.includes(tIdx);
+                                      return (
+                                        <div
+                                          key={tIdx}
+                                          className={`deal-prop-chip ${isSelected ? "selected" : ""}`}
+                                          onClick={() =>
+                                            handleToggleMortgageTile(tIdx)
+                                          }
+                                        >
+                                          <div className="deal-prop-left">
+                                            <span
+                                              className="deal-prop-color-bar"
+                                              style={{
+                                                background:
+                                                  prop?.color || "#888",
+                                              }}
+                                            />
+                                            <span className="deal-prop-name">
+                                              {prop?.name}
+                                            </span>
+                                          </div>
+                                          <span
+                                            className="deal-prop-val"
+                                            style={{ color: "#2e7d32" }}
+                                          >
+                                            +${val.toLocaleString()}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                <div
+                                  className="bank-info-card"
+                                  style={{ margin: "2px auto 4px" }}
+                                >
+                                  <div className="bank-info-row">
+                                    <span>Total Mortgage:</span>
+                                    <span
+                                      className="val"
+                                      style={{ color: "#2e7d32" }}
+                                    >
+                                      +${mortgageTotalGained.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div
+                                  className="modal-buttons"
+                                  style={{ marginTop: "4px" }}
+                                >
+                                  <button
+                                    className="modal-btn cancel"
+                                    onClick={() => setBankPhase("entry")}
+                                  >
+                                    BACK
+                                  </button>
+                                  <button
+                                    className="modal-btn buy"
+                                    onClick={handleConfirmMortgage}
+                                    disabled={
+                                      selectedMortgageTiles.length === 0
+                                    }
+                                  >
+                                    MORTGAGE
+                                  </button>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </>
+                      ) : bankPhase === "redeem" ? (
+                        <>
+                          {(() => {
+                            const mortgagedOwnedProps = Object.keys(
+                              propertyOwnership,
+                            )
+                              .map(Number)
+                              .filter(
+                                (tIdx) =>
+                                  propertyOwnership[tIdx] === currentPlayer &&
+                                  !!mortgagedProperties[tIdx],
+                              );
+                            const redeemTotalCost =
+                              selectedRedeemTiles.reduce((sum, tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                return (
+                                  sum + Math.round((prop?.price || 0) * 0.55)
+                                );
+                              }, 0);
+                            const canAfford =
+                              (playerMoney[currentPlayer] || 0) >=
+                              redeemTotalCost;
+
+                            return (
+                              <>
+                                {mortgagedOwnedProps.length === 0 ? (
+                                  <div className="bank-empty-hint">
+                                    No mortgaged properties to redeem.
+                                  </div>
+                                ) : (
+                                  <div className="bank-prop-scroll-list">
+                                    {mortgagedOwnedProps.map((tIdx) => {
+                                      const prop = getPropertyByTileIndex(tIdx);
+                                      const cost = Math.round(
+                                        (prop?.price || 0) * 0.55,
+                                      );
+                                      const isSelected =
+                                        selectedRedeemTiles.includes(tIdx);
+                                      return (
+                                        <div
+                                          key={tIdx}
+                                          className={`deal-prop-chip ${isSelected ? "selected" : ""}`}
+                                          onClick={() =>
+                                            handleToggleRedeemTile(tIdx)
+                                          }
+                                        >
+                                          <div className="deal-prop-left">
+                                            <span
+                                              className="deal-prop-color-bar"
+                                              style={{
+                                                background:
+                                                  prop?.color || "#888",
+                                              }}
+                                            />
+                                            <span className="deal-prop-name">
+                                              {prop?.name}
+                                            </span>
+                                          </div>
+                                          <span
+                                            className="deal-prop-val"
+                                            style={{ color: "#c62828" }}
+                                          >
+                                            -${cost.toLocaleString()}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                <div
+                                  className="bank-info-card"
+                                  style={{ margin: "2px auto 4px" }}
+                                >
+                                  <div className="bank-info-row">
+                                    <span>Total Cost:</span>
+                                    <span
+                                      className={`val ${canAfford ? "debt" : "debt"}`}
+                                      style={{
+                                        color: canAfford
+                                          ? "#c62828"
+                                          : "#d32f2f",
+                                      }}
+                                    >
+                                      -${redeemTotalCost.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div
+                                  className="modal-buttons"
+                                  style={{ marginTop: "4px" }}
+                                >
+                                  <button
+                                    className="modal-btn cancel"
+                                    onClick={() => setBankPhase("entry")}
+                                  >
+                                    BACK
+                                  </button>
+                                  <button
+                                    className="modal-btn buy"
+                                    onClick={handleConfirmRedeem}
+                                    disabled={
+                                      selectedRedeemTiles.length === 0 ||
+                                      !canAfford
+                                    }
+                                  >
+                                    REDEEM
+                                  </button>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -12194,7 +12844,7 @@ function App() {
                         ? gamePlayers[propertyOwnership[selectedProperty.tileIndex]]?.color
                         : null
                     }
-                    isMortgaged={false}
+                    isMortgaged={!!mortgagedProperties[selectedProperty.tileIndex]}
                     isClosing={isModalClosing && closingModal === "property"}
                     onClose={closeAllModals}
                   />

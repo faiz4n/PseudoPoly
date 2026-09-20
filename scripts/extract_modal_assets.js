@@ -29,7 +29,16 @@ const SLICES = [
   { name: 'money_take.png', src: SRC_CLASSIC, rect: { left: 92, top: 916, width: 79, height: 98 } },
   { name: 'money_lost.png', src: SRC_CLASSIC, rect: { left: 4, top: 896, width: 77, height: 99 } },
   { name: 'win_cup.png', src: SRC_CLASSIC, rect: { left: 664, top: 4, width: 379, height: 488 } },
-  { name: 'yellow_panel.png', src: SRC_CLASSIC, rect: { left: 1052, top: 288, width: 400, height: 339 } },
+  // Bank & Deal Icons from reference APK
+  { name: 'bank_icon.png', src: SRC_COMMON, rect: { left: 636, top: 1248, width: 130, height: 110 } },
+  { name: 'mortgage_icon.png', src: SRC_CLASSIC, rect: { left: 1012, top: 812, width: 140, height: 140 } },
+  { name: 'piggy_bank.png', src: SRC_COMMON, rect: { left: 852, top: 1000, width: 140, height: 140 } },
+  { name: 'deal_icon.png', src: SRC_COMMON, rect: { left: 144, top: 1264, width: 130, height: 110 } },
+  { name: 'trade_icon.png', src: SRC_CLASSIC, rect: { left: 1712, top: 676, width: 168, height: 144 } },
+  { name: 'coin_stack.png', src: SRC_COMMON, rect: { left: 288, top: 1876, width: 44, height: 40 } },
+  { name: 'coin_single.png', src: SRC_COMMON, rect: { left: 192, top: 1880, width: 40, height: 40 } },
+  { name: 'minus_btn.png', src: SRC_COMMON, rect: { left: 204, top: 1672, width: 72, height: 72 } },
+  { name: 'plus_btn.png', src: SRC_COMMON, rect: { left: 876, top: 1680, width: 72, height: 72 } },
 ];
 
 async function extractModalAssets() {

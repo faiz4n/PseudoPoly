@@ -206,21 +206,48 @@ body {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 
-/* City name - hidden, baked into master board texture */
+/* City name / Tile label - TOP aligned with clean fit */
 .tile .tile-name {
-  display: none !important;
+  font-family: "Nunito", sans-serif;
+  font-size: clamp(5.5px, 1.2vh, 6.5px) !important;
+  font-weight: 800;
+  color: #3e1e08 !important;
+  text-align: center;
+  line-height: 1.15;
+  position: relative !important;
+  z-index: 5 !important;
+  background: transparent;
+  padding: 2px 2px 0;
+  text-shadow: none !important;
+  word-break: normal;
+  overflow-wrap: break-word;
+  max-width: 96%;
+  overflow: hidden;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
 }
 
-/* All tile labels hidden - baked into master board texture */
+/* All tile labels maintain the same brown color with no text shadow */
 .tile.tile-dark .tile-name,
 .tile.tile-light .tile-name {
-  display: none !important;
+  color: #3e1e08 !important;
+  text-shadow: none !important;
+}
+
+/* Property War and Forced Auction action tile labels kept as is */
+.tile.property_war .tile-name,
+.tile.forced_auction .tile-name {
+  display: block !important;
+  font-size: clamp(5.5px, 1.2vh, 6.5px) !important;
+  font-weight: 800;
+  color: #3e1e08 !important;
+  text-align: center;
 }
 
 /* Price - BOTTOM aligned, Junegull font */
 .tile .tile-price {
   font-family: "Junegull", sans-serif;
-  font-size: 15px;
+  font-size: clamp(7.5px, 2vh, 10px);
   font-weight: 500;
   color: white;
   text-shadow:
@@ -298,7 +325,8 @@ body {
 }
 
 .tile.chance .tile-name,
-.tile.chest .tile-name {
+.tile.chest .tile-name,
+.tile.cash_stack .tile-name {
   display: none !important;
 }
 
@@ -358,7 +386,13 @@ body {
 }
 
 .tile.vertical .tile-name {
-  display: none !important;
+  writing-mode: horizontal-tb;
+  font-size: clamp(5.5px, 1.2vh, 6.5px) !important;
+  line-height: 1.15;
+  max-width: 96% !important;
+  padding: 2px 2px 0 !important;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
 }
 
 /* Vertical tile pseudo-element gradients - disabled for master board texture */
@@ -2000,7 +2034,24 @@ body {
   }
 
   .tile .tile-name {
-    display: none !important;
+    position: relative !important;
+    z-index: 5 !important;
+    font-size: clamp(1px, 2vh, 6px) !important;
+    line-height: 1.1 !important;
+    max-height: 2.5em !important;
+    -webkit-text-stroke: 0px !important;
+    letter-spacing: 0.15px !important;
+    padding: 0px 0px 0 !important;
+    text-align: center !important;
+    width: 100% !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    color: #3e1e08 !important;
+    text-shadow: none !important;
+    -webkit-text-size-adjust: none !important;
+    text-size-adjust: none !important;
   }
 
   .tile .tile-price {
@@ -2068,7 +2119,19 @@ body {
   }
 
   .tile.vertical .tile-name {
-    display: none !important;
+    font-size: clamp(1px, 2vh, 6px) !important;
+    line-height: 1.1 !important;
+    max-height: 2.5em !important;
+    max-width: 98% !important;
+    padding: 0px 2px 0 !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    color: #3e1e08 !important;
+    text-shadow: none !important;
+    -webkit-text-size-adjust: none !important;
+    text-size-adjust: none !important;
   }
 
   /* Corner fonts - match tile size */
@@ -2589,7 +2652,27 @@ body {
 /* Native Capacitor App Explicit Overrides */
 .is-capacitor .tile .tile-name,
 .is-capacitor .tile.vertical .tile-name {
-  display: none !important;
+  font-size: clamp(1px, 2vh, 6px) !important;
+  line-height: 1.1 !important;
+  max-height: 2.5em !important;
+  -webkit-text-stroke: 0px !important;
+  letter-spacing: 0.15px !important;
+  padding: 0px 0px 0 !important;
+  text-align: center !important;
+  width: 100% !important;
+  white-space: normal !important;
+  overflow: hidden !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  color: #3e1e08 !important;
+  text-shadow: none !important;
+  -webkit-text-size-adjust: none !important;
+  text-size-adjust: none !important;
+}
+
+.is-capacitor .tile.vertical .tile-name {
+  max-width: 98% !important;
+  padding: 0px 2px 0 !important;
 }
 
 .is-capacitor .tile .tile-price {

@@ -5977,13 +5977,22 @@ function App() {
 
     // Deal Modal Selection from Board
     if (showDealModal || dealSelectionMode) {
+      if (selectedDealPlayer === null || selectedDealPlayer === undefined) return;
       const owner = propertyOwnership[tileIndex];
-      const targetOpponent = dealTargetPlayer ?? selectedDealPlayer;
+      const targetOpponent = selectedDealPlayer;
       if (owner === currentPlayer) {
-        handleToggleDealGiveProperty(tileIndex);
+        setDealGiveProperties((prev) =>
+          prev.includes(tileIndex)
+            ? prev.filter((t) => t !== tileIndex)
+            : [...prev, tileIndex],
+        );
         return;
       } else if (owner === targetOpponent) {
-        handleToggleDealReceiveProperty(tileIndex);
+        setDealReceiveProperties((prev) =>
+          prev.includes(tileIndex)
+            ? prev.filter((t) => t !== tileIndex)
+            : [...prev, tileIndex],
+        );
         return;
       }
       return;
@@ -6151,8 +6160,11 @@ function App() {
   const getDealSelectionStyle = (tileIndex) => {
     // 1. If actively configuring trade in Deal modal or dealSelectionMode
     if (showDealModal || dealSelectionMode) {
+      if (selectedDealPlayer === null || selectedDealPlayer === undefined) {
+        return {};
+      }
       const owner = propertyOwnership[tileIndex];
-      const targetOpponent = dealTargetPlayer ?? selectedDealPlayer;
+      const targetOpponent = selectedDealPlayer;
       const isCurrentPlayerProperty = owner === currentPlayer;
       const isSelectedPlayerProperty = owner === targetOpponent;
 
@@ -7298,7 +7310,7 @@ function App() {
                 isSelectingAuctionProperty ||
                 (networkMode === "online" &&
                   ["thinking", "announcing"].includes(auctionState?.status)) ||
-                showDealModal ||
+                (showDealModal && selectedDealPlayer !== null) ||
                 dealSelectionMode ||
                 buildMode ||
                 showBuildModal ||

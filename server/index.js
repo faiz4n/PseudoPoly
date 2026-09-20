@@ -446,14 +446,31 @@ io.on('connection', (socket) => {
         }
         break;
       case 'pay_bail':
-        if (room.gameState.playerMoney[playerIndex] >= 500) {
-          room.gameState.playerMoney[playerIndex] -= 500;
+        const bailAmt = payload?.amount || 500;
+        if (room.gameState.playerMoney[playerIndex] >= bailAmt) {
+          room.gameState.playerMoney[playerIndex] -= bailAmt;
           if (!room.gameState.jailStatus) room.gameState.jailStatus = {};
           room.gameState.jailStatus[playerIndex] = 0;
-          room.gameState.cashStack = (room.gameState.cashStack || 0) + 500;
-          room.gameState.history.unshift(`🔓 ${room.players[playerIndex]?.name || 'Player'} paid $500 bail to get out of Jail!`);
-          io.to(room.roomCode).emit('floating_price', { tileIndex: 28, price: 500, isPositive: false });
+          room.gameState.cashStack = (room.gameState.cashStack || 0) + bailAmt;
+          room.gameState.turnFinished = false;
+          room.gameState.isProcessingTurn = false;
+          room.gameState.history.unshift(`🔓 ${room.players[playerIndex]?.name || 'Player'} paid $${bailAmt} bail to get out of Jail!`);
+          io.to(room.roomCode).emit('floating_price', { tileIndex: 28, price: bailAmt, isPositive: false });
           broadcastState(room);
+        }
+        break;
+      case 'swap_properties':
+        if (payload && payload.giveTile !== undefined && payload.receiveTile !== undefined) {
+          const gTile = Number(payload.giveTile);
+          const rTile = Number(payload.receiveTile);
+          const gOwner = room.gameState.propertyOwnership[gTile];
+          const rOwner = room.gameState.propertyOwnership[rTile];
+          if (gOwner !== undefined && rOwner !== undefined) {
+            room.gameState.propertyOwnership[gTile] = rOwner;
+            room.gameState.propertyOwnership[rTile] = gOwner;
+            room.gameState.history.unshift(`🔄 ${room.players[gOwner]?.name || 'Player'} swapped property with ${room.players[rOwner]?.name || 'Player'}!`);
+            broadcastState(room);
+          }
         }
         break;
       case 'bankrupt':
@@ -1078,23 +1095,19 @@ function handleLanding(room, playerIndex, tileIndex) {
       io.to(room.roomCode).emit('floating_price', { tileIndex: ownerPos, price: rent, isPositive: true });
     }
   } else if (tileIndex === 7) {
-    // 2. THE AUDIT (TAX)
-    const dice = room.gameState.diceValues || [1, 1];
-    const tax = (dice[0] + dice[1]) * 300;
-    
-    room.gameState.playerMoney[playerIndex] -= tax;
-    room.gameState.cashStack = (room.gameState.cashStack || 0) + tax;
-    
-    room.gameState.history.unshift(`🧾 ${room.players[playerIndex].name} paid $${tax} in THE AUDIT!`);
-    
-    io.to(room.roomCode).emit('floating_price', { tileIndex: 7, price: tax, isPositive: false });
+    // 2. PROPERTY SWAP
+    room.gameState.history.unshift(`🔄 ${room.players[playerIndex]?.name || 'Player'} landed on Property Swap!`);
+    room.gameState.turnFinished = true;
+    room.gameState.isProcessingTurn = false;
   } else if (tileIndex === 28) {
     // 3. GO TO JAIL
     const duration = Math.floor(Math.random() * 2) + 2; 
     if (!room.gameState.jailStatus) room.gameState.jailStatus = {};
     room.gameState.jailStatus[playerIndex] = duration;
     room.gameState.playerPositions[playerIndex] = 28; // Authoritatively move to Jail
-    room.gameState.history.unshift(`👮 ${room.players[playerIndex].name} is arrested for ${duration} turns!`);
+    room.gameState.history.unshift(`👮 ${room.players[playerIndex]?.name || 'Player'} is arrested for ${duration} turns!`);
+    room.gameState.turnFinished = true;
+    room.gameState.isProcessingTurn = false;
   } else if (tileIndex === 3) {
     // 4. CASH STACK (Server processed immediately upon landing if not handled by dedicated claim action)
     const pot = room.gameState.cashStack || 0;
@@ -1150,6 +1163,29 @@ function handleRollDice(room, playerIndex, payload = {}) {
       
       room.gameState.diceValues = [die1, die2];
       
+      // If player is in Jail
+      const turnsInJail = room.gameState.jailStatus ? (room.gameState.jailStatus[playerIndex] || 0) : 0;
+      if (turnsInJail > 0) {
+        if (isDoubles) {
+          room.gameState.jailStatus[playerIndex] = 0;
+          room.gameState.history.unshift(`🎉 ${room.players[playerIndex]?.name || 'Player'} rolled DOUBLES (${die1}-${die2}) and escaped Jail!`);
+          // Fall through to normal movement
+        } else {
+          const nextTurns = Math.max(0, turnsInJail - 1);
+          room.gameState.jailStatus[playerIndex] = nextTurns;
+          if (nextTurns === 0) {
+            room.gameState.history.unshift(`🎲 ${room.players[playerIndex]?.name || 'Player'} rolled ${die1}-${die2} (no doubles). Sentence served! Free next turn.`);
+          } else {
+            room.gameState.history.unshift(`🎲 ${room.players[playerIndex]?.name || 'Player'} rolled ${die1}-${die2} (no doubles). ${nextTurns} turns left in Jail.`);
+          }
+          room.gameState.isRolling = false;
+          room.gameState.isProcessingTurn = false;
+          room.gameState.turnFinished = true;
+          broadcastState(room);
+          return;
+        }
+      }
+
       // 2. Update Position
       const currentPos = room.gameState.playerPositions[playerIndex];
       const newPos = (currentPos + moveAmount) % 36;

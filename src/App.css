@@ -1245,7 +1245,7 @@
   box-sizing: border-box !important;
   overflow: hidden !important;
   padding: 8px 10px !important;
-  font-family: Junegull, "Nunito", sans-serif !important;
+  font-family: 'Lato', 'Roboto', sans-serif !important;
   border-image: none !important;
   border-image-source: none !important;
   user-select: none;
@@ -1262,7 +1262,7 @@
   background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
   border: 1.5px solid #e0f2fe;
   color: #fff;
-  font-family: Junegull, sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: 13px;
   font-weight: 900;
   display: flex;
@@ -1277,20 +1277,23 @@
   transform: scale(0.92);
 }
 
-/* Glossy Action Pill Buttons */
+/* Glossy Action Pill Buttons with Authentic Lato Bold and Subtle Outline */
 .ref-pill-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 16px;
-  font-family: Junegull, sans-serif;
-  font-weight: bold;
+  font-family: 'Lato', sans-serif;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   cursor: pointer;
   border: none;
   transition: all 0.15s ease;
   user-select: none;
+  -webkit-text-stroke: 0.35px rgba(20, 10, 2, 0.85);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .ref-pill-btn:active:not(:disabled) {
@@ -1321,7 +1324,7 @@
 .ref-pill-yellow {
   background: linear-gradient(180deg, #facc15 0%, #ca8a04 100%);
   border: 1.5px solid #fef08a;
-  color: #713f12;
+  color: #ffffff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
@@ -1341,10 +1344,13 @@
 }
 
 .ref-deal-title {
+  font-family: 'Junegull', sans-serif;
   font-size: 18px;
-  color: #4a2c18;
+  color: #ffffff;
   font-weight: 900;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  -webkit-text-stroke: 0.6px #2b1808;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .ref-deal-upper {
@@ -1357,18 +1363,21 @@
   max-height: 110px;
 }
 
+/* Darker translucent filter for Deal Player Cards */
 .ref-deal-player-card {
   flex: 1;
   height: 100%;
-  background: #3e2415;
-  border: 1.5px solid #5c371f;
+  background: rgba(30, 18, 10, 0.52);
+  border: 1.5px solid rgba(255, 205, 80, 0.35);
   border-radius: 8px;
   padding: 4px 6px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  font-family: 'Roboto', sans-serif;
 }
 
 .ref-deal-player-header {
@@ -1388,11 +1397,15 @@
 
 .ref-deal-player-name {
   color: #fff;
+  font-family: 'Junegull', sans-serif;
   font-size: 11px;
   font-weight: bold;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  -webkit-text-stroke: 0.4px #1b0e04;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
 .ref-deal-props-list {
@@ -1414,16 +1427,19 @@
   justify-content: space-between;
   padding: 2px 4px;
   border-radius: 4px;
-  background: #54321d;
+  background: rgba(45, 25, 12, 0.65);
+  font-family: 'Roboto', sans-serif;
   font-size: 9px;
+  font-weight: 500;
   color: #fff;
   cursor: pointer;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .ref-deal-prop-chip.selected {
-  border-color: #ffb72b;
-  background: #6e4126;
+  border-color: #ffd54f;
+  background: rgba(90, 48, 20, 0.85);
+  box-shadow: 0 0 5px rgba(255, 213, 79, 0.4);
 }
 
 .ref-deal-prop-left {
@@ -1441,6 +1457,7 @@
 }
 
 .ref-deal-prop-name {
+  font-family: 'Roboto', sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1450,12 +1467,17 @@
 .ref-deal-player-footer {
   margin-top: 2px;
   padding-top: 2px;
-  border-top: 1px solid #5c371f;
-  font-size: 9.5px;
-  color: #ffb72b;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-family: 'Roboto', sans-serif;
+  font-size: 9px;
+  color: #ffd54f;
   font-weight: bold;
   display: flex;
   justify-content: space-between;
+}
+
+.ref-deal-player-footer span:last-child {
+  font-family: 'Junegull', sans-serif;
 }
 
 .ref-deal-arrows {
@@ -1463,6 +1485,7 @@
   align-items: center;
   justify-content: center;
   color: #fff;
+  font-family: 'Roboto', sans-serif;
   font-size: 16px;
   font-weight: bold;
   width: 22px;
@@ -1475,7 +1498,7 @@
   flex-direction: column;
   gap: 4px;
   margin: 4px 0;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 8px;
   padding: 4px 6px;
 }
@@ -1490,6 +1513,8 @@
   height: 22px;
   padding: 0 8px;
   font-size: 10px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
 }
 
 .ref-golden-slider {
@@ -1527,6 +1552,8 @@
   height: 20px;
   font-size: 9px;
   padding: 0;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
 }
 
 .ref-deal-bottom {
@@ -1541,20 +1568,28 @@
   width: 76px;
   height: 28px;
   font-size: 10.5px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
 }
 
 .ref-deal-balance-box {
   flex: 1;
   height: 28px;
-  background: #3e2415;
-  border: 1.5px solid #5c371f;
+  background: rgba(30, 18, 10, 0.6);
+  border: 1.5px solid rgba(255, 205, 80, 0.35);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 10.5px;
-  font-weight: bold;
+  font-family: 'Roboto', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.ref-deal-balance-box span {
+  font-family: 'Junegull', sans-serif;
+  font-size: 11px;
 }
 
 /* Bank Modal Specifics (Screenshot 2) */
@@ -1565,14 +1600,18 @@
   text-align: center;
   justify-content: space-between;
   padding: 10px 14px !important;
+  font-family: 'Roboto', sans-serif;
 }
 
 .ref-bank-title {
+  font-family: 'Junegull', sans-serif;
   font-size: 20px;
-  color: #4a2c18;
+  color: #ffffff;
   font-weight: 900;
   margin-bottom: 2px;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  -webkit-text-stroke: 0.6px #2b1808;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .ref-bank-vault-img {
@@ -1593,12 +1632,17 @@
 
 .ref-bank-btn {
   height: 38px;
+  font-family: 'Roboto', sans-serif;
   font-size: 11.5px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   border-radius: 8px;
+  -webkit-text-stroke: 0.35px #1b0e04;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .ref-bank-btn img {
@@ -1609,11 +1653,12 @@
 
 /* Property Info Modal Specifics (Screenshot 3) */
 .ref-property-info-card {
-  padding: 0 !important;
+  padding: 0 0 8px 0 !important;
   background: linear-gradient(180deg, #ffc02b 0%, #f7a718 100%) !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
+  font-family: 'Roboto', sans-serif;
 }
 
 .ref-prop-header {
@@ -1627,10 +1672,13 @@
 }
 
 .ref-prop-title {
+  font-family: 'Junegull', sans-serif;
   font-size: 14px;
   color: #fff;
   font-weight: 900;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  -webkit-text-stroke: 0.6px #034870;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
@@ -1641,6 +1689,7 @@
   justify-content: space-around;
   padding: 4px 12px;
   background: rgba(255, 255, 255, 0.15);
+  font-family: 'Roboto', sans-serif;
 }
 
 .ref-prop-col {
@@ -1650,15 +1699,21 @@
 }
 
 .ref-prop-label {
+  font-family: 'Roboto', sans-serif;
   font-size: 10px;
-  color: #5d4037;
-  font-weight: bold;
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .ref-prop-val {
+  font-family: 'Junegull', sans-serif;
   font-size: 14px;
-  color: #2e7d32;
+  color: #ffffff;
   font-weight: 900;
+  -webkit-text-stroke: 0.5px #155e1b;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
 .ref-prop-divider {
@@ -1670,8 +1725,9 @@
 .ref-purple-ribbon {
   background: linear-gradient(180deg, #9333ea 0%, #6b21a8 100%);
   color: #fff;
-  font-size: 10.5px;
-  font-weight: 900;
+  font-family: 'Roboto', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
   padding: 2.5px 12px;
   display: flex;
   justify-content: space-between;
@@ -1685,6 +1741,7 @@
   flex-direction: column;
   padding: 2px 10px;
   flex: 1;
+  font-family: 'Roboto', sans-serif;
 }
 
 .ref-prop-table-row {
@@ -1693,13 +1750,19 @@
   justify-content: space-between;
   padding: 2px 0;
   border-bottom: 1px solid rgba(93, 64, 55, 0.15);
-  font-size: 10.5px;
-  font-weight: bold;
-  color: #4a2c18;
+  font-family: 'Roboto', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: #2b1808;
+}
+
+.ref-prop-table-row span {
+  font-family: 'Junegull', sans-serif;
+  font-size: 11px;
 }
 
 .ref-prop-table-row.active {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.35);
   border-radius: 4px;
   color: #1b5e20;
 }
@@ -1714,5 +1777,114 @@
   justify-content: flex-end;
 }
 
+/* Property Swap Modal (Deal-like interface) */
+.ref-swap-card {
+  width: 96% !important;
+  max-width: 390px !important;
+  margin: auto !important;
+}
 
+.ref-swap-desc {
+  font-size: 9.5px;
+  color: #ffffff;
+  text-align: center;
+  margin: 1px 0 3px 0;
+  font-weight: bold;
+  -webkit-text-stroke: 0.4px #2b1808;
+  paint-order: stroke fill;
+}
 
+.ref-swap-upper {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 90px;
+  max-height: 130px;
+}
+
+.ref-swap-player-card {
+  flex: 1;
+  background: rgba(30, 18, 10, 0.52);
+  border: 1.5px solid rgba(255, 205, 80, 0.35);
+  border-radius: 8px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.ref-swap-player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ref-swap-player-title {
+  font-size: 10px;
+  color: #ffd54f;
+  font-weight: 900;
+  text-transform: uppercase;
+  -webkit-text-stroke: 0.4px #1b0e04;
+  paint-order: stroke fill;
+}
+
+.ref-swap-props-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5px;
+  scrollbar-width: none;
+}
+
+.ref-swap-props-list::-webkit-scrollbar {
+  display: none;
+}
+
+.ref-swap-prop-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: rgba(45, 25, 12, 0.65);
+  font-size: 9.5px;
+  color: #fff;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-text-stroke: 0.3px #180d04;
+  paint-order: stroke fill;
+  transition: all 0.12s ease;
+}
+
+.ref-swap-prop-chip:active {
+  transform: scale(0.97);
+}
+
+.ref-swap-prop-chip.selected {
+  border-color: #ffd54f;
+  background: rgba(90, 48, 20, 0.9);
+  box-shadow: 0 0 6px rgba(255, 213, 79, 0.5);
+}
+
+.ref-swap-prop-owner-tag {
+  font-size: 7.5px;
+  color: #bae6fd;
+  opacity: 0.85;
+}
+
+.ref-swap-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}

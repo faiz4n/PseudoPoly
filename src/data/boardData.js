@@ -106,6 +106,7 @@ export const SPACE_TYPES = {
   CHEST: 'chest',
   CASH_STACK: 'cash_stack',
   PROPERTY_WAR: 'property_war',
+  PROPERTY_SWAP: 'property_swap',
   AUDIT: 'audit',
   FORCED_AUCTION: 'forced_auction',
   CORNER: 'corner',
@@ -119,7 +120,7 @@ export const bottomRow = [
   { id: 4, name: 'Train', price: 1000, color: PROPERTY_COLORS.special, type: SPACE_TYPES.RAILROAD, icon: 'train' },
   { id: 5, name: 'Service station', price: 600, color: PROPERTY_COLORS.yellow, type: SPACE_TYPES.PROPERTY },
   { id: 6, name: 'Swim. pool', price: 700, color: PROPERTY_COLORS.red, type: SPACE_TYPES.PROPERTY },
-  { id: 7, name: 'The Audit', price: null, color: PROPERTY_COLORS.special, type: SPACE_TYPES.AUDIT, icon: 'audit' },
+  { id: 7, name: 'Property Swap', price: null, color: PROPERTY_COLORS.special, type: SPACE_TYPES.PROPERTY_SWAP, icon: 'property_swap' },
   { id: 8, name: 'Zoo', price: 800, color: PROPERTY_COLORS.red, type: SPACE_TYPES.PROPERTY },
   { id: 9, name: 'Ice-rink', price: 900, color: PROPERTY_COLORS.red, type: SPACE_TYPES.PROPERTY },
 ];

@@ -473,6 +473,11 @@ function App() {
   const isRollingAuditDice = auditStatus === "rolling";
   const [auditAmount, setAuditAmount] = useState(0);
 
+  // Property Swap State
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [swapGiveTile, setSwapGiveTile] = useState(null);
+  const [swapReceiveTile, setSwapReceiveTile] = useState(null);
+
   // Debug Dice State
   const [debugDiceValue, setDebugDiceValue] = useState(7);
   const [devMode, setDevMode] = useState(() => {
@@ -504,6 +509,7 @@ function App() {
     else if (showChanceModal) setClosingModal("chance");
     else if (showChestModal) setClosingModal("chest");
     else if (showAuditModal) setClosingModal("audit");
+    else if (showSwapModal) setClosingModal("swap");
     else if (showWarModal) setClosingModal("war");
 
     setTimeout(() => {
@@ -518,6 +524,7 @@ function App() {
       setShowChanceModal(false);
       setShowChestModal(false);
       setShowAuditModal(false);
+      setShowSwapModal(false);
       setShowWarModal(false);
       setShowArrestModal(false);
       setShowJailActionModal(false);
@@ -540,6 +547,7 @@ function App() {
     setShowChanceModal(false);
     setShowChestModal(false);
     setShowAuditModal(false);
+    setShowSwapModal(false);
     setShowWarModal(false);
     setShowArrestModal(false);
     setShowJailActionModal(false);
@@ -2614,7 +2622,7 @@ function App() {
 
   // --- JAIL ACTION HANDLERS ---
   const handleJailPay = () => {
-    const turnsLeft = jailStatus[currentPlayer];
+    const turnsLeft = jailStatus[currentPlayer] || 3;
     let bailAmount = 1000;
     if (turnsLeft === 2) bailAmount = 500;
     if (turnsLeft === 1) bailAmount = 200;
@@ -2655,17 +2663,18 @@ function App() {
     setTurnFinished(false);
 
     setHistory((prev) => [
-      `💰 ${gamePlayers[currentPlayer].name} paid $${bailAmount} bail and is free!`,
+      `💰 ${gamePlayers[currentPlayer].name} paid $${bailAmount} bail and is free to roll!`,
       ...prev.slice(0, 9),
     ]);
+    showToast(`Paid $${bailAmount} bail! You are free to roll.`);
 
     if (networkMode === "online") {
-      sendGameAction("pay_bail");
+      sendGameAction("pay_bail", { amount: bailAmount });
     }
   };
 
   const handleJailSkip = () => {
-    const turnsLeft = jailStatus[currentPlayer];
+    const turnsLeft = jailStatus[currentPlayer] || 3;
     const newTurns = turnsLeft - 1;
     let newStatusMap;
 
@@ -2681,6 +2690,7 @@ function App() {
         `${gamePlayers[currentPlayer].name} served their jail time and will be free next turn!`,
         ...prev.slice(0, 9),
       ]);
+      showToast("Jail time served! You are free next turn.");
     } else {
       setJailStatus((prev) => ({ ...prev, [currentPlayer]: newTurns }));
       newStatusMap = { ...jailStatus, [currentPlayer]: newTurns };
@@ -2688,6 +2698,7 @@ function App() {
         `${gamePlayers[currentPlayer].name} stays in jail (${newTurns} turns left).`,
         ...prev.slice(0, 9),
       ]);
+      showToast(`Served 1 turn in jail (${newTurns} turns left).`);
     }
 
     setShowJailActionModal(false);
@@ -2698,6 +2709,127 @@ function App() {
     if (networkMode === "online") {
       sendGameAction("update_state", { jailStatus: newStatusMap });
     }
+  };
+
+  // Roll dice while in jail (try for doubles to escape free, or serve 1 turn)
+  const handleJailRoll = async () => {
+    if (isRolling || isProcessingTurn) return;
+
+    if (networkMode === "online") {
+      sendGameAction("roll_dice");
+      return;
+    }
+
+    setIsRolling(true);
+    setIsProcessingTurn(true);
+    playDiceRollSound();
+
+    const rollDuration = 1000;
+    const intervalTime = 60;
+    const rollInterval = setInterval(() => {
+      setDiceValues([
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+      ]);
+    }, intervalTime);
+
+    await wait(rollDuration);
+    clearInterval(rollInterval);
+
+    const die1 = Math.floor(Math.random() * 6) + 1;
+    const die2 = Math.floor(Math.random() * 6) + 1;
+    const isDoubles = die1 === die2;
+    const moveAmount = die1 + die2;
+    setDiceValues([die1, die2]);
+    setIsRolling(false);
+    await wait(450);
+
+    const roller = currentPlayer;
+    if (isDoubles) {
+      setJailStatus((prev) => {
+        const s = { ...prev };
+        delete s[roller];
+        return s;
+      });
+      showToast(`🎉 DOUBLES (${die1}-${die2})! You broke out of jail!`);
+      setHistory((prev) => [
+        `🎉 ${gamePlayers[roller].name} rolled DOUBLES (${die1}-${die2}) and escaped Jail!`,
+        ...prev.slice(0, 9),
+      ]);
+      await movePlayerToken(roller, moveAmount);
+      const finalPos = (playerPositions[roller] + moveAmount) % 36;
+      handleTileArrival(roller, finalPos, false);
+    } else {
+      const turnsLeft = (jailStatus[roller] || 3) - 1;
+      if (turnsLeft <= 0) {
+        setJailStatus((prev) => {
+          const s = { ...prev };
+          delete s[roller];
+          return s;
+        });
+        showToast(`🎲 Rolled ${die1}-${die2} (no doubles). Sentence served! Free next turn.`);
+        setHistory((prev) => [
+          `${gamePlayers[roller].name} served jail time and will be free next turn!`,
+          ...prev.slice(0, 9),
+        ]);
+      } else {
+        setJailStatus((prev) => ({ ...prev, [roller]: turnsLeft }));
+        showToast(`🎲 Rolled ${die1}-${die2} (no doubles). ${turnsLeft} turn(s) left in jail.`);
+        setHistory((prev) => [
+          `${gamePlayers[roller].name} stays in jail (${turnsLeft} turns left).`,
+          ...prev.slice(0, 9),
+        ]);
+      }
+      await wait(800);
+      setIsProcessingTurn(false);
+      setTurnFinished(false);
+      handleEndTurn();
+    }
+  };
+
+  // Property Swap Execution Handler
+  const handleExecutePropertySwap = () => {
+    if (swapGiveTile === null || swapReceiveTile === null) return;
+
+    const giveOwner = propertyOwnership[swapGiveTile];
+    const receiveOwner = propertyOwnership[swapReceiveTile];
+
+    if (giveOwner === undefined || receiveOwner === undefined) return;
+
+    // Swap ownership
+    const updatedOwnership = {
+      ...propertyOwnership,
+      [swapGiveTile]: receiveOwner,
+      [swapReceiveTile]: giveOwner,
+    };
+    setPropertyOwnership(updatedOwnership);
+
+    playRegisterSound();
+
+    const giveName = getTileName(swapGiveTile);
+    const receiveName = getTileName(swapReceiveTile);
+    const oppName = gamePlayers[receiveOwner]?.name || `Player ${receiveOwner + 1}`;
+
+    setHistory((prev) => [
+      `🔄 ${gamePlayers[giveOwner].name} swapped ${giveName} for ${receiveName} with ${oppName}!`,
+      ...prev.slice(0, 9),
+    ]);
+
+    showToast(`Swapped ${giveName} for ${receiveName}!`);
+
+    if (networkMode === "online") {
+      sendGameAction("swap_properties", {
+        giveTile: swapGiveTile,
+        receiveTile: swapReceiveTile,
+      });
+    }
+
+    setShowSwapModal(false);
+    setSwapGiveTile(null);
+    setSwapReceiveTile(null);
+    setIsProcessingTurn(false);
+    setTurnFinished(false);
+    handleEndTurn();
   };
 
   // Helper to process tile arrival (Rent, Buy, Special Tiles)
@@ -2795,68 +2927,44 @@ function App() {
     // Go To Jail (Index 28)
     if (tileIndex === 28) {
       setIsProcessingTurn(false);
-      if (effectiveIsOnline) {
-        // Server handles jail status and history.
-        // We just show the local modal for visual feedback.
-        // We don't even need to calculate duration here, but we can for UI.
-        setArrestDuration(3);
-        setShowArrestModal(true);
-        return;
-      }
-
-      // 1. Calculate random duration (2 or 3 turns)
-      const duration = Math.floor(Math.random() * 2) + 2;
-
-      // 2. Set Jail Status
-      const newJailStatus = { ...jailStatus, [playerIndex]: duration };
-      setJailStatus(newJailStatus);
-
-      // 4. Show Modal (Client Only)
+      setTurnFinished(true); // Complete active turn so no options appear until next turn
+      const duration = effectiveIsOnline
+        ? 3
+        : Math.floor(Math.random() * 2) + 2;
       setArrestDuration(duration);
       setShowArrestModal(true);
-
-      setHistory((prev) => [
-        `👮 ${gamePlayers[playerIndex].name} is arrested for ${duration} turns!`,
-        ...prev.slice(0, 9),
-      ]);
       return;
     }
 
-    // The Audit (Index 7) - Tax based on dice rolled to reach tile
+    // Property Swap (Index 7) - Swap any property with any opponent without money exchange
     if (tileIndex === 7) {
-      // Use the dice that were rolled to get here, with safe fallback for card teleports
-      const die1 =
-        Number(effectiveDiceValues?.[0]) || Math.floor(Math.random() * 6) + 1;
-      const die2 =
-        Number(effectiveDiceValues?.[1]) || Math.floor(Math.random() * 6) + 1;
-      const total = die1 + die2;
-      const tax = (total || 7) * 300; // ×300 multiplier
+      setIsProcessingTurn(false);
+      const myProps = Object.keys(effectiveOwnership)
+        .map(Number)
+        .filter((t) => effectiveOwnership[t] === playerIndex);
+      const opponentProps = Object.keys(effectiveOwnership)
+        .map(Number)
+        .filter(
+          (t) =>
+            effectiveOwnership[t] !== undefined &&
+            effectiveOwnership[t] !== null &&
+            effectiveOwnership[t] !== playerIndex,
+        );
 
-      // Check Audit Immunity (Chest Card)
-      if (activeEffects[playerIndex]?.audit_immunity) {
-        setHistory((prev) => [
-          `🛡️ ${gamePlayers[playerIndex].name} used Audit Immunity! No tax paid.`,
-          ...prev.slice(0, 9),
-        ]);
-        setActiveEffects((prev) => ({
-          ...prev,
-          [playerIndex]: { ...prev[playerIndex], audit_immunity: false },
-        }));
+      if (myProps.length === 0) {
+        showToast("You don't own any properties to swap!");
+        endTurn(playerIndex, false);
+        return;
+      }
+      if (opponentProps.length === 0) {
+        showToast("No opponent properties available to swap!");
         endTurn(playerIndex, false);
         return;
       }
 
-      if (effectiveIsOnline) {
-        // Server handles the tax and broadcast.
-        // Client just shows the modal if they want, but server processes it.
-        // For now, we'll just let the server's state_update and floating_price handle it.
-        return;
-      }
-
-      setAuditDiceValues([die1, die2]);
-      setAuditAmount(tax);
-      setAuditStatus("result");
-      setShowAuditModal(true);
+      setSwapGiveTile(null);
+      setSwapReceiveTile(null);
+      setShowSwapModal(true);
       return;
     }
 
@@ -5855,9 +5963,29 @@ function App() {
       return;
     }
 
-    // Deal Selection Mode - handle property selection for trades
-    if (dealSelectionMode) {
-      handleDealTileClick(tileIndex);
+    // Property Swap Selection from Board
+    if (showSwapModal) {
+      const owner = propertyOwnership[tileIndex];
+      if (owner === undefined || owner === null) return;
+      if (owner === currentPlayer) {
+        setSwapGiveTile(swapGiveTile === tileIndex ? null : tileIndex);
+      } else {
+        setSwapReceiveTile(swapReceiveTile === tileIndex ? null : tileIndex);
+      }
+      return;
+    }
+
+    // Deal Modal Selection from Board
+    if (showDealModal || dealSelectionMode) {
+      const owner = propertyOwnership[tileIndex];
+      const targetOpponent = dealTargetPlayer ?? selectedDealPlayer;
+      if (owner === currentPlayer) {
+        handleToggleDealGiveProperty(tileIndex);
+        return;
+      } else if (owner === targetOpponent) {
+        handleToggleDealReceiveProperty(tileIndex);
+        return;
+      }
       return;
     }
 
@@ -6021,15 +6149,22 @@ function App() {
 
   // Helper: Get style for deal mode (greyscale non-eligible tiles, dim non-deal tiles during deal review)
   const getDealSelectionStyle = (tileIndex) => {
-    // 1. If actively picking properties to trade
-    if (dealSelectionMode) {
+    // 1. If actively configuring trade in Deal modal or dealSelectionMode
+    if (showDealModal || dealSelectionMode) {
       const owner = propertyOwnership[tileIndex];
+      const targetOpponent = dealTargetPlayer ?? selectedDealPlayer;
       const isCurrentPlayerProperty = owner === currentPlayer;
-      const isSelectedPlayerProperty = owner === selectedDealPlayer;
+      const isSelectedPlayerProperty = owner === targetOpponent;
 
-      // Keep tile colored if owned by current player or selected player
       if (isCurrentPlayerProperty || isSelectedPlayerProperty) {
-        return { transition: "filter 0.3s", cursor: "pointer" };
+        const isSelected =
+          dealGiveProperties.includes(tileIndex) ||
+          dealReceiveProperties.includes(tileIndex);
+        return {
+          transition: "all 0.3s",
+          cursor: "pointer",
+          ...(isSelected ? { boxShadow: "0 0 12px gold", zIndex: 10 } : {}),
+        };
       }
 
       // Grayscale everything else
@@ -6065,16 +6200,25 @@ function App() {
 
   // Helper: Get style for build mode (greyscale non-monopoly tiles)
   const getBuildSelectionStyle = (tileIndex) => {
-    if (!buildMode) return {};
+    if (!buildMode && !showBuildModal) return {};
 
     const monopolyTiles = getMonopolyTiles(currentPlayer);
 
-    // Keep tile colored if it's one of the current player's monopoly properties
-    if (monopolyTiles.includes(tileIndex)) {
+    // If a specific color group was tapped/selected, prioritize that group
+    if (selectedBuildColor && COLOR_GROUPS[selectedBuildColor]) {
+      if (COLOR_GROUPS[selectedBuildColor].includes(tileIndex)) {
+        return {
+          transition: "filter 0.3s",
+          cursor: "pointer",
+          boxShadow: "0 0 15px rgba(76, 175, 80, 0.8)",
+          zIndex: 6,
+        };
+      }
+    } else if (monopolyTiles.includes(tileIndex)) {
       return {
         transition: "filter 0.3s",
         cursor: "pointer",
-        boxShadow: "0 0 15px rgba(76, 175, 80, 0.6)", // Green glow for buildable tiles
+        boxShadow: "0 0 15px rgba(76, 175, 80, 0.6)",
         zIndex: 5,
       };
     }
@@ -6089,18 +6233,26 @@ function App() {
 
   // Helper: Get style for sell mode (highlight player's properties with buildings)
   const getSellSelectionStyle = (tileIndex) => {
-    if (!sellMode) return {};
+    if (!sellMode && !showSellModal) return {};
 
     const owner = propertyOwnership[tileIndex];
     const isOwned = owner === currentPlayer;
     const baseLvl = propertyLevels[tileIndex] || 0;
 
-    // Keep tile colored and glowing with warm orange if it's one of current player's properties with buildings
-    if (isOwned && baseLvl > 0) {
+    if (selectedSellColor && COLOR_GROUPS[selectedSellColor]) {
+      if (COLOR_GROUPS[selectedSellColor].includes(tileIndex) && isOwned && baseLvl > 0) {
+        return {
+          transition: "filter 0.3s, box-shadow 0.3s",
+          cursor: "pointer",
+          boxShadow: "0 0 15px rgba(255, 152, 0, 0.8)",
+          zIndex: 6,
+        };
+      }
+    } else if (isOwned && baseLvl > 0) {
       return {
         transition: "filter 0.3s, box-shadow 0.3s",
         cursor: "pointer",
-        boxShadow: "0 0 15px rgba(255, 152, 0, 0.7)", // Orange glow for sellable tiles
+        boxShadow: "0 0 15px rgba(255, 152, 0, 0.7)",
         zIndex: 5,
       };
     }
@@ -6108,6 +6260,48 @@ function App() {
     // Grayscale everything else during sell mode
     return {
       filter: "grayscale(100%) brightness(0.6)",
+      pointerEvents: "none",
+      transition: "filter 0.3s",
+    };
+  };
+
+  // Helper: Get style for property swap mode (highlight swapped properties or eligible properties)
+  const getSwapSelectionStyle = (tileIndex) => {
+    if (!showSwapModal) return {};
+
+    const owner = propertyOwnership[tileIndex];
+    const isChosen = tileIndex === swapGiveTile || tileIndex === swapReceiveTile;
+
+    if (isChosen) {
+      return {
+        transition: "all 0.3s",
+        cursor: "pointer",
+        boxShadow: "0 0 16px gold",
+        border: "2px solid gold",
+        zIndex: 15,
+      };
+    }
+
+    // When both are chosen, dim all other tiles to black & white as requested
+    if (swapGiveTile !== null && swapReceiveTile !== null) {
+      return {
+        filter: "grayscale(100%) brightness(0.5)",
+        pointerEvents: "none",
+        transition: "filter 0.3s",
+      };
+    }
+
+    // When selecting, keep properties owned by player and opponents colorful
+    const isOwnedBySomeone = owner !== undefined && owner !== null;
+    if (isOwnedBySomeone) {
+      return {
+        transition: "filter 0.3s",
+        cursor: "pointer",
+      };
+    }
+
+    return {
+      filter: "grayscale(100%) brightness(0.5)",
       pointerEvents: "none",
       transition: "filter 0.3s",
     };
@@ -7099,108 +7293,122 @@ function App() {
               className={`board ${dealSelectionMode || buildMode || sellMode ? "deal-selection-active" : ""} ${devMode && devTapToMove ? "dev-tap-active" : ""}`}
             >
             {/* Corner Spaces */}
-            <div
-              className="corner start"
-              onClick={() => handleTileClick(0)}
-              style={{
-                ...(isSelectingAuctionProperty ||
+            {(() => {
+              const isCornerDimmed =
+                isSelectingAuctionProperty ||
                 (networkMode === "online" &&
-                  ["thinking", "announcing"].includes(auctionState?.status))
-                  ? {
-                      filter: "grayscale(100%) brightness(0.6)",
-                      transition: "filter 0.3s",
-                    }
-                  : { transition: "filter 0.3s" }),
-                cursor: devMode && devTapToMove ? "pointer" : "default",
-              }}
-              title={
-                devMode && devTapToMove
-                  ? "🎯 Dev: Tap to move to START (0)"
-                  : undefined
-              }
-            >
-              <img src={startIcon} alt="Start" className="corner-icon" />
-            </div>
+                  ["thinking", "announcing"].includes(auctionState?.status)) ||
+                showDealModal ||
+                dealSelectionMode ||
+                buildMode ||
+                showBuildModal ||
+                sellMode ||
+                showSellModal ||
+                showSwapModal;
 
-            <div
-              className="corner parking"
-              onClick={() => handleTileClick(10)}
-              style={{
-                ...(isSelectingAuctionProperty ||
-                (networkMode === "online" &&
-                  ["thinking", "announcing"].includes(auctionState?.status))
-                  ? {
-                      filter: "grayscale(100%) brightness(0.6)",
-                      transition: "filter 0.3s",
+              return (
+                <>
+                  <div
+                    className="corner start"
+                    onClick={() => handleTileClick(0)}
+                    style={{
+                      ...(isCornerDimmed
+                        ? {
+                            filter: "grayscale(100%) brightness(0.6)",
+                            pointerEvents: "none",
+                            transition: "filter 0.3s",
+                          }
+                        : { transition: "filter 0.3s" }),
+                      cursor: devMode && devTapToMove ? "pointer" : "default",
+                    }}
+                    title={
+                      devMode && devTapToMove
+                        ? "🎯 Dev: Tap to move to START (0)"
+                        : undefined
                     }
-                  : { transition: "filter 0.3s" }),
-                cursor: devMode && devTapToMove ? "pointer" : "default",
-              }}
-              title={
-                devMode && devTapToMove
-                  ? "🎯 Dev: Tap to move to PARKING (10)"
-                  : undefined
-              }
-            >
-              <img
-                src={parkingIcon}
-                alt="Free Parking"
-                className="corner-icon"
-              />
-            </div>
+                  >
+                    <img src={startIcon} alt="Start" className="corner-icon" />
+                  </div>
 
-            <div
-              className="corner robbank"
-              onClick={() => handleTileClick(18)}
-              style={{
-                ...(isSelectingAuctionProperty ||
-                (networkMode === "online" &&
-                  ["thinking", "announcing"].includes(auctionState?.status))
-                  ? {
-                      filter: "grayscale(100%) brightness(0.6)",
-                      transition: "filter 0.3s",
+                  <div
+                    className="corner parking"
+                    onClick={() => handleTileClick(10)}
+                    style={{
+                      ...(isCornerDimmed
+                        ? {
+                            filter: "grayscale(100%) brightness(0.6)",
+                            pointerEvents: "none",
+                            transition: "filter 0.3s",
+                          }
+                        : { transition: "filter 0.3s" }),
+                      cursor: devMode && devTapToMove ? "pointer" : "default",
+                    }}
+                    title={
+                      devMode && devTapToMove
+                        ? "🎯 Dev: Tap to move to PARKING (10)"
+                        : undefined
                     }
-                  : { transition: "filter 0.3s" }),
-                cursor: devMode && devTapToMove ? "pointer" : "default",
-              }}
-              title={
-                devMode && devTapToMove
-                  ? "🎯 Dev: Tap to move to ROB BANK (18)"
-                  : undefined
-              }
-            >
-              <span className="rob-text">ROB</span>
-              <img
-                src={robBankIcon}
-                alt="Rob Bank"
-                className="corner-icon-center"
-              />
-              <span className="bank-text">BANK</span>
-            </div>
+                  >
+                    <img
+                      src={parkingIcon}
+                      alt="Free Parking"
+                      className="corner-icon"
+                    />
+                  </div>
 
-            <div
-              className="corner jail"
-              onClick={() => handleTileClick(28)}
-              style={{
-                ...(isSelectingAuctionProperty ||
-                (networkMode === "online" &&
-                  ["thinking", "announcing"].includes(auctionState?.status))
-                  ? {
-                      filter: "grayscale(100%) brightness(0.6)",
-                      transition: "filter 0.3s",
+                  <div
+                    className="corner robbank"
+                    onClick={() => handleTileClick(18)}
+                    style={{
+                      ...(isCornerDimmed
+                        ? {
+                            filter: "grayscale(100%) brightness(0.6)",
+                            pointerEvents: "none",
+                            transition: "filter 0.3s",
+                          }
+                        : { transition: "filter 0.3s" }),
+                      cursor: devMode && devTapToMove ? "pointer" : "default",
+                    }}
+                    title={
+                      devMode && devTapToMove
+                        ? "🎯 Dev: Tap to move to ROB BANK (18)"
+                        : undefined
                     }
-                  : { transition: "filter 0.3s" }),
-                cursor: devMode && devTapToMove ? "pointer" : "default",
-              }}
-              title={
-                devMode && devTapToMove
-                  ? "🎯 Dev: Tap to move to JAIL (28)"
-                  : undefined
-              }
-            >
-              <span className="jail-text">JAIL</span>
-              <img src={jailIcon} alt="Jail" className="corner-icon-center" />
-            </div>
+                  >
+                    <span className="rob-text">ROB</span>
+                    <img
+                      src={robBankIcon}
+                      alt="Rob Bank"
+                      className="corner-icon-center"
+                    />
+                    <span className="bank-text">BANK</span>
+                  </div>
+
+                  <div
+                    className="corner jail"
+                    onClick={() => handleTileClick(28)}
+                    style={{
+                      ...(isCornerDimmed
+                        ? {
+                            filter: "grayscale(100%) brightness(0.6)",
+                            pointerEvents: "none",
+                            transition: "filter 0.3s",
+                          }
+                        : { transition: "filter 0.3s" }),
+                      cursor: devMode && devTapToMove ? "pointer" : "default",
+                    }}
+                    title={
+                      devMode && devTapToMove
+                        ? "🎯 Dev: Tap to move to JAIL (28)"
+                        : undefined
+                    }
+                  >
+                    <span className="jail-text">JAIL</span>
+                    <img src={jailIcon} alt="Jail" className="corner-icon-center" />
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Bottom Row */}
             {bottomRow.map((tile, index) => {
@@ -7210,6 +7418,7 @@ function App() {
               const dealStyle = getDealSelectionStyle(tileIndex);
               const buildStyle = getBuildSelectionStyle(tileIndex);
               const sellStyle = getSellSelectionStyle(tileIndex);
+              const swapStyle = getSwapSelectionStyle(tileIndex);
               const warStyle = getWarSelectionStyle(tileIndex);
               const trainStyle = getTrainTargetStyle(tileIndex);
               return (
@@ -7222,6 +7431,7 @@ function App() {
                     ...dealStyle,
                     ...buildStyle,
                     ...sellStyle,
+                    ...swapStyle,
                     ...warStyle,
                     ...trainStyle,
                   }}
@@ -7229,7 +7439,7 @@ function App() {
                 >
                   {renderUpgrades(tileIndex, "bottom")}
                   <span className="tile-name">{tile.name}</span>
-                  {tile.icon && ["audit", "property_war", "forced_auction"].includes(tile.icon) && (
+                  {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
                     <span className="tile-icon">
                       <BoardIcon type={tile.icon} size={32} />
                     </span>
@@ -7282,6 +7492,7 @@ function App() {
               const dealStyle = getDealSelectionStyle(tileIndex);
               const buildStyle = getBuildSelectionStyle(tileIndex);
               const sellStyle = getSellSelectionStyle(tileIndex);
+              const swapStyle = getSwapSelectionStyle(tileIndex);
               const warStyle = getWarSelectionStyle(tileIndex);
               const trainStyle = getTrainTargetStyle(tileIndex);
               return (
@@ -7294,6 +7505,7 @@ function App() {
                     ...dealStyle,
                     ...buildStyle,
                     ...sellStyle,
+                    ...swapStyle,
                     ...warStyle,
                     ...trainStyle,
                   }}
@@ -7301,7 +7513,7 @@ function App() {
                 >
                   {renderUpgrades(tileIndex, "left")}
                   <span className="tile-name">{tile.name}</span>
-                  {tile.icon && ["audit", "property_war", "forced_auction"].includes(tile.icon) && (
+                  {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
                     <span className="tile-icon">
                       <BoardIcon type={tile.icon} size={32} />
                     </span>
@@ -7351,6 +7563,7 @@ function App() {
               const dealStyle = getDealSelectionStyle(tileIndex);
               const buildStyle = getBuildSelectionStyle(tileIndex);
               const sellStyle = getSellSelectionStyle(tileIndex);
+              const swapStyle = getSwapSelectionStyle(tileIndex);
               const warStyle = getWarSelectionStyle(tileIndex);
               const trainStyle = getTrainTargetStyle(tileIndex);
               return (
@@ -7363,6 +7576,7 @@ function App() {
                     ...dealStyle,
                     ...buildStyle,
                     ...sellStyle,
+                    ...swapStyle,
                     ...warStyle,
                     ...trainStyle,
                   }}
@@ -7370,7 +7584,7 @@ function App() {
                 >
                   {renderUpgrades(tileIndex, "top")}
                   <span className="tile-name">{tile.name}</span>
-                  {tile.icon && ["audit", "property_war", "forced_auction"].includes(tile.icon) && (
+                  {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
                     <span className="tile-icon">
                       <BoardIcon type={tile.icon} size={32} />
                     </span>
@@ -7420,6 +7634,7 @@ function App() {
               const dealStyle = getDealSelectionStyle(tileIndex);
               const buildStyle = getBuildSelectionStyle(tileIndex);
               const sellStyle = getSellSelectionStyle(tileIndex);
+              const swapStyle = getSwapSelectionStyle(tileIndex);
               const warStyle = getWarSelectionStyle(tileIndex);
               const trainStyle = getTrainTargetStyle(tileIndex);
               return (
@@ -7432,6 +7647,7 @@ function App() {
                     ...dealStyle,
                     ...buildStyle,
                     ...sellStyle,
+                    ...swapStyle,
                     ...warStyle,
                     ...trainStyle,
                   }}
@@ -7439,7 +7655,7 @@ function App() {
                 >
                   {renderUpgrades(tileIndex, "right")}
                   <span className="tile-name">{tile.name}</span>
-                  {tile.icon && ["audit", "property_war", "forced_auction"].includes(tile.icon) && (
+                  {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
                     <span className="tile-icon">
                       <BoardIcon type={tile.icon} size={32} />
                     </span>
@@ -7550,6 +7766,10 @@ function App() {
                           style={{ background: "#D32F2F", width: "100%" }}
                           onClick={() => {
                             setShowArrestModal(false);
+                            setJailStatus((prev) => ({
+                              ...prev,
+                              [currentPlayer]: arrestDuration || 3,
+                            }));
                             setIsProcessingTurn(false);
                             setTurnFinished(false);
                             handleEndTurn();
@@ -7684,17 +7904,37 @@ function App() {
                             <>
                               <button
                                 className="buy-button"
-                                onClick={() => setShowJailActionModal(true)}
-                                style={{ background: "#2196F3", gridColumn: 1 }}
+                                onClick={handleJailPay}
+                                disabled={isRolling || isProcessingTurn}
+                                style={{
+                                  background: "#2196F3",
+                                  gridColumn: 1,
+                                  fontFamily: "'Lato', sans-serif",
+                                  fontWeight: "bold",
+                                  fontSize: "13px",
+                                }}
                               >
-                                GO OUT
+                                GO OUT ($
+                                {jailStatus[currentPlayer] === 3
+                                  ? 1000
+                                  : jailStatus[currentPlayer] === 2
+                                    ? 500
+                                    : 200}
+                                )
                               </button>
                               <button
-                                className="roll-button done"
-                                onClick={handleJailSkip}
-                                style={{ background: "#4CAF50", gridColumn: 2 }}
+                                className="roll-button"
+                                onClick={handleJailRoll}
+                                disabled={isRolling || isProcessingTurn}
+                                style={{
+                                  background: "#4CAF50",
+                                  gridColumn: 2,
+                                  fontFamily: "'Lato', sans-serif",
+                                  fontWeight: "bold",
+                                  fontSize: "14px",
+                                }}
                               >
-                                DONE
+                                ROLL
                               </button>
                             </>
                           ) : (
@@ -7820,6 +8060,158 @@ function App() {
                     </button>
                   </div>
                 </>
+              )}
+
+              {/* Property Swap Modal */}
+              {showSwapModal && (
+                <div className="ref-modal-overlay">
+                  <div className="ref-golden-card ref-swap-card">
+                    <button
+                      className="ref-help-btn"
+                      onClick={() => {
+                        setShowSwapModal(false);
+                        setIsProcessingTurn(false);
+                        setTurnFinished(false);
+                        handleEndTurn();
+                      }}
+                      aria-label="Close"
+                    >
+                      ✕
+                    </button>
+                    <div className="ref-deal-header">
+                      <span className="ref-deal-title">Property Swap</span>
+                    </div>
+                    <div className="ref-swap-desc">
+                      Swap 1 of your properties with 1 opponent property
+                    </div>
+                    <div className="ref-swap-upper">
+                      {/* Left: Your Properties */}
+                      <div className="ref-swap-player-card">
+                        <div className="ref-swap-player-header">
+                          <span className="ref-swap-player-title">You Give</span>
+                          <span style={{ fontSize: "8px", color: "#ffd54f" }}>
+                            {swapGiveTile !== null ? "1 selected" : "Pick 1"}
+                          </span>
+                        </div>
+                        <div className="ref-swap-props-list">
+                          {Object.keys(propertyOwnership)
+                            .map(Number)
+                            .filter((t) => propertyOwnership[t] === currentPlayer)
+                            .map((tIdx) => {
+                              const prop = getPropertyByTileIndex(tIdx);
+                              if (!prop) return null;
+                              const isSelected = swapGiveTile === tIdx;
+                              return (
+                                <div
+                                  key={tIdx}
+                                  className={`ref-swap-prop-chip ${isSelected ? "selected" : ""}`}
+                                  onClick={() =>
+                                    setSwapGiveTile(isSelected ? null : tIdx)
+                                  }
+                                >
+                                  <div className="ref-deal-prop-left">
+                                    <span
+                                      className="ref-deal-prop-color"
+                                      style={{
+                                        background: prop.color || "#888",
+                                      }}
+                                    />
+                                    <span className="ref-deal-prop-name">
+                                      {prop.name}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+
+                      {/* Right: Opponents' Properties */}
+                      <div className="ref-swap-player-card">
+                        <div className="ref-swap-player-header">
+                          <span className="ref-swap-player-title">You Get</span>
+                          <span style={{ fontSize: "8px", color: "#ffd54f" }}>
+                            {swapReceiveTile !== null ? "1 selected" : "Pick 1"}
+                          </span>
+                        </div>
+                        <div className="ref-swap-props-list">
+                          {Object.keys(propertyOwnership)
+                            .map(Number)
+                            .filter(
+                              (t) =>
+                                propertyOwnership[t] !== undefined &&
+                                propertyOwnership[t] !== null &&
+                                propertyOwnership[t] !== currentPlayer,
+                            )
+                            .map((tIdx) => {
+                              const prop = getPropertyByTileIndex(tIdx);
+                              if (!prop) return null;
+                              const ownerIdx = propertyOwnership[tIdx];
+                              const ownerName =
+                                gamePlayers[ownerIdx]?.name || `P${ownerIdx + 1}`;
+                              const isSelected = swapReceiveTile === tIdx;
+                              return (
+                                <div
+                                  key={tIdx}
+                                  className={`ref-swap-prop-chip ${isSelected ? "selected" : ""}`}
+                                  onClick={() =>
+                                    setSwapReceiveTile(isSelected ? null : tIdx)
+                                  }
+                                >
+                                  <div className="ref-deal-prop-left">
+                                    <span
+                                      className="ref-deal-prop-color"
+                                      style={{
+                                        background: prop.color || "#888",
+                                      }}
+                                    />
+                                    <span className="ref-deal-prop-name">
+                                      {prop.name}
+                                    </span>
+                                  </div>
+                                  <span className="ref-swap-prop-owner-tag">
+                                    {ownerName}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="ref-swap-bottom">
+                      <button
+                        className="ref-pill-btn ref-pill-red"
+                        style={{ flex: 1, padding: "6px 0" }}
+                        onClick={() => {
+                          setShowSwapModal(false);
+                          setIsProcessingTurn(false);
+                          setTurnFinished(false);
+                          handleEndTurn();
+                        }}
+                      >
+                        SKIP
+                      </button>
+                      <button
+                        className={`ref-pill-btn ref-pill-green ${swapGiveTile === null || swapReceiveTile === null ? "ref-btn-disabled" : ""}`}
+                        style={{
+                          flex: 1,
+                          padding: "6px 0",
+                          opacity:
+                            swapGiveTile === null || swapReceiveTile === null
+                              ? 0.5
+                              : 1,
+                        }}
+                        disabled={
+                          swapGiveTile === null || swapReceiveTile === null
+                        }
+                        onClick={handleExecutePropertySwap}
+                      >
+                        CONFIRM SWAP
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Deal Modal */}

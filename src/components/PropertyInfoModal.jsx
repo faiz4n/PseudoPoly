@@ -176,6 +176,17 @@ export default function PropertyInfoModal({
           </div>
         </div>
 
+        {/* OK Exit Button */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+          <button
+            className="ref-pill-btn ref-pill-blue"
+            style={{ minWidth: '110px', height: '36px', fontSize: '15px' }}
+            onClick={onClose}
+          >
+            OK
+          </button>
+        </div>
+
         {/* Mortgaged Stamp Overlay if applicable */}
         {isMortgaged && (
           <img

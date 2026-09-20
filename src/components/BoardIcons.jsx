@@ -57,7 +57,37 @@ export function TrainIcon({ size, className = '' }) {
   );
 }
 
-// 3. The Audit Icon (Tax clipboard / document)
+// 3. Property Swap Icon (Two houses swapping with curved exchange arrows)
+export function PropertySwapIcon({ size = 34, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
+      <defs>
+        <linearGradient id="swapGrad1" x1="2" y1="2" x2="16" y2="16" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#42A5F5" />
+          <stop offset="100%" stopColor="#1E88E5" />
+        </linearGradient>
+        <linearGradient id="swapGrad2" x1="16" y1="14" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FFA726" />
+          <stop offset="100%" stopColor="#FB8C00" />
+        </linearGradient>
+      </defs>
+      {/* Top Left House */}
+      <path d="M8 5L2 11H5V19H11V11H14L8 5Z" fill="url(#swapGrad1)" stroke="#0D47A1" strokeWidth="1.2" strokeLinejoin="round" />
+      <rect x="7" y="13" width="2.5" height="6" fill="#FFF" opacity="0.9" />
+      {/* Bottom Right House */}
+      <path d="M24 13L18 19H21V27H27V19H30L24 13Z" fill="url(#swapGrad2)" stroke="#E65100" strokeWidth="1.2" strokeLinejoin="round" />
+      <rect x="23" y="21" width="2.5" height="6" fill="#FFF" opacity="0.9" />
+      {/* Top curved swap arrow */}
+      <path d="M14 8C19 6 24 9 26 12" stroke="#FFD54F" strokeWidth="2.2" strokeLinecap="round" />
+      <polygon points="27,8 28,13 23,12" fill="#FFD54F" />
+      {/* Bottom curved swap arrow */}
+      <path d="M18 24C13 26 8 23 6 20" stroke="#FFD54F" strokeWidth="2.2" strokeLinecap="round" />
+      <polygon points="5,24 4,19 9,20" fill="#FFD54F" />
+    </svg>
+  );
+}
+
+// 3b. Legacy The Audit Icon (Tax clipboard / document)
 export function AuditIcon({ size = 34, className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
@@ -212,6 +242,10 @@ export default function BoardIcon({ type, size = 36, className = '' }) {
     case 'railroad':
     case '🚅':
       return <TrainIcon size={size === 22 || size === 36 ? undefined : size} className={className} />;
+    case 'property_swap':
+    case 'swap':
+    case '🔄':
+      return <PropertySwapIcon size={size} className={className} />;
     case 'audit':
     case '🧾':
       return <AuditIcon size={size} className={className} />;

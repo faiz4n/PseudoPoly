@@ -196,21 +196,9 @@ body {
   display: none !important;
 }
 
-/* Tile content elements */
+/* Tile content elements - icons hidden, baked into master board texture */
 .tile .tile-icon {
-  font-size: 24px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1 !important;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  width: 38px;
-  height: 38px;
+  display: none !important;
 }
 
 .tile .tile-icon svg {
@@ -218,28 +206,15 @@ body {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 
-/* City name - TOP aligned with high contrast */
+/* City name - hidden, baked into master board texture */
 .tile .tile-name {
-  font-size: 6px !important;
-  font-weight: 800;
-  color: #3e1e08 !important;
-  text-align: center;
-  line-height: 1.15;
-  position: relative !important;
-  z-index: 5 !important;
-  background: transparent;
-  padding: 2px 2px 0;
-  text-shadow: none !important;
-  word-break: break-word;
-  -webkit-text-size-adjust: none;
-  text-size-adjust: none;
+  display: none !important;
 }
 
-/* All tile labels maintain the same brown color with no text shadow */
+/* All tile labels hidden - baked into master board texture */
 .tile.tile-dark .tile-name,
 .tile.tile-light .tile-name {
-  color: #3e1e08 !important;
-  text-shadow: none !important;
+  display: none !important;
 }
 
 /* Price - BOTTOM aligned, Junegull font */
@@ -278,45 +253,23 @@ body {
   text-align: center;
 }
 
-/* Train / Railroad Tile Styling (Soft cream from reference app) */
+/* Train / Railroad Tile Styling - transparent hitbox over master board */
 .tile.railroad,
 .tile.railroad-tile {
-  background: #e2d5bd !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(185, 165, 135, 0.5),
-    inset 0 -3px 8px rgba(0, 0, 0, 0.12) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .tile.railroad .tile-icon {
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  width: calc(var(--tile-width) * 0.88) !important;
-  height: calc(var(--tile-width) * 0.88 * 0.68) !important;
-  max-width: calc(var(--tile-width) * 0.88) !important;
-  max-height: calc(var(--tile-width) * 0.88 * 0.68) !important;
-  z-index: 1 !important;
-  pointer-events: none !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: none !important;
 }
 
 .tile.railroad .tile-icon img {
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
-  object-fit: contain !important;
-  opacity: 0.9 !important;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+  display: none !important;
 }
 
 .tile.railroad .tile-name {
-  position: relative !important;
-  z-index: 5 !important;
-  text-shadow: 0 0 3px rgba(226, 213, 189, 0.95), 0 0 1px rgba(226, 213, 189, 0.9) !important;
+  display: none !important;
 }
 
 .tile.railroad .tile-price {
@@ -324,58 +277,29 @@ body {
   z-index: 5 !important;
 }
 
-/* Special Action Tiles (Chance & Chest) */
+/* Special Action Tiles (Chance & Chest) - transparent hitbox over master board */
 .tile.chance,
 .tile.chest {
-  background: #e2d5bd !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(185, 165, 135, 0.5),
-    inset 0 -3px 8px rgba(0, 0, 0, 0.12) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .tile.chance .tile-icon {
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  width: clamp(28px, 6.2vh, 44px) !important;
-  height: clamp(28px, 6.2vh, 44px) !important;
-  z-index: 1 !important;
-  pointer-events: none !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: none !important;
 }
 
 .tile.chest .tile-icon {
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  width: clamp(34px, 7.2vh, 50px) !important;
-  height: clamp(22px, 4.4vh, 32px) !important;
-  z-index: 1 !important;
-  pointer-events: none !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: none !important;
 }
 
 .tile.chance .tile-icon img,
 .tile.chest .tile-icon img {
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
-  object-fit: contain !important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+  display: none !important;
 }
 
 .tile.chance .tile-name,
 .tile.chest .tile-name {
-  position: relative !important;
-  z-index: 5 !important;
-  text-shadow: 0 0 3px rgba(226, 213, 189, 0.95), 0 0 1px rgba(226, 213, 189, 0.9) !important;
+  display: none !important;
 }
 
 /* Tile Level Bars - level indicator bars on the board tiles */
@@ -416,60 +340,34 @@ body {
   box-shadow: 0 1px 3px rgba(229, 57, 53, 0.6);
 }
 
-/* Horizontal tiles (top and bottom rows) - height matches corner */
+/* Horizontal tiles (top and bottom rows) - size set by inline getTileStyle() */
 .tile.horizontal {
-  width: var(--tile-width);
-  height: var(--corner-size);
+  /* width and height are set by percentage-based inline styles from getTileStyle() */
 }
 
-/* Vertical tiles (left and right columns) - width matches corner */
+/* Vertical tiles (left and right columns) - size set by inline getTileStyle() */
 .tile.vertical {
-  width: var(--corner-size);
-  height: var(--tile-height);
+  /* width and height are set by percentage-based inline styles from getTileStyle() */
   flex-direction: column-reverse;
   justify-content: space-between;
   padding: 4px;
 }
 
 .tile.vertical .tile-icon {
-  margin-bottom: 0;
+  display: none !important;
 }
 
 .tile.vertical .tile-name {
-  writing-mode: horizontal-tb;
-  font-size: 6px !important;
-  -webkit-text-size-adjust: none;
-  text-size-adjust: none;
+  display: none !important;
 }
 
-/* Adjust vertical tile gradients */
+/* Vertical tile pseudo-element gradients - disabled for master board texture */
 .tile.vertical::before {
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: auto;
-  width: 35%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 255, 255, 0.15) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  display: none !important;
 }
 
 .tile.vertical::after {
-  top: 0;
-  left: auto;
-  bottom: 0;
-  right: 0;
-  width: 25%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.1) 100%
-  );
+  display: none !important;
 }
 
 .tile.vertical.left {
@@ -481,24 +379,11 @@ body {
 }
 
 .tile.vertical.right::before {
-  left: auto;
-  right: 0;
-  background: linear-gradient(
-    270deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 255, 255, 0.15) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  display: none !important;
 }
 
 .tile.vertical.right::after {
-  right: auto;
-  left: 0;
-  background: linear-gradient(
-    270deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.1) 100%
-  );
+  display: none !important;
 }
 
 /* ==================== CENTER AREA ==================== */
@@ -2111,24 +1996,7 @@ body {
   }
 
   .tile .tile-name {
-    position: relative !important;
-    z-index: 5 !important;
-    font-size: clamp(1px, 2vh, 6px) !important;
-    line-height: 1.1 !important;
-    max-height: 2.5em !important;
-    -webkit-text-stroke: 0px !important;
-    letter-spacing: 0.15px !important;
-    padding: 0px 0px 0 !important;
-    text-align: center !important;
-    width: 100% !important;
-    white-space: normal !important;
-    overflow: hidden !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    color: #3e1e08 !important;
-    text-shadow: none !important;
-    -webkit-text-size-adjust: none !important;
-    text-size-adjust: none !important;
+    display: none !important;
   }
 
   .tile .tile-price {
@@ -2171,68 +2039,32 @@ body {
   }
 
   .tile .tile-icon {
-    width: clamp(22px, 5.5vh, 34px) !important;
-    height: clamp(22px, 5.5vh, 34px) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    z-index: 1 !important;
-    pointer-events: none !important;
+    display: none !important;
   }
 
   .tile .tile-icon svg,
   .tile .tile-icon img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
+    display: none !important;
   }
 
   .tile.railroad .tile-icon {
-    width: calc(var(--tile-width) * 0.88) !important;
-    height: calc(var(--tile-width) * 0.88 * 0.68) !important;
-    max-width: calc(var(--tile-width) * 0.88) !important;
-    max-height: calc(var(--tile-width) * 0.88 * 0.68) !important;
-    z-index: 1 !important;
+    display: none !important;
   }
 
   .tile.railroad .tile-icon img {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    object-fit: contain !important;
-    opacity: 0.9 !important;
+    display: none !important;
   }
 
   .tile.chance .tile-icon {
-    width: clamp(26px, 5.8vh, 40px) !important;
-    height: clamp(26px, 5.8vh, 40px) !important;
-    z-index: 1 !important;
+    display: none !important;
   }
 
   .tile.chest .tile-icon {
-    width: clamp(32px, 6.8vh, 48px) !important;
-    height: clamp(20px, 4.2vh, 30px) !important;
-    z-index: 1 !important;
+    display: none !important;
   }
 
   .tile.vertical .tile-name {
-    font-size: clamp(1px, 2vh, 6px) !important;
-    line-height: 1.1 !important;
-    max-height: 2.5em !important;
-    max-width: 98% !important;
-    padding: 0px 2px 0 !important;
-    white-space: normal !important;
-    overflow: hidden !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    color: #3e1e08 !important;
-    text-shadow: none !important;
-    -webkit-text-size-adjust: none !important;
-    text-size-adjust: none !important;
+    display: none !important;
   }
 
   /* Corner fonts - match tile size */
@@ -2753,27 +2585,7 @@ body {
 /* Native Capacitor App Explicit Overrides */
 .is-capacitor .tile .tile-name,
 .is-capacitor .tile.vertical .tile-name {
-  font-size: clamp(1px, 2vh, 6px) !important;
-  line-height: 1.1 !important;
-  max-height: 2.5em !important;
-  -webkit-text-stroke: 0px !important;
-  letter-spacing: 0.15px !important;
-  padding: 0px 0px 0 !important;
-  text-align: center !important;
-  width: 100% !important;
-  white-space: normal !important;
-  overflow: hidden !important;
-  word-break: normal !important;
-  overflow-wrap: break-word !important;
-  color: #3e1e08 !important;
-  text-shadow: none !important;
-  -webkit-text-size-adjust: none !important;
-  text-size-adjust: none !important;
-}
-
-.is-capacitor .tile.vertical .tile-name {
-  max-width: 98% !important;
-  padding: 0px 2px 0 !important;
+  display: none !important;
 }
 
 .is-capacitor .tile .tile-price {

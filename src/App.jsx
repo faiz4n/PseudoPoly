@@ -8002,24 +8002,49 @@ function App() {
               {showBankModal && (
                 <div className="modal-overlay bank-modal-overlay">
                   <div className="buy-modal deal-modal bank-modal">
+                    <button
+                      className="modal-close-btn"
+                      onClick={() => {
+                        if (openedFromWar) {
+                          setShowBankModal(false);
+                          setOpenedFromWar(false);
+                          setShowWarModal(true);
+                        } else {
+                          setShowBankModal(false);
+                          setBankPhase("entry");
+                        }
+                      }}
+                      aria-label="Close"
+                    />
                     <div className="modal-heading">
                       <span className="modal-heading-text">Bank</span>
                     </div>
                     <div className="modal-body">
                       {bankPhase === "entry" ? (
                         <>
+                          <img
+                            src="/modal_ui/safe_door.png"
+                            alt="Bank Vault"
+                            style={{
+                              width: "48px",
+                              height: "48px",
+                              margin: "0 auto 4px",
+                              display: "block",
+                              objectFit: "contain",
+                            }}
+                          />
                           <div
                             className="modal-details"
                             style={{
                               textAlign: "center",
-                              marginBottom: "20px",
+                              marginBottom: "12px",
                             }}
                           >
                             {!playerLoans[currentPlayer] ? (
                               <div
                                 style={{
                                   fontFamily: "Junegull, sans-serif",
-                                  fontSize: "24px",
+                                  fontSize: "20px",
                                   color: "#4a2c18",
                                 }}
                               >
@@ -9249,13 +9274,12 @@ function App() {
                       minWidth: "280px",
                     }}
                   >
-                    <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          "linear-gradient(to bottom, #607D8B 0%, #455A64 100%)",
-                      }}
-                    >
+                    <button
+                      className="modal-close-btn"
+                      onClick={closeMenu}
+                      aria-label="Close"
+                    />
+                    <div className="modal-heading">
                       <span className="modal-heading-text">☰ MENU</span>
                     </div>
                     <div
@@ -9406,6 +9430,11 @@ function App() {
                     }}
                   >
                     <div className="buy-modal">
+                      <button
+                        className="modal-close-btn"
+                        onClick={handleCancelBuy}
+                        aria-label="Close"
+                      />
                       {/* Header */}
                       <div className="modal-heading">
                         <span className="modal-heading-text">Buying</span>
@@ -9479,17 +9508,16 @@ function App() {
                   className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
                 >
                   <div className="buy-modal">
+                    {robStatus === "idle" && (
+                      <button
+                        className="modal-close-btn"
+                        onClick={handleRobBankLeave}
+                        aria-label="Close"
+                      />
+                    )}
                     {/* Header */}
                     <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          robStatus === "caught"
-                            ? "linear-gradient(to bottom, #C62828 0%, #B71C1C 100%)"
-                            : robStatus === "success"
-                              ? "linear-gradient(to bottom, #2E7D32 0%, #1B5E20 100%)"
-                              : "linear-gradient(to bottom, #1A237E 0%, #0D47A1 100%)",
-                      }}
+                      className={`modal-heading ${robStatus === "caught" ? "danger" : ""}`}
                     >
                       <span className="modal-heading-text">
                         {robStatus === "processing"
@@ -9506,6 +9534,17 @@ function App() {
                     <div className="modal-body">
                       {robStatus === "idle" && (
                         <>
+                          <img
+                            src="/modal_ui/safe_door.png"
+                            alt="Safe Vault"
+                            style={{
+                              width: "52px",
+                              height: "52px",
+                              margin: "0 auto 4px",
+                              display: "block",
+                              objectFit: "contain",
+                            }}
+                          />
                           <div className="modal-city-name">RISK IT ALL?</div>
                           <div className="modal-divider"></div>
                           <div
@@ -10804,7 +10843,15 @@ function App() {
                                     gap: "4px",
                                   }}
                                 >
-                                  <span className="war-winner-trophy">🏆</span>
+                                  <img
+                                    src="/modal_ui/win_cup.png"
+                                    alt="Trophy"
+                                    style={{
+                                      width: "16px",
+                                      height: "20px",
+                                      objectFit: "contain",
+                                    }}
+                                  />
                                   {winnerPlayer.avatar && (
                                     <img
                                       src={winnerPlayer.avatar}
@@ -10820,7 +10867,15 @@ function App() {
                                     />
                                   )}
                                   <span>{winnerPlayer.name} WINS!</span>
-                                  <span className="war-winner-trophy">🏆</span>
+                                  <img
+                                    src="/modal_ui/win_cup.png"
+                                    alt="Trophy"
+                                    style={{
+                                      width: "16px",
+                                      height: "20px",
+                                      objectFit: "contain",
+                                    }}
+                                  />
                                 </div>
                                 <div className="war-winner-prize">
                                   {warMode === "A" && warProperty
@@ -10926,26 +10981,39 @@ function App() {
                     <div className="buy-modal">
                       {/* Header */}
                       <div
-                        className="modal-heading"
-                        style={{
-                          background:
-                            "linear-gradient(to bottom, #FF9800 0%, #F57C00 100%)",
-                        }}
+                        className={`modal-heading ${currentChanceCard.action === "MONEY_SUBTRACT" || currentChanceCard.action === "REPAIRS" ? "danger" : ""}`}
                       >
                         <span className="modal-heading-text">CHANCE</span>
                       </div>
 
                       {/* Body */}
                       <div className="modal-body">
+                        <img
+                          src={
+                            currentChanceCard.action === "MONEY_SUBTRACT" || currentChanceCard.action === "REPAIRS"
+                              ? "/modal_ui/money_lost.png"
+                              : "/modal_ui/money_take.png"
+                          }
+                          alt="Chance"
+                          style={{
+                            width: "44px",
+                            height: "54px",
+                            margin: "2px auto 6px",
+                            display: "block",
+                            objectFit: "contain",
+                          }}
+                        />
                         <div
                           className="modal-city-name"
                           style={{
-                            fontSize: "20px",
-                            marginBottom: "20px",
-                            minHeight: "60px",
+                            fontSize: "16px",
+                            marginBottom: "12px",
+                            minHeight: "36px",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
+                            textAlign: "center",
+                            lineHeight: "1.25",
                           }}
                         >
                           {currentChanceCard.text}
@@ -10962,7 +11030,7 @@ function App() {
                               onClick={() =>
                                 handleChanceCardAction(currentChanceCard)
                               }
-                              style={{ width: "120px", background: "#FF9800" }}
+                              style={{ minWidth: "120px" }}
                             >
                               OK
                             </button>
@@ -10995,11 +11063,7 @@ function App() {
                     <div className="buy-modal">
                       {/* Header */}
                       <div
-                        className="modal-heading"
-                        style={{
-                          background:
-                            "linear-gradient(to bottom, #795548 0%, #5D4037 100%)",
-                        }}
+                        className={`modal-heading ${currentChestCard.action === "MONEY_SUBTRACT" ? "danger" : ""}`}
                       >
                         <span className="modal-heading-text">
                           TREASURE CHEST
@@ -11008,15 +11072,32 @@ function App() {
 
                       {/* Body */}
                       <div className="modal-body">
+                        <img
+                          src={
+                            currentChestCard.action === "MONEY_SUBTRACT"
+                              ? "/modal_ui/money_lost.png"
+                              : "/modal_ui/money_take.png"
+                          }
+                          alt="Chest"
+                          style={{
+                            width: "44px",
+                            height: "54px",
+                            margin: "2px auto 6px",
+                            display: "block",
+                            objectFit: "contain",
+                          }}
+                        />
                         <div
                           className="modal-city-name"
                           style={{
-                            fontSize: "20px",
-                            marginBottom: "20px",
-                            minHeight: "60px",
+                            fontSize: "16px",
+                            marginBottom: "12px",
+                            minHeight: "36px",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
+                            textAlign: "center",
+                            lineHeight: "1.25",
                           }}
                         >
                           {currentChestCard.text}
@@ -11033,7 +11114,7 @@ function App() {
                               onClick={() =>
                                 handleChestCardAction(currentChestCard)
                               }
-                              style={{ width: "120px", background: "#795548" }}
+                              style={{ minWidth: "120px" }}
                             >
                               OK
                             </button>
@@ -12447,13 +12528,12 @@ function App() {
               boxShadow: "0 8px 30px rgba(0,0,0,0.6)",
             }}
           >
-            <div
-              className="modal-heading"
-              style={{
-                background:
-                  "linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)",
-              }}
-            >
+            <button
+              className="modal-close-btn"
+              onClick={closeSettings}
+              aria-label="Close"
+            />
+            <div className="modal-heading">
               <span className="modal-heading-text">⚙️ GAME SETTINGS</span>
             </div>
             <div

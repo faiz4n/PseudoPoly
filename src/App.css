@@ -9,22 +9,20 @@
   max-height: 96% !important;
   display: flex !important;
   flex-direction: column !important;
-  overflow: hidden !important;
-  border-radius: 12px !important;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.55) !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   box-sizing: border-box !important;
+  background: transparent !important;
 }
 
 .war-modal .modal-heading,
 .auction-modal .modal-heading {
   flex-shrink: 0 !important;
-  padding: 5px 8px !important;
-  min-height: 22px !important;
 }
 
 .war-modal .modal-heading-text,
 .auction-modal .modal-heading-text {
-  font-size: 13px !important;
   letter-spacing: 0.5px !important;
 }
 
@@ -71,10 +69,11 @@
   max-height: 94% !important;
   display: flex !important;
   flex-direction: column !important;
-  overflow: hidden !important;
-  border-radius: 12px !important;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.55) !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   box-sizing: border-box !important;
+  background: transparent !important;
 }
 
 .deal-modal-overlay,
@@ -84,12 +83,9 @@
 
 .deal-modal .modal-heading {
   flex-shrink: 0 !important;
-  padding: 4px 8px !important;
-  min-height: 20px !important;
 }
 
 .deal-modal .modal-heading-text {
-  font-size: 12px !important;
   letter-spacing: 0.5px !important;
 }
 
@@ -672,8 +668,7 @@
    GLOBAL MODAL FIXES
    ======================================== */
 .buy-modal, .auction-modal, .modal {
-  border: none !important; /* Remove "high intensity borders" */
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important; /* Soft shadow instead */
+  box-shadow: 0 14px 40px rgba(0,0,0,0.45) !important;
 }
 
 /* Mobile Modal Optimizations */
@@ -788,13 +783,11 @@
 /* Extra small screens - Even more aggressive */
 @media (max-height: 500px) {
   .auction-current-bid-display .bid-amount { font-size: 20px !important; }
-  .auction-modal .modal-heading { font-size: 12px !important; padding: 4px !important; }
   .auction-bid-buttons .modal-btn { min-height: 32px !important; font-size: 11px !important; }
   
   /* Property Modal Extra Compression */
   .buy-modal .modal-city-name { font-size: 16px !important; margin-bottom: 5px !important; }
   .buy-modal .modal-details > div > div { font-size: 11px !important; padding: 1px 4px !important; }
-  .buy-modal .modal-heading { padding: 5px !important; min-height: 24px !important; font-size: 14px !important; }
 }
 
 /* Landscape Mode Optimization */
@@ -809,19 +802,17 @@
     max-height: 96% !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
-    border-radius: 12px !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
     box-sizing: border-box !important;
   }
 
   .auction-modal .modal-heading {
-    padding: 6px 10px !important;
-    min-height: 24px !important;
     flex-shrink: 0 !important;
   }
 
   .auction-modal .modal-heading-text {
-    font-size: 13px !important;
+    letter-spacing: 0.5px !important;
   }
 
   .auction-modal .modal-body {

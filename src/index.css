@@ -1648,28 +1648,32 @@ body {
   }
 }
 
+/* ==================== REFERENCE MODAL UI ARCHITECTURE (9-SLICE) ==================== */
 .buy-modal {
-  width: 90%;
-  height: auto;
-  max-width: 440px;
-  max-height: 96%;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
-  animation: scaleIn 0.3s ease-out;
   position: relative;
   display: flex;
   flex-direction: column;
-  background: #fffdf7;
+  width: 90%;
+  height: auto;
+  max-width: 380px;
+  max-height: 94%;
+  box-sizing: border-box;
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  background: transparent !important;
+  border-style: solid !important;
+  border-width: 22px !important;
+  border-image-source: url("/modal_ui/panel.png") !important;
+  border-image-slice: 36 fill !important;
+  border-image-repeat: stretch !important;
+  filter: drop-shadow(0 14px 36px rgba(0, 0, 0, 0.55));
+  overflow: visible !important;
 }
 
 @keyframes scaleIn {
   from {
-    transform: scale(0.8);
+    transform: scale(0.85);
     opacity: 0;
   }
-
   to {
     transform: scale(1);
     opacity: 1;
@@ -1683,156 +1687,185 @@ body {
 
 /* Closing Animations */
 @keyframes fadeOut {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes scaleOut {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  to {
-    transform: scale(0.8);
-    opacity: 0;
-  }
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.85); opacity: 0; }
 }
 
 .modal-overlay.closing {
-  animation: fadeOut 0.3s ease-in forwards;
+  animation: fadeOut 0.25s ease-in forwards;
 }
 
 .modal-overlay.closing .buy-modal {
-  animation: scaleOut 0.3s ease-in forwards;
+  animation: scaleOut 0.25s ease-in forwards;
 }
 
-/* Modal Header - Sapphire Blue Gradient (Default) */
+/* Modal Header - Reference Blue Ribbon Banner */
 .modal-heading {
   position: relative;
-  padding: 14px 0;
-  text-align: center;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
-  background: linear-gradient(180deg, #1e88e5 0%, #1565c0 100%);
-  margin: 0;
+  margin: -32px auto 6px !important;
+  width: fit-content;
+  min-width: 150px;
+  max-width: 85%;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 20px !important;
+  border-style: solid !important;
+  border-width: 8px 18px 6px !important;
+  border-image-source: url("/modal_ui/head.png") !important;
+  border-image-slice: 16 32 fill !important;
+  border-image-repeat: stretch !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10;
+  background: transparent !important;
+  border-bottom: none !important;
 }
 
 .modal-heading::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  top: 0;
-  height: 50%;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.3), transparent);
-  pointer-events: none;
+  display: none !important;
 }
 
 .modal-heading-text {
-  color: white;
-  font-family: "Varela Round", "Nunito", sans-serif;
-  font-size: 20px;
+  color: #ffffff !important;
+  font-family: "Junegull", "Varela Round", sans-serif;
+  font-size: 15px !important;
   font-weight: 900;
-  letter-spacing: 3px;
+  letter-spacing: 1px;
   text-transform: uppercase;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-  position: relative;
-  z-index: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Modal Body - Clean, warm parchment card */
+/* Red Heading Banner for alerts/warnings */
+.modal-heading.danger,
+.auction-modal .modal-heading {
+  border-image-source: url("/modal_ui/head_red.png") !important;
+}
+
+/* Modal Close Button */
+.modal-close-btn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 32px;
+  height: 32px;
+  background: url("/modal_ui/close_button.png") no-repeat center / contain;
+  border: none;
+  cursor: pointer;
+  z-index: 25;
+  transition: transform 0.1s ease;
+}
+
+.modal-close-btn:active {
+  transform: scale(0.92);
+}
+
+/* Modal Body */
 .modal-body {
   position: relative;
-  padding: 22px 20px 24px;
-  background: linear-gradient(180deg, #fffdf7 0%, #f5ede0 100%);
+  padding: 8px 10px 10px;
+  background: transparent !important;
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  color: #2c1810;
+  color: #3e2723;
 }
 
+/* Property / City Name */
 .modal-city-name {
   position: relative;
   z-index: 1;
-  font-family: "Junegull", "Varela Round", sans-serif;
-  font-size: 24px;
+  font-family: "Junegull", "Nunito", sans-serif;
+  font-size: 20px;
   font-weight: 700;
-  color: #2c1810;
+  color: #3e2723;
   text-align: center;
-  margin-bottom: 10px;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  margin: 4px 0 6px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .modal-divider {
-  height: 2px;
-  width: 100%;
-  margin: 0 auto 18px;
-  background: #d7ccc8;
-  border-radius: 9999px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  display: none !important;
 }
 
+/* Inner Details Card Container */
 .modal-details {
   position: relative;
   z-index: 1;
-  width: 85%;
-  margin: 0 auto 24px;
+  width: 92%;
+  margin: 4px auto 14px;
+  background: rgba(255, 252, 242, 0.95);
+  border: 2px solid #dfcfb2;
+  border-radius: 12px;
+  padding: 6px 14px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
 }
 
 .modal-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 4px;
-  font-family: "Varela Round", "Nunito", sans-serif;
-  font-size: 17px;
-  font-weight: 700;
-  color: #3e2723;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  padding: 6px 0;
+  font-family: "Nunito", sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #4e342e;
 }
 
-.modal-row:first-child {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+.modal-row:not(:last-child) {
+  border-bottom: 1px solid rgba(160, 120, 60, 0.18);
 }
 
 .modal-value {
   font-family: "Junegull", sans-serif;
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 700;
   color: #1b5e20;
 }
 
+/* Buttons Container */
 .modal-buttons {
   position: relative;
   z-index: 1;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 0;
   margin-top: auto;
 }
 
+/* Glossy 3D Beveled Modal Buttons */
 .modal-btn {
   flex: 1;
-  padding: 8px 10px;
+  min-height: 38px;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 16px !important;
   font-family: "Junegull", sans-serif;
-  font-size: 13px;
+  font-size: 13px !important;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0 !important;
   cursor: pointer;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  transition:
-    transform 0.1s ease,
-    filter 0.15s ease;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.1s ease, filter 0.15s ease;
 }
 
 .modal-btn:hover {
@@ -1840,21 +1873,40 @@ body {
 }
 
 .modal-btn:active {
-  transform: translateY(2px);
+  transform: scale(0.96);
+  filter: brightness(0.92);
 }
 
-.modal-btn.cancel {
-  background: linear-gradient(180deg, #e53935 0%, #c62828 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 4px 6px rgba(0, 0, 0, 0.3);
+.modal-btn.cancel,
+.modal-btn.decline,
+.modal-btn.red {
+  border-style: solid !important;
+  border-width: 10px 20px !important;
+  border-image-source: url("/modal_ui/btn_red.png") !important;
+  border-image-slice: 28 40 fill !important;
+  border-image-repeat: stretch !important;
+  box-shadow: none !important;
 }
 
-.modal-btn.buy {
-  background: linear-gradient(180deg, #4caf50 0%, #2e7d32 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 4px 6px rgba(0, 0, 0, 0.3);
+.modal-btn.buy,
+.modal-btn.confirm,
+.modal-btn.green,
+.modal-btn.ok {
+  border-style: solid !important;
+  border-width: 10px 20px !important;
+  border-image-source: url("/modal_ui/btn_green.png") !important;
+  border-image-slice: 28 40 fill !important;
+  border-image-repeat: stretch !important;
+  box-shadow: none !important;
+}
+
+.modal-btn.blue {
+  border-style: solid !important;
+  border-width: 10px 20px !important;
+  border-image-source: url("/modal_ui/btn_blue.png") !important;
+  border-image-slice: 28 40 fill !important;
+  border-image-repeat: stretch !important;
+  box-shadow: none !important;
 }
 
 /* ==================== FLOATING PRICE ANIMATION ==================== */
@@ -2307,34 +2359,46 @@ body {
   }
 
   .modal-overlay .buy-modal {
-    width: 94% !important;
-    max-width: 440px !important;
-    max-height: 96% !important;
+    width: 92% !important;
+    max-width: 420px !important;
+    max-height: 94% !important;
     height: auto !important;
     min-width: 0 !important;
     margin: auto !important;
-    border-radius: 12px !important;
-    border: 2px solid rgba(255, 255, 255, 0.25) !important;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6) !important;
+    border-style: solid !important;
+    border-width: clamp(14px, 2.8vh, 20px) !important;
+    border-image-source: url("/modal_ui/panel.png") !important;
+    border-image-slice: 36 fill !important;
+    border-image-repeat: stretch !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.65)) !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .modal-overlay .war-modal,
   .modal-overlay:not(.modal-overlay-inline) .auction-modal {
     width: 94% !important;
     max-width: 440px !important;
-    height: 96% !important;
-    max-height: 96% !important;
+    height: 94% !important;
+    max-height: 94% !important;
     min-width: 0 !important;
     margin: auto !important;
-    border-radius: 12px !important;
-    border: 2px solid rgba(255, 255, 255, 0.25) !important;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6) !important;
+    border-style: solid !important;
+    border-width: clamp(14px, 2.8vh, 20px) !important;
+    border-image-source: url("/modal_ui/panel.png") !important;
+    border-image-slice: 36 fill !important;
+    border-image-repeat: stretch !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.65)) !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     box-sizing: border-box !important;
   }
 
@@ -2354,31 +2418,53 @@ body {
     max-width: none !important;
     max-height: 96% !important;
     margin: auto !important;
-    border-radius: 8px !important;
+    border-style: solid !important;
+    border-width: clamp(12px, 2.5vh, 18px) !important;
+    border-image-source: url("/modal_ui/panel.png") !important;
+    border-image-slice: 36 fill !important;
+    border-image-repeat: stretch !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6)) !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     pointer-events: auto !important;
   }
 
   /* Header - Fixed Height, Centered */
-  /* Header - Fixed Height, Centered */
   .modal-heading {
-    flex: 0 0 24px !important;
-    /* Reduced 28->24 */
-    padding: 0 !important;
-    min-height: 0 !important;
+    position: relative !important;
+    margin: -24px auto 4px !important;
+    width: fit-content !important;
+    min-width: 140px !important;
+    max-width: 85% !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    box-sizing: border-box !important;
+    padding: 0 16px !important;
+    border-style: solid !important;
+    border-width: 7px 16px 5px !important;
+    border-image-source: url("/modal_ui/head.png") !important;
+    border-image-slice: 16 32 fill !important;
+    border-image-repeat: stretch !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    z-index: 10 !important;
+    background: transparent !important;
+    flex: 0 0 auto !important;
   }
 
   .modal-heading-text {
-    font-size: 14px !important;
-    /* Reduced 12->11 */
+    font-size: 13px !important;
     line-height: 1 !important;
     letter-spacing: 0.5px !important;
-    text-shadow: none !important;
+    color: #ffffff !important;
+    font-family: "Junegull", "Varela Round", sans-serif !important;
+    font-weight: 900 !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7) !important;
   }
 
   /* Body */
@@ -2477,17 +2563,54 @@ body {
   }
 
   .modal-btn {
-    padding: 0 6px !important;
-    height: 28px !important;
-    min-height: 28px !important;
-    font-size: 10px !important;
-    letter-spacing: 0.3px !important;
-    border-radius: 6px !important;
+    padding: 0 10px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.4px !important;
+    border-radius: 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     flex: 1 !important;
     touch-action: manipulation;
+    background: transparent !important;
+    color: #ffffff !important;
+    font-family: "Junegull", sans-serif !important;
+    font-weight: 900 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .modal-btn.cancel,
+  .modal-btn.decline,
+  .modal-btn.red {
+    border-style: solid !important;
+    border-width: 8px 16px !important;
+    border-image-source: url("/modal_ui/btn_red.png") !important;
+    border-image-slice: 28 40 fill !important;
+    border-image-repeat: stretch !important;
+    box-shadow: none !important;
+  }
+
+  .modal-btn.buy,
+  .modal-btn.confirm,
+  .modal-btn.green,
+  .modal-btn.ok {
+    border-style: solid !important;
+    border-width: 8px 16px !important;
+    border-image-source: url("/modal_ui/btn_green.png") !important;
+    border-image-slice: 28 40 fill !important;
+    border-image-repeat: stretch !important;
+    box-shadow: none !important;
+  }
+
+  .modal-btn.blue {
+    border-style: solid !important;
+    border-width: 8px 16px !important;
+    border-image-source: url("/modal_ui/btn_blue.png") !important;
+    border-image-slice: 28 40 fill !important;
+    border-image-repeat: stretch !important;
+    box-shadow: none !important;
   }
 
   /* Specific fix for War Join/Select buttons - Must not expand and squeeze out player info */

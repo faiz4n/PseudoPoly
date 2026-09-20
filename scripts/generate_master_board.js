@@ -11,160 +11,49 @@ const JAIL_PATH = path.resolve('src/assets/jail.png');
 const OUT_SRC = path.resolve('src/assets/master_board.webp');
 const OUT_PUB = path.resolve('public/master_board.webp');
 
-// Board dimensions
+// Board dimensions (full image)
 const BOARD_W = 923;
 const BOARD_H = 835;
-const CW = 125; // corner width
-const CH = 133; // corner height
 
-// Tile dimensions
-const HTILE_W = (BOARD_W - 2 * CW) / 9;  // ~74.78px horizontal tile width
-const VTILE_H = (BOARD_H - 2 * CH) / 7;  // ~81.29px vertical tile height
+// Black border offsets
+const BORDER_L = 16;
+const BORDER_T = 17;
+const BORDER_R = 17; // 923 - 906
+const BORDER_B = 17; // 835 - 818
 
-/**
- * Create a simple tile image with a cream/beige background and centered text.
- * For "special" tiles that replace reference board tiles.
- */
-async function createTileImage(width, height, label, sublabel, isVertical = false) {
-  const w = Math.round(width);
-  const h = Math.round(height);
-  
-  // Create SVG with cream background and text
-  const bgColor = '#e2d5bd';
-  const borderColor = '#c9b99a';
-  const textColor = '#5a3a1a';
-  
-  let svgContent;
-  
-  if (isVertical) {
-    // Vertical tile (right column) - text goes top-to-bottom
-    svgContent = `
-      <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-        <rect width="${w}" height="${h}" fill="${bgColor}" rx="2"/>
-        <rect x="1" y="1" width="${w-2}" height="${h-2}" fill="none" stroke="${borderColor}" stroke-width="1" rx="1"/>
-        <text x="${w/2}" y="${h/2 - 8}" text-anchor="middle" dominant-baseline="central"
-              font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="${textColor}">
-          ${label}
-        </text>
-        ${sublabel ? `<text x="${w/2}" y="${h/2 + 8}" text-anchor="middle" dominant-baseline="central"
-              font-family="Arial, sans-serif" font-size="9" fill="${textColor}">
-          ${sublabel}
-        </text>` : ''}
-      </svg>
-    `;
-  } else {
-    // Horizontal tile (top row) - normal orientation
-    svgContent = `
-      <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-        <rect width="${w}" height="${h}" fill="${bgColor}" rx="2"/>
-        <rect x="1" y="1" width="${w-2}" height="${h-2}" fill="none" stroke="${borderColor}" stroke-width="1" rx="1"/>
-        <text x="${w/2}" y="${h/2 - 12}" text-anchor="middle" dominant-baseline="central"
-              font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="${textColor}">
-          Property
-        </text>
-        <text x="${w/2}" y="${h/2 + 2}" text-anchor="middle" dominant-baseline="central"
-              font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="${textColor}">
-          War
-        </text>
-        <text x="${w/2}" y="${h/2 + 22}" text-anchor="middle" dominant-baseline="central"
-              font-family="Arial, sans-serif" font-size="20" fill="${textColor}">
-          ⚔
-        </text>
-      </svg>
-    `;
-  }
-  
-  return sharp(Buffer.from(svgContent)).png().toBuffer();
-}
+// Corner positions within the inner board
+// Left corners: 109px wide, Right corners: 113px wide
+// Top corners: 116px tall, Bottom corners: 118px tall
+const CORNER_POSITIONS = {
+  topLeft:     { x: BORDER_L, y: BORDER_T, w: 109, h: 116 },
+  topRight:    { x: BOARD_W - BORDER_R - 113, y: BORDER_T, w: 113, h: 116 },
+  bottomLeft:  { x: BORDER_L, y: BOARD_H - BORDER_B - 118, w: 109, h: 118 },
+  bottomRight: { x: BOARD_W - BORDER_R - 113, y: BOARD_H - BORDER_B - 118, w: 113, h: 118 },
+};
 
 async function generateMasterBoard() {
-  console.log('Generating master_board.webp with custom tile replacements...');
+  console.log('Generating master_board.webp (corners only, no custom tile replacements)...');
 
-  // Prepare corner overlays
-  const startBuffer = await sharp(START_PATH)
-    .resize(CW, CH, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
-    .toBuffer();
+  const composites = [];
 
-  const parkingBuffer = await sharp(PARKING_PATH)
-    .resize(CW, CH, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
-    .toBuffer();
+  // Composite custom corner images
+  for (const [name, pos] of Object.entries(CORNER_POSITIONS)) {
+    let imgPath;
+    switch (name) {
+      case 'topLeft':    imgPath = ROBBANK_PATH; break;
+      case 'topRight':   imgPath = JAIL_PATH; break;
+      case 'bottomLeft': imgPath = PARKING_PATH; break;
+      case 'bottomRight': imgPath = START_PATH; break;
+    }
 
-  const robbankBuffer = await sharp(ROBBANK_PATH)
-    .resize(CW, CH, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
-    .toBuffer();
+    console.log(`${name}: ${pos.x},${pos.y} (${pos.w}x${pos.h})`);
+    
+    const buffer = await sharp(imgPath)
+      .resize(pos.w, pos.h, { fit: 'cover', position: 'center' })
+      .toBuffer();
 
-  const jailBuffer = await sharp(JAIL_PATH)
-    .resize(CW, CH, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
-    .toBuffer();
-
-  // Create Property War tile (top row, 8th tile - index 7)
-  // This replaces the "robber" tile on the reference board
-  const propWarX = Math.round(CW + 7 * HTILE_W);
-  const propWarY = 0;
-  const propWarW = Math.round(CW + 8 * HTILE_W) - propWarX; // exact pixel width
-  const propWarH = CH;
-  
-  console.log(`Property War tile: x=${propWarX}, y=${propWarY}, w=${propWarW}, h=${propWarH}`);
-  
-  const propWarSvg = `
-    <svg width="${propWarW}" height="${propWarH}" xmlns="http://www.w3.org/2000/svg">
-      <rect width="${propWarW}" height="${propWarH}" fill="#e2d5bd"/>
-      <rect x="0.5" y="0.5" width="${propWarW-1}" height="${propWarH-1}" fill="none" stroke="#c9b99a" stroke-width="1"/>
-      <text x="${propWarW/2}" y="30" text-anchor="middle" dominant-baseline="central"
-            font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#5a3a1a">
-        Property
-      </text>
-      <text x="${propWarW/2}" y="45" text-anchor="middle" dominant-baseline="central"
-            font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" fill="#5a3a1a">
-        War
-      </text>
-      <text x="${propWarW/2}" y="85" text-anchor="middle" dominant-baseline="central"
-            font-family="Arial, Helvetica, sans-serif" font-size="38" fill="#8B4513">
-        ⚔
-      </text>
-    </svg>
-  `;
-  const propWarBuffer = await sharp(Buffer.from(propWarSvg)).png().toBuffer();
-
-  // Create Forced Auction tile (right column, 3rd tile - index 2)
-  // This replaces a "chance" tile on the reference board
-  const forcedAucX = BOARD_W - CW; // right side starts at 798
-  const forcedAucY = Math.round(CH + 2 * VTILE_H);
-  const forcedAucW = CW;
-  const forcedAucH = Math.round(CH + 3 * VTILE_H) - forcedAucY;
-  
-  console.log(`Forced Auction tile: x=${forcedAucX}, y=${forcedAucY}, w=${forcedAucW}, h=${forcedAucH}`);
-  
-  const forcedAucSvg = `
-    <svg width="${forcedAucW}" height="${forcedAucH}" xmlns="http://www.w3.org/2000/svg">
-      <rect width="${forcedAucW}" height="${forcedAucH}" fill="#e2d5bd"/>
-      <rect x="0.5" y="0.5" width="${forcedAucW-1}" height="${forcedAucH-1}" fill="none" stroke="#c9b99a" stroke-width="1"/>
-      <text x="${forcedAucW/2}" y="22" text-anchor="middle" dominant-baseline="central"
-            font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#5a3a1a">
-        Forced
-      </text>
-      <text x="${forcedAucW/2}" y="37" text-anchor="middle" dominant-baseline="central"
-            font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#5a3a1a">
-        Auction
-      </text>
-      <text x="${forcedAucW/2}" y="62" text-anchor="middle" dominant-baseline="central"
-            font-family="Arial, Helvetica, sans-serif" font-size="30" fill="#8B4513">
-        🔨
-      </text>
-    </svg>
-  `;
-  const forcedAucBuffer = await sharp(Buffer.from(forcedAucSvg)).png().toBuffer();
-
-  const composites = [
-    // Custom corners
-    { input: robbankBuffer, left: 0, top: 0 },
-    { input: jailBuffer, left: BOARD_W - CW, top: 0 },
-    { input: parkingBuffer, left: 0, top: BOARD_H - CH },
-    { input: startBuffer, left: BOARD_W - CW, top: BOARD_H - CH },
-    // Custom tile replacements
-    { input: propWarBuffer, left: propWarX, top: propWarY },
-    { input: forcedAucBuffer, left: forcedAucX, top: forcedAucY },
-  ];
+    composites.push({ input: buffer, left: pos.x, top: pos.y });
+  }
 
   const resultBuffer = await sharp(TABLE_PATH)
     .composite(composites)

@@ -6565,39 +6565,58 @@ function App() {
   };
 
   // Proportional percentages matching master_board.webp (923 x 835)
+  // Board image has ~16px black border. Actual board content:
+  //   Left: x=16, Top: y=17, Right: x=906, Bottom: y=818
+  //   Left corners: 109px wide, Right corners: 113px wide
+  //   Top corners: 116px tall, Bottom corners: 118px tall  
+  //   9 horizontal tiles: 74.22px each, 7 vertical tiles: 81px each
   const getTileStyle = (index, row, tileColor) => {
-    const cornerW = 13.5428; // %
-    const cornerH = 15.9281; // %
-    const tileW = 8.1016;    // %
-    const tileH = 9.7348;    // %
+    // Border offsets as % of full image
+    const borderL = 1.7335;  // 16/923
+    const borderT = 2.0359;  // 17/835
+    const borderR = 1.8418;  // 17/923
+    const borderB = 2.0359;  // 17/835
 
+    // Corner sizes as % of full image
+    const cornerWL = 11.8093; // left corner width (109px / 923)
+    const cornerWR = 12.2427; // right corner width (113px / 923)
+    const cornerHT = 13.8922; // top corner height (116px / 835)
+    const cornerHB = 14.1317; // bottom corner height (118px / 835)
+
+    // Tile sizes as % of full image
+    const tileW = 8.0414;   // 74.22px / 923
+    const tileH = 9.7006;   // 81px / 835
+
+    // Bottom row: tiles go right-to-left, anchored with "right" and "bottom"
+    // The right corner's left edge is at: 100% - borderR - cornerWR
+    // So the first bottom tile starts at right = borderR + cornerWR
     switch (row) {
       case "bottom":
         return {
-          bottom: 0,
-          right: `${cornerW + index * tileW}%`,
+          bottom: `${borderB}%`,
+          right: `${borderR + cornerWR + index * tileW}%`,
           width: `${tileW}%`,
-          height: `${cornerH}%`,
+          height: `${cornerHB}%`,
         };
       case "left":
         return {
-          left: 0,
-          bottom: `${cornerH + index * tileH}%`,
-          width: `${cornerW}%`,
+          left: `${borderL}%`,
+          bottom: `${borderB + cornerHB + index * tileH}%`,
+          width: `${cornerWL}%`,
           height: `${tileH}%`,
         };
       case "top":
         return {
-          top: 0,
-          left: `${cornerW + index * tileW}%`,
+          top: `${borderT}%`,
+          left: `${borderL + cornerWL + index * tileW}%`,
           width: `${tileW}%`,
-          height: `${cornerH}%`,
+          height: `${cornerHT}%`,
         };
       case "right":
         return {
-          right: 0,
-          top: `${cornerH + index * tileH}%`,
-          width: `${cornerW}%`,
+          right: `${borderR}%`,
+          top: `${borderT + cornerHT + index * tileH}%`,
+          width: `${cornerWR}%`,
           height: `${tileH}%`,
         };
       default:
@@ -6620,46 +6639,53 @@ function App() {
   };
 
   // Get exact center of any tile (0-35) on the board matching master_board.webp
+  // Accounts for ~16px black border and asymmetric corners
   const getTileCenter = (tileIndex) => {
-    const cornerW = 13.5428;
-    const cornerH = 15.9281;
-    const tileW = 8.1016;
-    const tileH = 9.7348;
+    const borderL = 1.7335;
+    const borderT = 2.0359;
+    const borderR = 1.8418;
+    const borderB = 2.0359;
+    const cornerWL = 11.8093;
+    const cornerWR = 12.2427;
+    const cornerHT = 13.8922;
+    const cornerHB = 14.1317;
+    const tileW = 8.0414;
+    const tileH = 9.7006;
 
     // Corner 0: Start (Bottom-Right)
-    if (tileIndex === 0) return { x: 100 - cornerW / 2, y: 100 - cornerH / 2 };
+    if (tileIndex === 0) return { x: 100 - borderR - cornerWR / 2, y: 100 - borderB - cornerHB / 2 };
 
     // Bottom Row: Tiles 1 to 9 (Right to Left)
     if (tileIndex >= 1 && tileIndex <= 9) {
       const idx = tileIndex - 1;
-      return { x: 100 - cornerW - (idx + 0.5) * tileW, y: 100 - cornerH / 2 };
+      return { x: 100 - borderR - cornerWR - (idx + 0.5) * tileW, y: 100 - borderB - cornerHB / 2 };
     }
 
     // Corner 10: Parking (Bottom-Left)
-    if (tileIndex === 10) return { x: cornerW / 2, y: 100 - cornerH / 2 };
+    if (tileIndex === 10) return { x: borderL + cornerWL / 2, y: 100 - borderB - cornerHB / 2 };
 
     // Left Column: Tiles 11 to 17 (Bottom to Top)
     if (tileIndex >= 11 && tileIndex <= 17) {
       const idx = tileIndex - 11;
-      return { x: cornerW / 2, y: 100 - cornerH - (idx + 0.5) * tileH };
+      return { x: borderL + cornerWL / 2, y: 100 - borderB - cornerHB - (idx + 0.5) * tileH };
     }
 
     // Corner 18: Rob Bank (Top-Left)
-    if (tileIndex === 18) return { x: cornerW / 2, y: cornerH / 2 };
+    if (tileIndex === 18) return { x: borderL + cornerWL / 2, y: borderT + cornerHT / 2 };
 
     // Top Row: Tiles 19 to 27 (Left to Right)
     if (tileIndex >= 19 && tileIndex <= 27) {
       const idx = tileIndex - 19;
-      return { x: cornerW + (idx + 0.5) * tileW, y: cornerH / 2 };
+      return { x: borderL + cornerWL + (idx + 0.5) * tileW, y: borderT + cornerHT / 2 };
     }
 
     // Corner 28: Jail (Top-Right)
-    if (tileIndex === 28) return { x: 100 - cornerW / 2, y: cornerH / 2 };
+    if (tileIndex === 28) return { x: 100 - borderR - cornerWR / 2, y: borderT + cornerHT / 2 };
 
     // Right Column: Tiles 29 to 35 (Top to Bottom)
     if (tileIndex >= 29 && tileIndex <= 35) {
       const idx = tileIndex - 29;
-      return { x: 100 - cornerW / 2, y: cornerH + (idx + 0.5) * tileH };
+      return { x: 100 - borderR - cornerWR / 2, y: borderT + cornerHT + (idx + 0.5) * tileH };
     }
 
     return { x: 50, y: 50 };

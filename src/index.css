@@ -136,31 +136,31 @@ body {
 }
 
 .corner.start {
-  bottom: 0;
-  right: 0;
-  width: 13.5428%;
-  height: 15.9281%;
+  bottom: 2.0359%;
+  right: 1.8418%;
+  width: 12.2427%;
+  height: 14.1317%;
 }
 
 .corner.parking {
-  bottom: 0;
-  left: 0;
-  width: 13.5428%;
-  height: 15.9281%;
+  bottom: 2.0359%;
+  left: 1.7335%;
+  width: 11.8093%;
+  height: 14.1317%;
 }
 
 .corner.robbank {
-  top: 0;
-  left: 0;
-  width: 13.5428%;
-  height: 15.9281%;
+  top: 2.0359%;
+  left: 1.7335%;
+  width: 11.8093%;
+  height: 13.8922%;
 }
 
 .corner.jail {
-  top: 0;
-  right: 0;
-  width: 13.5428%;
-  height: 15.9281%;
+  top: 2.0359%;
+  right: 1.8418%;
+  width: 12.2427%;
+  height: 13.8922%;
 }
 
 .corner-icon,
@@ -391,8 +391,8 @@ body {
   position: absolute;
   top: 15.9281%;
   left: 13.5428%;
-  right: 13.5428%;
-  bottom: 15.9281%;
+  right: 14.0845%;
+  bottom: 16.1676%;
   background: transparent !important;
   display: flex;
   flex-direction: column;

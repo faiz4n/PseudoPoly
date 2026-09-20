@@ -389,9 +389,13 @@ body {
 /* ==================== CENTER AREA ==================== */
 .board-center {
   position: absolute;
+  /* borderT + cornerHT = 2.0359 + 13.8922 = 15.9281 */
   top: 15.9281%;
+  /* borderL + cornerWL = 1.7335 + 11.8093 = 13.5428 */
   left: 13.5428%;
+  /* borderR + cornerWR = 1.8418 + 12.2427 = 14.0845 */
   right: 14.0845%;
+  /* borderB + cornerHB = 2.0359 + 14.1317 = 16.1676 */
   bottom: 16.1676%;
   background: transparent !important;
   display: flex;

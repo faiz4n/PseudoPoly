@@ -22,7 +22,7 @@ const STATIC_FACES = {
 
 const ROLLING_FRAMES = [dice7, dice8, dice9, dice10, dice11];
 
-export default function AnimatedDie({
+function AnimatedDie({
   value = 1,
   isRolling = false,
   size = 46,
@@ -99,3 +99,5 @@ export default function AnimatedDie({
     </div>
   );
 }
+
+export default React.memo(AnimatedDie);

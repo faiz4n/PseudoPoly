@@ -49,6 +49,15 @@ import {
 import LogViewerModal from "./components/LogViewerModal";
 import TileUpgradeRenderer from "./components/TileUpgradeRenderer";
 import PropertyInfoModal from "./components/PropertyInfoModal";
+import BuyModal from "./components/BuyModal";
+import {
+  shouldBotBuyProperty,
+  shouldBotPayBail,
+  evaluateBotSwap,
+  getBotMaxAuctionBid,
+  shouldBotAcceptDeal,
+  generateBotDealOffer,
+} from "./logic/aiBot";
 
 function App() {
   const [diceValues, setDiceValues] = useState([6, 6]);
@@ -121,11 +130,11 @@ function App() {
   // Networking State
   const [networkMode, setNetworkMode] = useState("offline"); // 'offline', 'online'
 
-  // Synchronize player 0 with myIdentity in offline mode
+  // Synchronize player 0 with myIdentity in offline mode (menu only)
   useEffect(() => {
-    if (networkMode === "offline" && gameStage !== "lobby") {
+    if (networkMode === "offline" && gameStage === "menu") {
       setGamePlayers((prev) => {
-        if (!prev || prev.length === 0) return prev;
+        if (!prev || prev.length === 0 || prev[0].isBot) return prev;
         const targetAvatar = resolveAvatar(myIdentity.avatar);
         const targetColor = getAvatarColor(myIdentity.avatar);
         const targetName = myIdentity.name?.trim() || prev[0].name;
@@ -360,6 +369,9 @@ function App() {
   // Bankruptcy System State
   const [bankruptPlayers, setBankruptPlayers] = useState({}); // { playerIndex: true }
   const [showBankruptcyModal, setShowBankruptcyModal] = useState(false);
+  const [showWinModal, setShowWinModal] = useState(false);
+  const [gameWinner, setGameWinner] = useState(null);
+  const botDealsAttemptedRef = useRef({});
   const isBuyingPropertyRef = useRef(false);
 
   // Build System State
@@ -373,6 +385,7 @@ function App() {
   const [openedFromWar, setOpenedFromWar] = useState(false);
   const [showTrainTravelModal, setShowTrainTravelModal] = useState(false);
   const [selectedTrainTile, setSelectedTrainTile] = useState(null);
+  const [fastTravelAvailableThisTurn, setFastTravelAvailableThisTurn] = useState(false);
 
   // Menu System State
   const [showMenuModal, setShowMenuModal] = useState(false);
@@ -499,6 +512,8 @@ function App() {
 
   // Helper: Close any modal with animation
   const closeAllModals = (callback, keepBuyingState = false) => {
+    const cb = typeof callback === "function" ? callback : null;
+    const keepBuying = typeof callback === "boolean" ? callback : keepBuyingState;
     setIsModalClosing(true);
 
     // Determine which modal is currently showing to set closingModal
@@ -514,7 +529,7 @@ function App() {
 
     setTimeout(() => {
       setShowBuyModal(false);
-      if (!keepBuyingState) {
+      if (!keepBuying) {
         setBuyingProperty(null);
       }
       setShowParkingModal(false);
@@ -532,8 +547,8 @@ function App() {
       setRobStatus("idle"); // Reset status
       setIsModalClosing(false);
       setClosingModal(null);
-      if (callback) callback();
-    }, 300); // 300ms matches CSS animation duration
+      if (cb) cb();
+    }, 100); // 100ms for snappy instant closing
   };
 
   // Helper: Immediately reset all modal states (no animation) - use before opening new modals
@@ -695,11 +710,13 @@ function App() {
         setPropertyOwnership((prev) => ({ ...prev, 4: 0, 13: 0, 21: 0 }));
         setTravelSourceIndex(4);
         setSelectedTrainTile(null);
+        setFastTravelAvailableThisTurn(true);
         setShowTrainTravelModal(true);
       } else if (p.get("test") === "travel_selected") {
         setPropertyOwnership((prev) => ({ ...prev, 4: 0, 13: 0, 21: 0 }));
         setTravelSourceIndex(4);
         setSelectedTrainTile(13);
+        setFastTravelAvailableThisTurn(true);
         setShowTrainTravelModal(true);
       } else if (p.get("test") === "robbank") {
         setRobStatus("processing");
@@ -1841,6 +1858,27 @@ function App() {
     return monopolyTiles;
   };
 
+  // Get list of monopoly color keys owned completely by playerIdx
+  const getPlayerMonopolyColors = (playerIdx) => {
+    return Object.entries(COLOR_GROUPS)
+      .filter(([color, tileIndices]) =>
+        tileIndices.length > 0 &&
+        tileIndices.every((t) => propertyOwnership[t] === playerIdx)
+      )
+      .map(([color]) => color);
+  };
+
+  // Get list of color keys where playerIdx owns at least one property with built levels
+  const getPlayerColorsWithBuildings = (playerIdx) => {
+    return Object.entries(COLOR_GROUPS)
+      .filter(([color, tileIndices]) =>
+        tileIndices.some(
+          (t) => propertyOwnership[t] === playerIdx && (propertyLevels[t] || 0) > 0
+        )
+      )
+      .map(([color]) => color);
+  };
+
   // Get upgrade cost for a property at a given level (returns cost to upgrade TO next level)
   const getUpgradeCost = (tileIndex) => {
     const property = getPropertyByTileIndex(tileIndex);
@@ -1850,7 +1888,7 @@ function App() {
   };
 
   // Helper to get owner's color for a tile (returns null if unowned)
-  // Returns { bgColor, textColor } for owned properties
+  // Returns style for owned properties
   const getOwnerStyle = (tileIndex) => {
     const rawOwner = propertyOwnership[tileIndex];
 
@@ -1864,53 +1902,8 @@ function App() {
           getAvatarColor(player.avatar) ||
           "#888888";
 
-        // Custom Glassy Style for Orange Avatar (#FF9800 / #E64A19)
-        if (bgColor === "#FF9800" || bgColor === "#E64A19") {
-          return {
-            background: "linear-gradient(135deg, #FF9800 0%, #FFCC80 100%)",
-            color: "#FFF",
-            border: "1px solid rgba(255,255,255,0.6)",
-            boxShadow:
-              "0 2px 4px rgba(255, 152, 0, 0.3), inset 0 0 4px rgba(255,255,255,0.3)",
-            textShadow: "0 1px 2px rgba(0,0,0,0.2)",
-          };
-        }
-
-        // Custom Glassy Style for Red Avatar
-        if (
-          bgColor === "#E53935" ||
-          bgColor === "#fc1d1e" ||
-          (typeof player.avatar === "string" &&
-            player.avatar.toLowerCase().includes("red"))
-        ) {
-          return {
-            background: "linear-gradient(135deg, #E53935 0%, #EF5350 100%)",
-            color: "#FFF",
-            border: "1px solid rgba(255,255,255,0.6)",
-            boxShadow:
-              "0 2px 4px rgba(229, 57, 53, 0.3), inset 0 0 4px rgba(255,255,255,0.3)",
-            textShadow: "0 1px 2px rgba(0,0,0,0.2)",
-          };
-        }
-
-        // Custom Glassy Style for Green Avatar
-        if (
-          bgColor === "#43A047" ||
-          bgColor === "#2E7D32" ||
-          (typeof player.avatar === "string" &&
-            player.avatar.toLowerCase().includes("green"))
-        ) {
-          return {
-            background: "linear-gradient(135deg, #43A047 0%, #66BB6A 100%)",
-            color: "#FFF",
-            border: "1px solid rgba(255,255,255,0.6)",
-            boxShadow:
-              "0 2px 4px rgba(67, 160, 71, 0.3), inset 0 0 4px rgba(255,255,255,0.3)",
-            textShadow: "0 1px 2px rgba(0,0,0,0.2)",
-          };
-        }
-
-        const isLightBg = bgColor === "#E0E0E0" || bgColor === "#FFFFFF";
+        // All players use the same simple style (no white border/glow, matching original design)
+        const isLightBg = bgColor === "#E0E0E0" || bgColor === "#FFFFFF" || bgColor === "#FFCC80";
         return {
           background: bgColor,
           color: isLightBg ? "#333333" : "#FFFFFF",
@@ -2050,7 +2043,7 @@ function App() {
   const movePlayerToken = async (
     playerIdx,
     steps,
-    delay = 210,
+    delay = 110,
     startPosOverride = null,
   ) => {
     const startPos = startPosOverride ?? playerPositions[playerIdx];
@@ -2059,9 +2052,9 @@ function App() {
 
     const isAnimEnabled = playerAnimationEnabledRef.current;
     const speed = animationSpeedRef.current || 1;
-    // Fluid step delay
+    // Fluid step delay: snappy and energetic
     const stepDelay = isAnimEnabled
-      ? Math.max(170, Math.round(delay / speed))
+      ? Math.max(90, Math.round(delay / speed))
       : 0;
 
     setPawnTransitionDuration(stepDelay);
@@ -2071,9 +2064,10 @@ function App() {
       setHoppingPlayer(playerIdx); // Enable hop animation
     }
 
+    let currentNextPos = startPos;
     for (let i = 1; i <= count; i++) {
       // 1. Calculate and update position
-      const currentNextPos = (startPos + i * direction + 36) % 36;
+      currentNextPos = (startPos + i * direction + 36) % 36;
 
       setPlayerPositions((prev) => {
         const result = [...prev];
@@ -2230,11 +2224,15 @@ function App() {
 
     if (isAnimEnabled) {
       // Gentle settle pause so pawn is fully on the tile before ending hop state
-      await wait(60);
+      await wait(30);
     }
     setHoppingPlayer(null); // Disable hop animation
     setIsLocalMoving(false); // End movement lock
-    setPawnTransitionDuration(185); // Reset
+    setPawnTransitionDuration(110); // Reset
+    if (lastKnownPositionsRef.current) {
+      lastKnownPositionsRef.current[playerIdx] = currentNextPos;
+    }
+    return currentNextPos;
   };
 
   // Auto-skip logic (Optimized)
@@ -2505,6 +2503,7 @@ function App() {
 
   // Handle Manual Turn End (Done Button Click)
   const handleEndTurn = () => {
+    setFastTravelAvailableThisTurn(false);
     // Online Mode: Send end_turn action to server
     if (networkMode === "online") {
       setBuyingProperty(null);
@@ -2552,6 +2551,9 @@ function App() {
     }
 
     setCurrentPlayer(nextIdx);
+    if (botDealsAttemptedRef.current) {
+      botDealsAttemptedRef.current[nextIdx] = false;
+    }
     setTurnFinished(false);
     setBuyingProperty(null);
     setIsProcessingTurn(false);
@@ -2637,6 +2639,8 @@ function App() {
       newMoney[currentPlayer] -= bailAmount;
       return newMoney;
     });
+
+    playBuySound();
 
     setJailStatus((prev) => {
       const newStatus = { ...prev };
@@ -2724,17 +2728,8 @@ function App() {
     setIsProcessingTurn(true);
     playDiceRollSound();
 
-    const rollDuration = 1000;
-    const intervalTime = 60;
-    const rollInterval = setInterval(() => {
-      setDiceValues([
-        Math.floor(Math.random() * 6) + 1,
-        Math.floor(Math.random() * 6) + 1,
-      ]);
-    }, intervalTime);
-
+    const rollDuration = 500;
     await wait(rollDuration);
-    clearInterval(rollInterval);
 
     const die1 = Math.floor(Math.random() * 6) + 1;
     const die2 = Math.floor(Math.random() * 6) + 1;
@@ -2742,7 +2737,7 @@ function App() {
     const moveAmount = die1 + die2;
     setDiceValues([die1, die2]);
     setIsRolling(false);
-    await wait(450);
+    await wait(140);
 
     const roller = currentPlayer;
     if (isDoubles) {
@@ -2756,8 +2751,7 @@ function App() {
         `🎉 ${gamePlayers[roller].name} rolled DOUBLES (${die1}-${die2}) and escaped Jail!`,
         ...prev.slice(0, 9),
       ]);
-      await movePlayerToken(roller, moveAmount);
-      const finalPos = (playerPositions[roller] + moveAmount) % 36;
+      const finalPos = await movePlayerToken(roller, moveAmount);
       handleTileArrival(roller, finalPos, false);
     } else {
       const turnsLeft = (jailStatus[roller] || 3) - 1;
@@ -2780,7 +2774,7 @@ function App() {
           ...prev.slice(0, 9),
         ]);
       }
-      await wait(800);
+      await wait(300);
       setIsProcessingTurn(false);
       setTurnFinished(false);
       handleEndTurn();
@@ -2796,6 +2790,24 @@ function App() {
 
     if (giveOwner === undefined || receiveOwner === undefined) return;
 
+    const swapFee = 2000;
+    const currentBalance = playerMoney[giveOwner] ?? 0;
+    if (currentBalance < swapFee) {
+      showToast("Not enough money! Swapping requires a $2,000 fee.");
+      return;
+    }
+
+    // Deduct fee from swapping player
+    setPlayerMoney((prev) => {
+      const updated = [...prev];
+      updated[giveOwner] = Math.max(0, (updated[giveOwner] || 0) - swapFee);
+      return updated;
+    });
+
+    // Deposit fee into the Cash Stack
+    setCashStack((prev) => prev + swapFee);
+    showCashStackFloatingPrice(swapFee);
+
     // Swap ownership
     const updatedOwnership = {
       ...propertyOwnership,
@@ -2804,18 +2816,18 @@ function App() {
     };
     setPropertyOwnership(updatedOwnership);
 
-    playRegisterSound();
+    playBuySound();
 
     const giveName = getTileName(swapGiveTile);
     const receiveName = getTileName(swapReceiveTile);
     const oppName = gamePlayers[receiveOwner]?.name || `Player ${receiveOwner + 1}`;
 
     setHistory((prev) => [
-      `🔄 ${gamePlayers[giveOwner].name} swapped ${giveName} for ${receiveName} with ${oppName}!`,
+      `🔄 ${gamePlayers[giveOwner].name} paid $2,000 to swap ${giveName} for ${receiveName} with ${oppName}!`,
       ...prev.slice(0, 9),
     ]);
 
-    showToast(`Swapped ${giveName} for ${receiveName}!`);
+    showToast(`Swapped ${giveName} for ${receiveName} (-$2,000 fee)!`);
 
     if (networkMode === "online") {
       sendGameAction("swap_properties", {
@@ -2941,14 +2953,15 @@ function App() {
       setIsProcessingTurn(false);
       const myProps = Object.keys(effectiveOwnership)
         .map(Number)
-        .filter((t) => effectiveOwnership[t] === playerIndex);
+        .filter((t) => effectiveOwnership[t] === playerIndex && canTradeProperty(t));
       const opponentProps = Object.keys(effectiveOwnership)
         .map(Number)
         .filter(
           (t) =>
             effectiveOwnership[t] !== undefined &&
             effectiveOwnership[t] !== null &&
-            effectiveOwnership[t] !== playerIndex,
+            effectiveOwnership[t] !== playerIndex &&
+            canTradeProperty(t),
         );
 
       if (myProps.length === 0) {
@@ -3114,9 +3127,17 @@ function App() {
       // Only auto-show modal if player can afford the property (Use Ref for latest money)
       const currentMoney = gameStateRef.current?.playerMoney || playerMoney;
       if (currentMoney[playerIndex] >= property.price) {
-        setShowBuyModal(true);
+        if (!gamePlayers[playerIndex]?.isBot) {
+          setShowBuyModal(true);
+        }
       } else {
-        showToast(`Can't afford ${property.name} ($${property.price})`);
+        if (!gamePlayers[playerIndex]?.isBot) {
+          showToast(`Can't afford ${property.name} ($${property.price})`);
+        }
+        setIsProcessingTurn(false);
+        if (!isDoubles) {
+          setTurnFinished(true); // Allow player to end turn via Done button
+        }
       }
     } else if (
       property &&
@@ -3132,6 +3153,17 @@ function App() {
         console.log("[handleTileArrival] Online: Rent handled by server.");
       } else {
         // Offline mode: Full local logic
+        // CHECK MORTGAGE STATUS: If property is mortgaged, skip rent
+        if (mortgagedProperties[tileIndex]) {
+          console.log(`[Rent] Property ${tileIndex} is Mortgaged. Rent Skipped.`);
+          setHistory((prev) => [
+            `${gamePlayers[playerIndex].name} pays NO rent - property is Mortgaged!`,
+            ...prev.slice(0, 9),
+          ]);
+          endTurn(playerIndex, isDoubles);
+          return;
+        }
+
         // CHECK JAIL STATUS: If owner is in jail, skip rent
         if (jailStatus[ownerIndex] > 0) {
           console.log(`[Rent] Owner ${ownerIndex} is in Jail. Rent Skipped.`);
@@ -3204,12 +3236,14 @@ function App() {
           (t) => effectiveOwnership[t] === playerIndex,
         );
         if (ownedTrains.length > 1) {
+          setFastTravelAvailableThisTurn(true);
           setHistory((prev) => [
             `🚅 ${gamePlayers[playerIndex].name} arrived at their train station. Fast travel available!`,
             ...prev.slice(0, 9),
           ]);
+          const availableDests = ownedTrains.filter((t) => t !== tileIndex);
           setTravelSourceIndex(tileIndex);
-          setSelectedTrainTile(null); // Unselected by default - let player tap to choose
+          setSelectedTrainTile(null);
           setShowTrainTravelModal(true);
           setBuyingProperty({ ...property, isTravelOffer: true });
           setTurnFinished(true); // Allow ending turn if they don't want to travel
@@ -3641,36 +3675,7 @@ function App() {
           }
 
           if (steps > 0) {
-            await movePlayerToken(playerIndex, steps, 180);
-          }
-
-          // Passing Start reward ($1000)
-          if (currentPos + steps >= 36) {
-            setPlayerMoney((prev) => {
-              const updated = [...prev];
-              updated[playerIndex] += 1000;
-              return updated;
-            });
-
-            setHistory((prev) => [
-              `${gamePlayers[playerIndex].name} collected $1000 for passing Start`,
-              ...prev.slice(0, 9),
-            ]);
-            const animKeyStart = getUniqueKey();
-            setFloatingPrices((prev) => [
-              ...prev,
-              {
-                price: 1000,
-                tileIndex: 0,
-                key: animKeyStart,
-                isPositive: true,
-              },
-            ]);
-            setTimeout(() => {
-              setFloatingPrices((prev) =>
-                prev.filter((fp) => fp.key !== animKeyStart),
-              );
-            }, 3000);
+            await movePlayerToken(playerIndex, steps, 110);
           }
 
           setHistory((prev) => [
@@ -3678,7 +3683,7 @@ function App() {
             ...prev.slice(0, 9),
           ]);
           handleTileArrival(playerIndex, targetPos, false);
-          break;
+          return;
 
         case "MOVE_STEPS":
           const newPosSteps2 = (currentPos + card.steps + 36) % 36;
@@ -4039,6 +4044,8 @@ function App() {
     if (isRolling) return;
     if (!isForced && (isProcessingTurn || skippedTurns[currentPlayer])) return;
 
+    setFastTravelAvailableThisTurn(false);
+
     // Online mode: Only allow if it's my turn, send immediately to server
     if (networkMode === "online") {
       if (myPlayerIndex !== currentPlayer) return;
@@ -4053,19 +4060,9 @@ function App() {
     setIsProcessingTurn(true);
     playDiceRollSound();
 
-    // Run dice animation locally (offline only) - snappier for dev/forced rolls
-    const rollDuration = overrideValue ? 300 : 1000;
-    const intervalTime = 60;
-
-    const rollInterval = setInterval(() => {
-      setDiceValues([
-        Math.floor(Math.random() * 6) + 1,
-        Math.floor(Math.random() * 6) + 1,
-      ]);
-    }, intervalTime);
-
+    // Run dice animation locally (offline only) - snappier for smooth gameplay
+    const rollDuration = overrideValue ? 180 : 500;
     await wait(rollDuration);
-    clearInterval(rollInterval);
 
     // Offline Mode: Calculate result locally
     let die1, die2;
@@ -4083,13 +4080,11 @@ function App() {
 
     // Stop rolling animation so dice lands and settles on final face
     setIsRolling(false);
-    // Pause briefly so players clearly see the landed dice result before token starts hopping
-    await wait(450);
+    // Brief settle pause before token starts hopping
+    await wait(140);
 
     const movingPlayer = currentPlayer;
-    await movePlayerToken(movingPlayer, moveAmount);
-
-    const finalPos = (playerPositions[movingPlayer] + moveAmount) % 36;
+    const finalPos = await movePlayerToken(movingPlayer, moveAmount);
     const tileName = getTileName(finalPos);
 
     setHistory((historyPrev) => [
@@ -4115,16 +4110,64 @@ function App() {
       return;
     }
 
+    const ownedMonopolies = getPlayerMonopolyColors(currentPlayer);
+
     // Has monopolies - open build modal and enable build mode
     setBuildTotalCost(0);
     setBuildPreviewLevels({ ...propertyLevels });
-    setSelectedBuildColor(null);
+    // If player has only 1 monopoly group, auto-select it immediately!
+    if (ownedMonopolies.length === 1) {
+      setSelectedBuildColor(ownedMonopolies[0]);
+    } else {
+      setSelectedBuildColor(null);
+    }
     setBuildMode(true);
     setShowBuildModal(true);
   };
 
+  // Precise upgrade step (+1 to build, -1 to undo staged build)
+  const handleBuildStep = (tileIndex, delta) => {
+    if (!buildMode) return;
+
+    const monopolyTiles = getMonopolyTiles(currentPlayer);
+    if (!monopolyTiles.includes(tileIndex)) return;
+
+    const baseLevel = propertyLevels[tileIndex] || 0;
+    const currentStagedLevel =
+      buildPreviewLevels[tileIndex] !== undefined
+        ? buildPreviewLevels[tileIndex]
+        : baseLevel;
+
+    const nextLevel = Math.max(baseLevel, Math.min(5, currentStagedLevel + delta));
+    if (nextLevel === currentStagedLevel) return;
+
+    const proposedLevels = { ...buildPreviewLevels, [tileIndex]: nextLevel };
+
+    // Calculate total cost across all monopoly tiles compared to original committed propertyLevels
+    let proposedTotalCost = 0;
+    for (const tIdx of monopolyTiles) {
+      const origLvl = propertyLevels[tIdx] || 0;
+      const stagedLvl =
+        proposedLevels[tIdx] !== undefined ? proposedLevels[tIdx] : origLvl;
+      const upgradeCost = getUpgradeCost(tIdx);
+      if (stagedLvl > origLvl) {
+        proposedTotalCost += (stagedLvl - origLvl) * upgradeCost;
+      }
+    }
+
+    // Affordability check
+    if (delta > 0 && proposedTotalCost > playerMoney[currentPlayer]) {
+      showToast(`Can't afford! Need $${proposedTotalCost.toLocaleString()}`);
+      return;
+    }
+
+    setBuildPreviewLevels(proposedLevels);
+    setBuildTotalCost(proposedTotalCost);
+  };
+
   // Handle tap on a tile during build mode
-  const handleBuildTileTap = (tileIndex) => {
+  // fromBoard: true when tapped from board (only increase), false from cell model (cycle including 0)
+  const handleBuildTileTap = (tileIndex, fromBoard = true) => {
     if (!buildMode) return;
 
     const monopolyTiles = getMonopolyTiles(currentPlayer);
@@ -4139,12 +4182,21 @@ function App() {
         ? buildPreviewLevels[tileIndex]
         : baseLevel;
 
-    // Level cycling: after maximum build amount (level 5), reset to level 1
     let nextLevel;
-    if (currentStagedLevel >= 5) {
-      nextLevel = 1; // Reset to level 1 on tap after max
+    if (fromBoard) {
+      // Board tap: only increase levels, cap at max (hotel)
+      if (currentStagedLevel >= 5) {
+        nextLevel = 5; // Already at max - no change
+      } else {
+        nextLevel = currentStagedLevel + 1;
+      }
     } else {
-      nextLevel = currentStagedLevel + 1;
+      // Cell model tap: cycle through levels (0→1→2→3→4→5→0)
+      if (currentStagedLevel >= 5) {
+        nextLevel = 0; // Cycle back to 0 after hotel
+      } else {
+        nextLevel = currentStagedLevel + 1;
+      }
     }
 
     const proposedLevels = { ...buildPreviewLevels, [tileIndex]: nextLevel };
@@ -4273,12 +4325,53 @@ function App() {
       return;
     }
 
+    const colorsWithBuildings = getPlayerColorsWithBuildings(currentPlayer);
+
     // Has buildings - enter sell mode
     setSellTotalRefund(0);
     setSellPreviewLevels({ ...propertyLevels });
-    setSelectedSellColor(null);
+    // If player has buildings in only 1 color group, auto-select it immediately!
+    if (colorsWithBuildings.length === 1) {
+      setSelectedSellColor(colorsWithBuildings[0]);
+    } else {
+      setSelectedSellColor(null);
+    }
     setSellMode(true);
     setShowSellModal(true);
+  };
+
+  // Precise sell step (+1 to undo sell, -1 to sell 1 level)
+  const handleSellStep = (tileIndex, delta) => {
+    if (!sellMode) return;
+
+    const owner = propertyOwnership[tileIndex];
+    if (owner !== currentPlayer) return;
+
+    const baseLevel = propertyLevels[tileIndex] || 0;
+    const currentStagedLevel =
+      sellPreviewLevels[tileIndex] !== undefined
+        ? sellPreviewLevels[tileIndex]
+        : baseLevel;
+
+    // delta = -1 sells a level (decreases staged level down to 0)
+    // delta = +1 undos a staged sell (increases staged level up to baseLevel)
+    const nextLevel = Math.max(0, Math.min(baseLevel, currentStagedLevel + delta));
+    if (nextLevel === currentStagedLevel) return;
+
+    const proposedLevels = { ...sellPreviewLevels, [tileIndex]: nextLevel };
+
+    let proposedRefund = 0;
+    Object.keys(proposedLevels).forEach((tIdx) => {
+      const origLvl = propertyLevels[tIdx] || 0;
+      const stagedLvl = proposedLevels[tIdx];
+      if (stagedLvl < origLvl) {
+        const upgradeCost = getUpgradeCost(Number(tIdx));
+        proposedRefund += (origLvl - stagedLvl) * Math.round(upgradeCost * 0.5);
+      }
+    });
+
+    setSellPreviewLevels(proposedLevels);
+    setSellTotalRefund(proposedRefund);
   };
 
   // Handle tap on a tile during sell mode
@@ -4438,6 +4531,8 @@ function App() {
     setIsProcessingTurn(false);
     setHistory(["Game started!"]);
     setBankruptPlayers({});
+    setShowWinModal(false);
+    setGameWinner(null);
     setPlayerLoans({});
     setMortgagedProperties({});
     setSelectedMortgageTiles([]);
@@ -4710,6 +4805,127 @@ function App() {
     setBankPhase("entry");
   };
 
+  // Check if a property can be mortgaged (must be owned, not mortgaged, and NO houses on any property in its color group)
+  const canMortgageProperty = (tileIdx, playerIdx = currentPlayer) => {
+    if (propertyOwnership[tileIdx] !== playerIdx) return false;
+    if (mortgagedProperties[tileIdx]) return false;
+    // Check color group: Monopoly rule forbids mortgaging if any property in group has buildings
+    const colorGroupEntry = Object.values(COLOR_GROUPS).find((tiles) =>
+      tiles.includes(tileIdx)
+    );
+    if (colorGroupEntry) {
+      const hasBuildings = colorGroupEntry.some(
+        (t) => (propertyLevels[t] || 0) > 0
+      );
+      if (hasBuildings) return false;
+    } else {
+      if ((propertyLevels[tileIdx] || 0) > 0) return false;
+    }
+    return true;
+  };
+
+  // Check if a property can be traded/sold in deals (Monopoly rule: no buildings on any property in its color group)
+  const canTradeProperty = (tileIdx) => {
+    const colorGroupEntry = Object.values(COLOR_GROUPS).find((tiles) =>
+      tiles.includes(tileIdx)
+    );
+    if (colorGroupEntry) {
+      return colorGroupEntry.every((t) => (propertyLevels[t] || 0) === 0);
+    }
+    return (propertyLevels[tileIdx] || 0) === 0;
+  };
+
+  // Directly mortgage a single property from PropertyInfoModal
+  const handleMortgageSingle = (tileIdx) => {
+    if (!canMortgageProperty(tileIdx, currentPlayer)) {
+      showToast("Cannot mortgage: sell all houses in the color group first!");
+      return;
+    }
+    const prop = getPropertyByTileIndex(tileIdx);
+    if (!prop) return;
+    const val = Math.round((prop.price || 0) / 2);
+    const newMortgaged = { ...mortgagedProperties, [tileIdx]: true };
+    setMortgagedProperties(newMortgaged);
+    setPlayerMoney((prev) => {
+      const updated = [...prev];
+      updated[currentPlayer] += val;
+      if (networkMode === "online") {
+        sendGameAction("update_state", {
+          playerMoney: updated,
+          mortgagedProperties: newMortgaged,
+        });
+      }
+      return updated;
+    });
+
+    const key = getUniqueKey();
+    setFloatingPrices((prev) => [
+      ...prev,
+      {
+        price: val,
+        tileIndex: playerPositions[currentPlayer],
+        key,
+        isPositive: true,
+      },
+    ]);
+    setTimeout(() => {
+      setFloatingPrices((prev) => prev.filter((fp) => fp.key !== key));
+    }, 3000);
+
+    playBuySound();
+    setHistory((prev) => [
+      `🏦 ${gamePlayers[currentPlayer]?.name} mortgaged ${prop.name} for +$${val.toLocaleString()}`,
+      ...prev.slice(0, 9),
+    ]);
+    closeAllModals();
+  };
+
+  // Directly redeem a single mortgaged property from PropertyInfoModal
+  const handleRedeemSingle = (tileIdx) => {
+    const prop = getPropertyByTileIndex(tileIdx);
+    if (!prop) return;
+    const cost = Math.round((prop.price || 0) * 0.55);
+    if (playerMoney[currentPlayer] < cost) {
+      showToast("Not enough money to redeem this property!");
+      return;
+    }
+    const newMortgaged = { ...mortgagedProperties };
+    delete newMortgaged[tileIdx];
+    setMortgagedProperties(newMortgaged);
+    setPlayerMoney((prev) => {
+      const updated = [...prev];
+      updated[currentPlayer] -= cost;
+      if (networkMode === "online") {
+        sendGameAction("update_state", {
+          playerMoney: updated,
+          mortgagedProperties: newMortgaged,
+        });
+      }
+      return updated;
+    });
+
+    const key = getUniqueKey();
+    setFloatingPrices((prev) => [
+      ...prev,
+      {
+        price: cost,
+        tileIndex: playerPositions[currentPlayer],
+        key,
+        isPositive: false,
+      },
+    ]);
+    setTimeout(() => {
+      setFloatingPrices((prev) => prev.filter((fp) => fp.key !== key));
+    }, 3000);
+
+    playBuySound();
+    setHistory((prev) => [
+      `🏦 ${gamePlayers[currentPlayer]?.name} redeemed ${prop.name} for -$${cost.toLocaleString()}`,
+      ...prev.slice(0, 9),
+    ]);
+    closeAllModals();
+  };
+
   // Handle player bankruptcy
   const handleBankrupt = () => {
     const playerIdx = currentPlayer;
@@ -4772,14 +4988,40 @@ function App() {
     handleEndTurn();
   };
 
+  // Game Victory Detection (when 1 player remains, or second-last goes bankrupt)
+  useEffect(() => {
+    if (gameStage !== "playing" || showWinModal) return;
+    if (!gamePlayers || gamePlayers.length < 2) return;
+
+    const activePlayers = gamePlayers.filter(
+      (p) => !bankruptPlayers[p.id] && !p.kicked,
+    );
+    if (activePlayers.length === 1) {
+      const winner = activePlayers[0];
+      setGameWinner(winner);
+      setShowWinModal(true);
+      try {
+        soundManager.playWin();
+      } catch (err) {
+        console.error("Error playing win sound:", err);
+      }
+      setHistory((prev) => [
+        `🏆 ${winner.name} HAS WON THE GAME!`,
+        ...prev.slice(0, 9),
+      ]);
+    }
+  }, [bankruptPlayers, gamePlayers, gameStage, showWinModal]);
+
   // Handle buying a property
   const handleBuyProperty = () => {
+    // When buying a train or property, fast travel is not allowed from it on this turn (only on next strike/landing)
+    setFastTravelAvailableThisTurn(false);
     // Prevent double-clicks / rapid taps deducting money twice
     if (isBuyingPropertyRef.current) return;
     isBuyingPropertyRef.current = true;
     setTimeout(() => {
       isBuyingPropertyRef.current = false;
-    }, 1200);
+    }, 350);
 
     // Network Check
     if (networkMode === "online") {
@@ -4812,15 +5054,13 @@ function App() {
       playBuySound();
 
       const isDoubles = buyingProperty?.isDoubles;
-      // Close modal locally and enable Done button
+      // Close modal locally and enable Done button immediately
       closeAllModals(() => {
         if (isDoubles) {
           setIsProcessingTurn(false);
         } else {
-          setTimeout(() => {
-            setTurnFinished(true);
-            setIsProcessingTurn(false);
-          }, 300);
+          setTurnFinished(true);
+          setIsProcessingTurn(false);
         }
       });
       return;
@@ -4893,9 +5133,7 @@ function App() {
         // Unlock turn for next roll
         setIsProcessingTurn(false);
       } else {
-        setTimeout(() => {
-          endTurn(buyerIndex, false);
-        }, 300);
+        endTurn(buyerIndex, false);
       }
     });
   };
@@ -4916,15 +5154,9 @@ function App() {
         // Unlock turn
         setIsProcessingTurn(false);
       } else {
-        setTimeout(() => {
-          // Do NOT end turn yet, let user decide via Done or Buy button
-          // But we need to unlock processing so buttons work
-          console.log(
-            "[DEBUG] handleCancelBuy timeout. Setting turnFinished=true",
-          );
-          setIsProcessingTurn(false);
-          setTurnFinished(true); // Show Done button
-        }, 300);
+        // Unlock processing immediately so Done and Buy buttons work without delay
+        setIsProcessingTurn(false);
+        setTurnFinished(true); // Show Done button
       }
     }, true);
   };
@@ -5058,9 +5290,31 @@ function App() {
     if (networkMode === "online") {
       sendGameAction("deal_offer", dealData);
     } else {
-      // Offline mode: Show review modal for selected player
-      setIncomingDeal(dealData);
-      setShowDealReviewModal(true);
+      const recipientPlayer = gamePlayers[selectedDealPlayer];
+      if (recipientPlayer?.isBot) {
+        // Recipient is an AI Bot: evaluate automatically
+        setIncomingDeal(dealData);
+        showToast(`🤖 ${recipientPlayer.name} is considering your deal...`);
+        setTimeout(() => {
+          const accepted = shouldBotAcceptDeal({
+            botIndex: selectedDealPlayer,
+            deal: dealData,
+            propertyOwnership,
+            propertyLevels,
+            botMoney: playerMoney[selectedDealPlayer] || 0,
+          });
+
+          if (accepted) {
+            handleDealAccept();
+          } else {
+            handleDealDeny();
+          }
+        }, 1200);
+      } else {
+        // Offline mode: Show review modal for selected human player
+        setIncomingDeal(dealData);
+        setShowDealReviewModal(true);
+      }
     }
 
     // Close proposer's modal
@@ -5212,6 +5466,18 @@ function App() {
       setShowJailActionModal(false);
       return true;
     }
+    if (buildNoMonopolyModal) {
+      setBuildNoMonopolyModal(false);
+      return true;
+    }
+    if (sellNoBuildingsModal) {
+      setSellNoBuildingsModal(false);
+      return true;
+    }
+    if (showBankruptcyModal) {
+      setShowBankruptcyModal(false);
+      return true;
+    }
     return false;
   }, [
     showExitAppModal,
@@ -5235,6 +5501,9 @@ function App() {
     showChestModal,
     showArrestModal,
     showJailActionModal,
+    buildNoMonopolyModal,
+    sellNoBuildingsModal,
+    showBankruptcyModal,
   ]);
 
 
@@ -5324,9 +5593,7 @@ function App() {
     });
 
     closeAllModals(() => {
-      setTimeout(() => {
-        endTurn(currentPlayer, false);
-      }, 300);
+      endTurn(currentPlayer, false);
     });
   };
 
@@ -5758,7 +6025,7 @@ function App() {
         `🏆 ${gamePlayers[winnerIdx].name} won "${warProperty.name}" in the Property War!`,
         ...prev.slice(0, 9),
       ]);
-      playWinSound(); // Play victory fanfare
+      playCollectMoneySound(); // Short snappy half second sound
     } else {
       // Mode B: Winner gets battlePot
       setPlayerMoney((prev) => {
@@ -5776,7 +6043,7 @@ function App() {
         `🏆 ${gamePlayers[winnerIdx].name} won the Cash Battle! (+$${battlePot})`,
         ...prev.slice(0, 9),
       ]);
-      playWinSound(); // Play victory fanfare
+      playCollectMoneySound(); // Short snappy half second sound
     }
 
     setWarPhase("result");
@@ -5813,6 +6080,7 @@ function App() {
 
   // Handle Travel Confirmation (Move and Pay)
   const handleTravelConfirm = async (targetIndex, cost) => {
+    setFastTravelAvailableThisTurn(false);
     setShowTrainTravelModal(false);
     setTravelMode(false);
     setTravelSourceIndex(null);
@@ -5968,8 +6236,16 @@ function App() {
       const owner = propertyOwnership[tileIndex];
       if (owner === undefined || owner === null) return;
       if (owner === currentPlayer) {
+        if (!canTradeProperty(tileIndex)) {
+          showToast("Cannot swap property with houses/hotels!");
+          return;
+        }
         setSwapGiveTile(swapGiveTile === tileIndex ? null : tileIndex);
       } else {
+        if (!canTradeProperty(tileIndex)) {
+          showToast("Cannot swap opponent property with houses/hotels!");
+          return;
+        }
         setSwapReceiveTile(swapReceiveTile === tileIndex ? null : tileIndex);
       }
       return;
@@ -5981,6 +6257,10 @@ function App() {
       const owner = propertyOwnership[tileIndex];
       const targetOpponent = selectedDealPlayer;
       if (owner === currentPlayer) {
+        if (!canTradeProperty(tileIndex)) {
+          showToast("Cannot trade property with houses/hotels!");
+          return;
+        }
         setDealGiveProperties((prev) =>
           prev.includes(tileIndex)
             ? prev.filter((t) => t !== tileIndex)
@@ -5988,12 +6268,45 @@ function App() {
         );
         return;
       } else if (owner === targetOpponent) {
+        if (!canTradeProperty(tileIndex)) {
+          showToast("Cannot trade property with houses/hotels!");
+          return;
+        }
         setDealReceiveProperties((prev) =>
           prev.includes(tileIndex)
             ? prev.filter((t) => t !== tileIndex)
             : [...prev, tileIndex],
         );
         return;
+      }
+      return;
+    }
+
+    // Bank Mortgage / Redeem Selection from Board (Tile-tapping based)
+    if (showBankModal && bankPhase === "mortgage") {
+      if (canMortgageProperty(tileIndex, currentPlayer)) {
+        handleToggleMortgageTile(tileIndex);
+      } else {
+        const owner = propertyOwnership[tileIndex];
+        if (owner !== currentPlayer) {
+          showToast("You don't own this property!");
+        } else if (mortgagedProperties[tileIndex]) {
+          showToast("This property is already mortgaged!");
+        } else {
+          showToast("Sell all houses in this color group before mortgaging!");
+        }
+      }
+      return;
+    }
+
+    if (showBankModal && bankPhase === "redeem") {
+      const owner = propertyOwnership[tileIndex];
+      if (owner === currentPlayer && mortgagedProperties[tileIndex]) {
+        handleToggleRedeemTile(tileIndex);
+      } else if (owner !== currentPlayer) {
+        showToast("You don't own this property!");
+      } else if (!mortgagedProperties[tileIndex]) {
+        showToast("This property is not mortgaged!");
       }
       return;
     }
@@ -6101,9 +6414,10 @@ function App() {
       const selectable = isAuctionSelectable(tileIndex);
       if (!selectable) {
         return {
-          filter: "grayscale(100%) brightness(0.6)",
+          backdropFilter: "grayscale(100%) brightness(0.8)",
+          WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
           pointerEvents: "none",
-          transition: "filter 0.3s",
+          transition: "backdrop-filter 0.3s",
         };
       }
       return { transition: "filter 0.3s", cursor: "pointer" };
@@ -6122,11 +6436,12 @@ function App() {
 
           // If it's a valid target (Owned by Other), keep color
           if (isOwnedByOther && !TRAIN_TILES.includes(tileIndex)) {
-            return { transition: "filter 0.3s" };
+            return { transition: "backdrop-filter 0.3s" };
           } else {
             return {
-              filter: "grayscale(100%) brightness(0.6)",
-              transition: "filter 0.3s",
+              backdropFilter: "grayscale(100%) brightness(0.8)",
+              WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
+              transition: "backdrop-filter 0.3s",
             };
           }
         }
@@ -6146,8 +6461,9 @@ function App() {
           };
         } else {
           return {
-            filter: "grayscale(100%) brightness(0.4)",
-            transition: "filter 0.5s",
+            backdropFilter: "grayscale(100%) brightness(0.8)",
+            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
+            transition: "backdrop-filter 0.5s",
           };
         }
       }
@@ -6161,14 +6477,20 @@ function App() {
     // 1. If actively configuring trade in Deal modal or dealSelectionMode
     if (showDealModal || dealSelectionMode) {
       if (selectedDealPlayer === null || selectedDealPlayer === undefined) {
-        return {};
+        // Modal is open but no player selected yet — grayscale all tiles
+        return {
+          backdropFilter: "grayscale(100%) brightness(0.8)",
+          WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
+          pointerEvents: "none",
+          transition: "backdrop-filter 0.3s",
+        };
       }
       const owner = propertyOwnership[tileIndex];
       const targetOpponent = selectedDealPlayer;
       const isCurrentPlayerProperty = owner === currentPlayer;
       const isSelectedPlayerProperty = owner === targetOpponent;
 
-      if (isCurrentPlayerProperty || isSelectedPlayerProperty) {
+      if ((isCurrentPlayerProperty || isSelectedPlayerProperty) && canTradeProperty(tileIndex)) {
         const isSelected =
           dealGiveProperties.includes(tileIndex) ||
           dealReceiveProperties.includes(tileIndex);
@@ -6181,9 +6503,10 @@ function App() {
 
       // Grayscale everything else
       return {
-        filter: "grayscale(100%) brightness(0.6)",
+        backdropFilter: "grayscale(100%) brightness(0.8)",
+        WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
         pointerEvents: "none",
-        transition: "filter 0.3s",
+        transition: "backdrop-filter 0.3s",
       };
     }
 
@@ -6202,8 +6525,41 @@ function App() {
         return {}; // Highlight handled by getModalHighlightStyle
       }
       return {
-        filter: "grayscale(60%) brightness(0.75)",
-        transition: "filter 0.3s",
+        backdropFilter: "grayscale(100%) brightness(0.8)",
+        WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
+        pointerEvents: "none",
+        transition: "backdrop-filter 0.3s",
+      };
+    }
+
+    // 3. Bank Mortgage/Redeem mode - grayscale non-eligible tiles
+    if (showBankModal && (bankPhase === "mortgage" || bankPhase === "redeem")) {
+      const owner = propertyOwnership[tileIndex];
+      let isEligible = false;
+
+      if (owner === currentPlayer) {
+        if (bankPhase === "mortgage") {
+          // Eligible if owned and NOT already mortgaged
+          isEligible = !mortgagedProperties[tileIndex] && canMortgageProperty(tileIndex, currentPlayer);
+        } else if (bankPhase === "redeem") {
+          // Eligible if owned and IS mortgaged
+          isEligible = !!mortgagedProperties[tileIndex];
+        }
+      }
+
+      if (isEligible) {
+        return {
+          transition: "all 0.3s",
+          cursor: "pointer",
+        };
+      }
+
+      // Grayscale ineligible tiles
+      return {
+        backdropFilter: "grayscale(100%) brightness(0.8)",
+        WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
+        pointerEvents: "none",
+        transition: "backdrop-filter 0.3s",
       };
     }
 
@@ -6220,26 +6576,27 @@ function App() {
     if (selectedBuildColor && COLOR_GROUPS[selectedBuildColor]) {
       if (COLOR_GROUPS[selectedBuildColor].includes(tileIndex)) {
         return {
-          transition: "filter 0.3s",
+          transition: "box-shadow 0.3s",
           cursor: "pointer",
-          boxShadow: "0 0 15px rgba(76, 175, 80, 0.8)",
+          boxShadow: "0 0 14px rgba(74, 222, 128, 0.95)",
           zIndex: 6,
         };
       }
     } else if (monopolyTiles.includes(tileIndex)) {
       return {
-        transition: "filter 0.3s",
+        transition: "box-shadow 0.3s",
         cursor: "pointer",
-        boxShadow: "0 0 15px rgba(76, 175, 80, 0.6)",
+        boxShadow: "0 0 12px rgba(250, 204, 21, 0.9)",
         zIndex: 5,
       };
     }
 
     // Grayscale everything else
     return {
-      filter: "grayscale(100%) brightness(0.6)",
+      backdropFilter: "grayscale(100%) brightness(0.8)",
+      WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
       pointerEvents: "none",
-      transition: "filter 0.3s",
+      transition: "backdrop-filter 0.3s",
     };
   };
 
@@ -6254,26 +6611,27 @@ function App() {
     if (selectedSellColor && COLOR_GROUPS[selectedSellColor]) {
       if (COLOR_GROUPS[selectedSellColor].includes(tileIndex) && isOwned && baseLvl > 0) {
         return {
-          transition: "filter 0.3s, box-shadow 0.3s",
+          transition: "box-shadow 0.3s",
           cursor: "pointer",
-          boxShadow: "0 0 15px rgba(255, 152, 0, 0.8)",
+          boxShadow: "0 0 14px rgba(249, 115, 22, 0.95)",
           zIndex: 6,
         };
       }
     } else if (isOwned && baseLvl > 0) {
       return {
-        transition: "filter 0.3s, box-shadow 0.3s",
+        transition: "box-shadow 0.3s",
         cursor: "pointer",
-        boxShadow: "0 0 15px rgba(255, 152, 0, 0.7)",
+        boxShadow: "0 0 12px rgba(249, 115, 22, 0.8)",
         zIndex: 5,
       };
     }
 
     // Grayscale everything else during sell mode
     return {
-      filter: "grayscale(100%) brightness(0.6)",
+      backdropFilter: "grayscale(100%) brightness(0.8)",
+      WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
       pointerEvents: "none",
-      transition: "filter 0.3s",
+      transition: "backdrop-filter 0.3s",
     };
   };
 
@@ -6285,38 +6643,118 @@ function App() {
     const isChosen = tileIndex === swapGiveTile || tileIndex === swapReceiveTile;
 
     if (isChosen) {
-      return {
-        transition: "all 0.3s",
-        cursor: "pointer",
-        boxShadow: "0 0 16px gold",
-        border: "2px solid gold",
-        zIndex: 15,
-      };
+      return {}; // Highlight handled by getModalHighlightStyle
     }
 
-    // When both are chosen, dim all other tiles to black & white as requested
+    // When both are chosen, dim all other tiles
     if (swapGiveTile !== null && swapReceiveTile !== null) {
       return {
-        filter: "grayscale(100%) brightness(0.5)",
+        backdropFilter: "grayscale(100%) brightness(0.8)",
+        WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
         pointerEvents: "none",
-        transition: "filter 0.3s",
+        transition: "backdrop-filter 0.3s",
       };
     }
 
-    // When selecting, keep properties owned by player and opponents colorful
+    // When selecting, keep tradeable properties owned by player and opponents colorful
     const isOwnedBySomeone = owner !== undefined && owner !== null;
-    if (isOwnedBySomeone) {
+    if (isOwnedBySomeone && canTradeProperty(tileIndex)) {
       return {
-        transition: "filter 0.3s",
+        transition: "all 0.3s",
         cursor: "pointer",
       };
     }
 
     return {
-      filter: "grayscale(100%) brightness(0.5)",
+      backdropFilter: "grayscale(100%) brightness(0.8)",
+      WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
       pointerEvents: "none",
-      transition: "filter 0.3s",
+      transition: "backdrop-filter 0.3s",
     };
+  };
+
+  // Helper: Check if a tile should be grayed out (for overlay rendering)
+  // Returns true if any selection mode is active and this tile is not eligible
+  const isTileGrayed = (tileIndex) => {
+    // Auction selection mode
+    if (isSelectingAuctionProperty) {
+      if (!isAuctionSelectable(tileIndex)) return true;
+    }
+
+    // Online auction thinking/announcing
+    if (networkMode === "online" &&
+        ["thinking", "announcing"].includes(auctionState?.status)) {
+      if (!isAuctionSelectable(tileIndex)) return true;
+    }
+
+    // Deal mode
+    if (showDealModal || dealSelectionMode) {
+      if (selectedDealPlayer !== null && selectedDealPlayer !== undefined) {
+        const owner = propertyOwnership[tileIndex];
+        const targetOpponent = selectedDealPlayer;
+        const isCurrentPlayerProperty = owner === currentPlayer;
+        const isSelectedPlayerProperty = owner === targetOpponent;
+        if (!isCurrentPlayerProperty && !isSelectedPlayerProperty) return true;
+        if (!canTradeProperty(tileIndex)) return true;
+      } else {
+        return true; // Gray all tiles during player selection phase
+      }
+    }
+
+    // Build mode
+    if (buildMode || showBuildModal) {
+      const monopolyTiles = getMonopolyTiles(currentPlayer);
+      if (!monopolyTiles.includes(tileIndex) || (selectedBuildColor && !COLOR_GROUPS[selectedBuildColor]?.includes(tileIndex))) {
+        return true;
+      }
+    }
+
+    // Sell mode
+    if (sellMode || showSellModal) {
+      const owner = propertyOwnership[tileIndex];
+      const isOwned = owner === currentPlayer;
+      const baseLvl = propertyLevels[tileIndex] || 0;
+      if (!isOwned || baseLvl === 0) return true;
+      if (selectedSellColor && !COLOR_GROUPS[selectedSellColor]?.includes(tileIndex)) return true;
+    }
+
+    // Swap mode
+    if (showSwapModal) {
+      const owner = propertyOwnership[tileIndex];
+      if (owner === undefined || owner === null) return true;
+      if (!canTradeProperty(tileIndex)) return true;
+      // When both selected, gray everything except chosen ones
+      if (swapGiveTile !== null && swapReceiveTile !== null) {
+        if (tileIndex !== swapGiveTile && tileIndex !== swapReceiveTile) return true;
+      }
+    }
+
+    // Bank Mortgage mode - only current player's unmortgaged, unbuilt properties are active
+    if (showBankModal && bankPhase === "mortgage") {
+      const owner = propertyOwnership[tileIndex];
+      if (owner !== currentPlayer) return true;
+      if (mortgagedProperties[tileIndex]) return true; // Already mortgaged
+      if (!canMortgageProperty(tileIndex, currentPlayer)) return true;
+    }
+
+    // Bank Redeem mode - only current player's mortgaged properties are active
+    if (showBankModal && bankPhase === "redeem") {
+      const owner = propertyOwnership[tileIndex];
+      if (owner !== currentPlayer) return true;
+      if (!mortgagedProperties[tileIndex]) return true; // Not mortgaged
+    }
+
+    // Train travel mode - only eligible destination trains are active
+    if (showTrainTravelModal || travelMode) {
+      const isTrain = TRAIN_TILES.includes(tileIndex);
+      const isOwnedByMe = propertyOwnership[tileIndex] === currentPlayer;
+      const currentStation = travelSourceIndex ?? playerPositions[currentPlayer];
+      if (!isTrain || !isOwnedByMe || tileIndex === currentStation) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   // Helper: Highlight property tile for all active modals (Property War, Deal, Buying, Property Details, Auction)
@@ -6382,23 +6820,23 @@ function App() {
 
     if (giveList.includes(tileIndex)) {
       return {
-        filter: "brightness(1.25) drop-shadow(0 0 16px #00E676)",
         zIndex: 115,
-        boxShadow: "0 0 22px #00E676, inset 0 0 10px #B9F6CA",
+        boxShadow: "0 0 20px #00E676, inset 0 0 10px #B9F6CA",
         border: "3px solid #00E676",
-        animation: "dealGivePulse 1.4s ease-in-out infinite",
-        transition: "all 0.3s ease",
+        borderRadius: "4px",
+        filter: "brightness(1.2) drop-shadow(0 0 8px #00E676)",
+        transition: "all 0.2s ease",
       };
     }
 
     if (receiveList.includes(tileIndex)) {
       return {
-        filter: "brightness(1.25) drop-shadow(0 0 16px #FF9100)",
         zIndex: 115,
-        boxShadow: "0 0 22px #FF9100, inset 0 0 10px #FFE57F",
+        boxShadow: "0 0 20px #FF9100, inset 0 0 10px #FFE57F",
         border: "3px solid #FF9100",
-        animation: "dealGetPulse 1.4s ease-in-out infinite",
-        transition: "all 0.3s ease",
+        borderRadius: "4px",
+        filter: "brightness(1.2) drop-shadow(0 0 8px #FF9100)",
+        transition: "all 0.2s ease",
       };
     }
 
@@ -6415,12 +6853,56 @@ function App() {
     ) {
       if (Number(auctionTile) === Number(tileIndex)) {
         return {
-          filter: "brightness(1.25) drop-shadow(0 0 18px #FFC107)",
+          filter: "brightness(1.2) drop-shadow(0 0 12px #FFC107)",
           zIndex: 120,
-          boxShadow: "0 0 22px #FFC107, inset 0 0 12px #FFE082",
-          border: "3px solid #FFC107",
-          animation: "auctionTilePulse 1.4s ease-in-out infinite",
-          transition: "all 0.3s ease",
+          boxShadow: "0 0 16px #FFC107, inset 0 0 8px #FFE082",
+          border: "2.5px solid #FFC107",
+          borderRadius: "4px",
+          transition: "all 0.2s ease",
+        };
+      }
+    }
+
+    // 6. Property Swap: Highlight selected swap tiles on board
+    if (showSwapModal) {
+      if (tileIndex === swapGiveTile) {
+        return {
+          zIndex: 120,
+          boxShadow: "0 0 6px rgba(0, 230, 118, 0.8), 0 0 12px rgba(0, 230, 118, 0.4)",
+          border: "2px solid #00E676",
+          borderRadius: "4px",
+          transition: "all 0.2s ease",
+        };
+      }
+      if (tileIndex === swapReceiveTile) {
+        return {
+          zIndex: 120,
+          boxShadow: "0 0 6px rgba(255, 145, 0, 0.8), 0 0 12px rgba(255, 145, 0, 0.4)",
+          border: "2px solid #FF9100",
+          borderRadius: "4px",
+          transition: "all 0.2s ease",
+        };
+      }
+    }
+
+    // 7. Bank Mortgage / Redeem Selection
+    if (showBankModal) {
+      if (bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex)) {
+        return {
+          zIndex: 120,
+          boxShadow: "0 0 6px rgba(255, 23, 68, 0.8), 0 0 12px rgba(255, 23, 68, 0.4)",
+          border: "2px solid #FF1744",
+          borderRadius: "4px",
+          transition: "all 0.2s ease",
+        };
+      }
+      if (bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex)) {
+        return {
+          zIndex: 120,
+          boxShadow: "0 0 6px rgba(0, 230, 118, 0.8), 0 0 12px rgba(0, 230, 118, 0.4)",
+          border: "2px solid #00E676",
+          borderRadius: "4px",
+          transition: "all 0.2s ease",
         };
       }
     }
@@ -6472,7 +6954,47 @@ function App() {
     return null;
   };
 
-  // Helper: Style for train destination selection during Train Travel
+  // Helper: Floating badge for property swap selection on board (circular badge matching Deal)
+  const renderSwapIndicator = (tileIndex) => {
+    if (!showSwapModal) return null;
+    if (swapGiveTile === tileIndex) {
+      return (
+        <div className="deal-tile-indicator give" title="Offering">
+          −
+        </div>
+      );
+    }
+    if (swapReceiveTile === tileIndex) {
+      return (
+        <div className="deal-tile-indicator receive" title="Requesting">
+          +
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Helper: Floating badge for mortgage/redeem selection on board
+  const renderBankIndicator = (tileIndex) => {
+    if (!showBankModal) return null;
+    if (bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex)) {
+      return (
+        <div className="bank-tile-indicator mortgage" title="Mortgage Selected">
+          M
+        </div>
+      );
+    }
+    if (bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex)) {
+      return (
+        <div className="bank-tile-indicator redeem" title="Redeem Selected">
+          R
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Helper: Style for train destination selection during Train Travel (Glowing border, no dotted borders)
   const getTrainTargetStyle = (tileIndex) => {
     if (!showTrainTravelModal && !travelMode) return {};
     const isTrain = TRAIN_TILES.includes(tileIndex);
@@ -6483,17 +7005,14 @@ function App() {
 
     if (selectedTrainTile === tileIndex) {
       return {
-        boxShadow: "0 0 16px 4px #00E5FF, inset 0 0 12px #00B0FF",
-        border: "2.5px solid #00E5FF",
+        boxShadow: "0 0 6px rgba(0, 229, 255, 0.8), 0 0 12px rgba(0, 229, 255, 0.4)",
+        border: "2px solid #00E5FF",
+        borderRadius: "4px",
         zIndex: 130,
-        filter: "brightness(1.2)",
       };
     }
     if (isOwnedByMe && !isCurrent) {
       return {
-        boxShadow:
-          "0 0 10px 1px rgba(30, 136, 229, 0.6), inset 0 0 8px rgba(30, 136, 229, 0.3)",
-        border: "2px dashed #1E88E5",
         cursor: "pointer",
         zIndex: 25,
       };
@@ -6501,41 +7020,9 @@ function App() {
     return {};
   };
 
-  // Helper: Floating badge for selected train destination
+  // Helper: Floating badge for selected train destination (disabled - using border highlight instead)
   const renderTrainIndicator = (tileIndex) => {
-    if (
-      (!showTrainTravelModal && !travelMode) ||
-      selectedTrainTile !== tileIndex
-    )
-      return null;
-    return (
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          background: "linear-gradient(135deg, #0288D1 0%, #01579B 100%)",
-          color: "#fff",
-          fontSize: "8px",
-          fontWeight: "bold",
-          padding: "2px 5px",
-          borderRadius: "4px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.6)",
-          border: "1px solid #E1F5FE",
-          pointerEvents: "none",
-          whiteSpace: "nowrap",
-          zIndex: 45,
-          letterSpacing: "0.4px",
-          display: "flex",
-          alignItems: "center",
-          gap: "2px",
-        }}
-      >
-        <span>🎯</span>
-        <span>DESTINATION</span>
-      </div>
-    );
+    return null;
   };
 
   // Helper: Offline Auction Resolution
@@ -6948,28 +7435,411 @@ function App() {
     return darkColors.includes(tileColor) ? "tile-dark" : "tile-light";
   };
 
-  // Proportional percentages matching master_board.webp (923 x 835)
-  // Board image has ~16px black border. Actual board content:
-  //   Left: x=16, Top: y=17, Right: x=906, Bottom: y=818
-  //   Left corners: 109px wide, Right corners: 113px wide
-  //   Top corners: 116px tall, Bottom corners: 118px tall  
+  // =========================================================================
+  // PASS & PLAY SETUP & START HANDLER (2-6 PLAYERS & BOTS)
+  // =========================================================================
+  const handleStartPassAndPlay = (configuredSlots) => {
+    const slots =
+      Array.isArray(configuredSlots) && configuredSlots.length >= 2
+        ? configuredSlots
+        : [
+            {
+              id: 0,
+              name: "Player 1",
+              avatar: CHOOSABLE_AVATARS[0].avatar,
+              isBot: false,
+              color: CHOOSABLE_AVATARS[0].color,
+            },
+            {
+              id: 1,
+              name: "Bot Alpha",
+              avatar: CHOOSABLE_AVATARS[1].avatar,
+              isBot: true,
+              color: CHOOSABLE_AVATARS[1].color,
+            },
+          ];
+
+    const newPlayers = slots.map((slot, idx) => ({
+      id: idx,
+      name:
+        slot.name?.trim() || (slot.isBot ? `Bot ${idx + 1}` : `Player ${idx + 1}`),
+      avatar: resolveAvatar(slot.avatar),
+      color: slot.color || getAvatarColor(slot.avatar),
+      money: 15000,
+      isBot: !!slot.isBot,
+    }));
+
+    setGamePlayers(newPlayers);
+    setConnectedPlayers([]);
+    setPlayerPositions(Array(newPlayers.length).fill(0));
+    setPlayerMoney(newPlayers.map((p) => p.money));
+    setPropertyOwnership({});
+    setPropertyLevels({});
+    setCurrentPlayer(0);
+    setMyPlayerIndex(0);
+    setDiceValues([1, 1]);
+    setIsRolling(false);
+    setTurnFinished(false);
+    setIsProcessingTurn(false);
+    setHistory(["Game started! Pass & Play mode."]);
+    setBankruptPlayers({});
+    setShowWinModal(false);
+    setGameWinner(null);
+    setPlayerLoans({});
+    setMortgagedProperties({});
+    setSelectedMortgageTiles([]);
+    setSelectedRedeemTiles([]);
+    setCashStack(0);
+    setBattlePot(0);
+    setNetworkMode("offline");
+    setRoomCode("");
+    setGameStage("playing");
+  };
+
+  // =========================================================================
+  // AI BOT TURN CONTROLLER (PASS & PLAY / OFFLINE)
+  // =========================================================================
+  const botActionTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (gameStage !== "playing" || networkMode !== "offline") {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      return;
+    }
+
+    // 1. AUCTION IN PROGRESS: Check if active bidder is an AI Bot
+    if (auctionState && auctionState.status === "active") {
+      const activeBidder = auctionState.currentBidder;
+      if (activeBidder !== undefined && gamePlayers[activeBidder]?.isBot) {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+        botActionTimerRef.current = setTimeout(() => {
+          const property = getPropertyByTileIndex(auctionState.propertyIndex);
+          const botMoney = playerMoney[activeBidder] ?? 0;
+          const maxBid = getBotMaxAuctionBid({
+            botMoney,
+            property: property || {},
+            tileIndex: auctionState.propertyIndex,
+            botIndex: activeBidder,
+            propertyOwnership,
+          });
+
+          const minBid = (auctionState.currentBid || 0) + 10;
+          if (maxBid >= minBid && botMoney >= minBid) {
+            const proposedBid = Math.min(minBid + 20, maxBid);
+            setAuctionBidAmount(proposedBid);
+            setTimeout(() => {
+              handleAuctionBid();
+            }, 100);
+          } else {
+            handleAuctionFold();
+          }
+        }, 900);
+        return () => {
+          if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+        };
+      }
+      return;
+    }
+
+    // 2. AUCTION COMPLETE: Auto-continue if bot initiated or won
+    if (auctionState && auctionState.status === "complete") {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        setAuctionState((prev) => ({
+          ...prev,
+          status: "idle",
+        }));
+        if (networkMode !== "online") {
+          endTurn(currentPlayer, false);
+        }
+      }, 1500);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // Only proceed if it is currently a Bot's turn
+    const activePlayer = gamePlayers[currentPlayer];
+    if (!activePlayer || !activePlayer.isBot) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      return;
+    }
+
+    // Don't act while dice or pawns are animating
+    if (isRolling || isLocalMoving) return;
+
+    // 3. PROPERTY WAR MODAL
+    if (showWarModal) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        handleWarSkip();
+      }, 1200);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // 4. JAIL ARREST MODAL
+    if (showArrestModal) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        setShowArrestModal(false);
+        setJailStatus((prev) => ({
+          ...prev,
+          [currentPlayer]: arrestDuration || 3,
+        }));
+        setIsProcessingTurn(false);
+        setTurnFinished(false);
+        handleEndTurn();
+      }, 900);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // 5. PROPERTY SWAP MODAL (Tile 7)
+    if (showSwapModal) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        const swapDecision = evaluateBotSwap({
+          botIndex: currentPlayer,
+          propertyOwnership,
+          propertyLevels,
+          botMoney: playerMoney[currentPlayer] || 0,
+        });
+
+        if (swapDecision) {
+          setSwapGiveTile(swapDecision.giveTile);
+          setSwapReceiveTile(swapDecision.receiveTile);
+          setTimeout(() => {
+            handleExecutePropertySwap();
+          }, 800);
+        } else {
+          setShowSwapModal(false);
+          setSwapGiveTile(null);
+          setSwapReceiveTile(null);
+          setIsProcessingTurn(false);
+          setTurnFinished(false);
+          handleEndTurn();
+        }
+      }, 1000);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // 6. BUY PROPERTY (Bot decides internally without opening modal for players)
+    if (buyingProperty) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        const shouldBuy = shouldBotBuyProperty({
+          botMoney: playerMoney[currentPlayer] || 0,
+          propertyPrice: buyingProperty.price,
+          tileIndex: buyingProperty.tileIndex,
+          botIndex: currentPlayer,
+          propertyOwnership,
+        });
+
+        if (shouldBuy) {
+          handleBuyProperty();
+        } else {
+          handleCancelBuy();
+        }
+      }, 950);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // 7. FREE PARKING MODAL
+    if (showParkingModal) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        handleParkingConfirm();
+      }, 900);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // 8. CHANCE / CHEST CARD MODALS
+    if (showChanceModal && currentChanceCard) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        handleChanceCardAction(currentChanceCard);
+      }, 1100);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+    if (showChestModal && currentChestCard) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        handleChestCardAction(currentChestCard);
+      }, 1100);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // 9. ROB BANK MODAL
+    if (showRobBankModal) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        handleRobBankLeave();
+      }, 900);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // 10. TURN FINISHED: Bot clicks Done / ends turn (or handles bankruptcy)
+    if (turnFinished && !isProcessingTurn) {
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        if ((playerMoney[currentPlayer] || 0) < 0) {
+          handleBankrupt();
+        } else {
+          handleEndTurn();
+        }
+      }, 850);
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+
+    // 11. START OF TURN: Bot Deal Offer, or Roll dice / Jail decision
+    if (!isProcessingTurn && !turnFinished && !buyingProperty) {
+      const inJail = (jailStatus[currentPlayer] || 0) > 0;
+
+      // Check if bot wants to propose a trade before rolling (once per turn)
+      if (
+        !inJail &&
+        !botDealsAttemptedRef.current[currentPlayer] &&
+        !showDealReviewModal
+      ) {
+        botDealsAttemptedRef.current[currentPlayer] = true;
+        const dealOffer = generateBotDealOffer({
+          botIndex: currentPlayer,
+          gamePlayers,
+          propertyOwnership,
+          propertyLevels,
+          botMoney: playerMoney[currentPlayer] || 0,
+          bankruptPlayers,
+        });
+
+        if (dealOffer) {
+          setIncomingDeal(dealOffer);
+          const recipientPlayer = gamePlayers[dealOffer.recipient];
+          if (!recipientPlayer?.isBot) {
+            // Offer to human player: show review modal
+            setShowDealReviewModal(true);
+            showToast(`🤝 ${activePlayer.name} offered you a trade!`);
+            return; // Wait for human decision
+          } else {
+            // Bot to bot trade: evaluate after short pause
+            if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+            botActionTimerRef.current = setTimeout(() => {
+              const accepted = shouldBotAcceptDeal({
+                botIndex: dealOffer.recipient,
+                deal: dealOffer,
+                propertyOwnership,
+                propertyLevels,
+                botMoney: playerMoney[dealOffer.recipient] || 0,
+              });
+              if (accepted) {
+                handleDealAccept();
+              } else {
+                handleDealDeny();
+              }
+            }, 1000);
+            return () => {
+              if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+            };
+          }
+        }
+      }
+
+      if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      botActionTimerRef.current = setTimeout(() => {
+        if (inJail) {
+          const turnsLeft = jailStatus[currentPlayer] || 3;
+          let bailAmount = 1000;
+          if (turnsLeft === 2) bailAmount = 500;
+          if (turnsLeft === 1) bailAmount = 200;
+
+          const totalHouses = Object.values(propertyLevels).reduce(
+            (acc, lvl) => acc + (lvl || 0),
+            0
+          );
+
+          const payBail = shouldBotPayBail({
+            botMoney: playerMoney[currentPlayer] || 0,
+            bailAmount,
+            totalHousesOnBoard: totalHouses,
+          });
+
+          if (payBail && (playerMoney[currentPlayer] || 0) >= bailAmount) {
+            handleJailPay();
+          } else {
+            handleJailRoll();
+          }
+        } else {
+          rollDice();
+        }
+      }, 850);
+
+      return () => {
+        if (botActionTimerRef.current) clearTimeout(botActionTimerRef.current);
+      };
+    }
+  }, [
+    gameStage,
+    networkMode,
+    currentPlayer,
+    turnFinished,
+    isProcessingTurn,
+    isRolling,
+    isLocalMoving,
+    buyingProperty,
+    showDealReviewModal,
+    showSwapModal,
+    showWarModal,
+    showArrestModal,
+    showParkingModal,
+    showChanceModal,
+    showChestModal,
+    showRobBankModal,
+    auctionState,
+    jailStatus,
+    gamePlayers,
+    playerMoney,
+    propertyOwnership,
+    propertyLevels,
+  ]);
+
+  // Proportional percentages for NEW master_board.webp (893 x 803)
+  // Board image has NO black border. Actual board content fills entire image.
+  //   Left corner: 109px wide, Right corner: 113px wide
+  //   Top corner: 116px tall, Bottom corner: 118px tall
   //   9 horizontal tiles: 74.22px each, 7 vertical tiles: 81px each
+  // Scaled to new dimensions: 893x803
   const getTileStyle = (index, row, tileColor) => {
-    // Border offsets as % of full image
-    const borderL = 1.7335;  // 16/923
-    const borderT = 2.0359;  // 17/835
-    const borderR = 1.8418;  // 17/923
-    const borderB = 2.0359;  // 17/835
+    // Border offsets as % of full image (NO BORDER in new image)
+    const borderL = 0;        // No left border
+    const borderT = 0;        // No top border
+    const borderR = 0;        // No right border
+    const borderB = 0;        // No bottom border
 
-    // Corner sizes as % of full image
-    const cornerWL = 11.8093; // left corner width (109px / 923)
-    const cornerWR = 12.2427; // right corner width (113px / 923)
-    const cornerHT = 13.8922; // top corner height (116px / 835)
-    const cornerHB = 14.1317; // bottom corner height (118px / 835)
+    // Corner sizes as % of full image (scaled from 923x835 to 893x803)
+    const cornerWL = 12.2472; // left corner width: 109px * (893/890) / 893 * 100
+    const cornerWR = 12.6966; // right corner width: 113px * (893/890) / 893 * 100
+    const cornerHT = 14.4819; // top corner height: 116px * (803/801) / 803 * 100
+    const cornerHB = 14.7316; // bottom corner height: 118px * (803/801) / 803 * 100
 
-    // Tile sizes as % of full image
-    const tileW = 8.0414;   // 74.22px / 923
-    const tileH = 9.7006;   // 81px / 835
+    // Tile sizes as % of full image (scaled from 923x835 to 893x803)
+    const tileW = 8.3396;   // 74.22px * (893/890) / 893 * 100
+    const tileH = 10.1124;  // 81px * (803/801) / 803 * 100
 
     // Bottom row: tiles go right-to-left, anchored with "right" and "bottom"
     // The right corner's left edge is at: 100% - borderR - cornerWR
@@ -7022,19 +7892,19 @@ function App() {
     return { top: center.y, left: center.x };
   };
 
-  // Get exact center of any tile (0-35) on the board matching master_board.webp
-  // Accounts for ~16px black border and asymmetric corners
+  // Get exact center of any tile (0-35) on the board matching NEW master_board.webp
+  // Image has NO black border. Scaled from 923x835 to 893x803
   const getTileCenter = (tileIndex) => {
-    const borderL = 1.7335;
-    const borderT = 2.0359;
-    const borderR = 1.8418;
-    const borderB = 2.0359;
-    const cornerWL = 11.8093;
-    const cornerWR = 12.2427;
-    const cornerHT = 13.8922;
-    const cornerHB = 14.1317;
-    const tileW = 8.0414;
-    const tileH = 9.7006;
+    const borderL = 0;
+    const borderT = 0;
+    const borderR = 0;
+    const borderB = 0;
+    const cornerWL = 12.2472;
+    const cornerWR = 12.6966;
+    const cornerHT = 14.4819;
+    const cornerHB = 14.7316;
+    const tileW = 8.3396;
+    const tileH = 10.1124;
 
     // Corner 0: Start (Bottom-Right)
     if (tileIndex === 0) return { x: 100 - borderR - cornerWR / 2, y: 100 - borderB - cornerHB / 2 };
@@ -7293,6 +8163,7 @@ function App() {
               socketRef.current.emit("toggle_ready");
             }
           }}
+          onStartPassAndPlay={handleStartPassAndPlay}
         />
       )}
 
@@ -7316,7 +8187,10 @@ function App() {
                 showBuildModal ||
                 sellMode ||
                 showSellModal ||
-                showSwapModal;
+                showSwapModal ||
+                showTrainTravelModal ||
+                travelMode ||
+                (showBankModal && (bankPhase === "mortgage" || bankPhase === "redeem"));
 
               return (
                 <>
@@ -7326,11 +8200,12 @@ function App() {
                     style={{
                       ...(isCornerDimmed
                         ? {
-                            filter: "grayscale(100%) brightness(0.6)",
+                            backdropFilter: "grayscale(100%) brightness(0.8)",
+                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
                             pointerEvents: "none",
-                            transition: "filter 0.3s",
+                            transition: "backdrop-filter 0.3s",
                           }
-                        : { transition: "filter 0.3s" }),
+                        : { transition: "backdrop-filter 0.3s" }),
                       cursor: devMode && devTapToMove ? "pointer" : "default",
                     }}
                     title={
@@ -7348,11 +8223,12 @@ function App() {
                     style={{
                       ...(isCornerDimmed
                         ? {
-                            filter: "grayscale(100%) brightness(0.6)",
+                            backdropFilter: "grayscale(100%) brightness(0.8)",
+                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
                             pointerEvents: "none",
-                            transition: "filter 0.3s",
+                            transition: "backdrop-filter 0.3s",
                           }
-                        : { transition: "filter 0.3s" }),
+                        : { transition: "backdrop-filter 0.3s" }),
                       cursor: devMode && devTapToMove ? "pointer" : "default",
                     }}
                     title={
@@ -7374,11 +8250,12 @@ function App() {
                     style={{
                       ...(isCornerDimmed
                         ? {
-                            filter: "grayscale(100%) brightness(0.6)",
+                            backdropFilter: "grayscale(100%) brightness(0.8)",
+                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
                             pointerEvents: "none",
-                            transition: "filter 0.3s",
+                            transition: "backdrop-filter 0.3s",
                           }
-                        : { transition: "filter 0.3s" }),
+                        : { transition: "backdrop-filter 0.3s" }),
                       cursor: devMode && devTapToMove ? "pointer" : "default",
                     }}
                     title={
@@ -7402,11 +8279,12 @@ function App() {
                     style={{
                       ...(isCornerDimmed
                         ? {
-                            filter: "grayscale(100%) brightness(0.6)",
+                            backdropFilter: "grayscale(100%) brightness(0.8)",
+                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
                             pointerEvents: "none",
-                            transition: "filter 0.3s",
+                            transition: "backdrop-filter 0.3s",
                           }
-                        : { transition: "filter 0.3s" }),
+                        : { transition: "backdrop-filter 0.3s" }),
                       cursor: devMode && devTapToMove ? "pointer" : "default",
                     }}
                     title={
@@ -7433,10 +8311,29 @@ function App() {
               const swapStyle = getSwapSelectionStyle(tileIndex);
               const warStyle = getWarSelectionStyle(tileIndex);
               const trainStyle = getTrainTargetStyle(tileIndex);
+              const grayed = isTileGrayed(tileIndex);
+              const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
+              const swapGiveSelected = swapGiveTile === tileIndex;
+              const swapReceiveSelected = swapReceiveTile === tileIndex;
+              const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
+              const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
+              const currentTier =
+                buildMode && buildPreviewLevels[tileIndex] !== undefined
+                  ? buildPreviewLevels[tileIndex]
+                  : sellMode && sellPreviewLevels[tileIndex] !== undefined
+                    ? sellPreviewLevels[tileIndex]
+                    : propertyLevels[tileIndex] || 0;
+              const hasUpgrades = currentTier > 0;
+              const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
+              const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
+              const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
+              const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
+              const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
+              const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
               return (
                 <div
                   key={tile.id}
-                  className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)} ${justLandedTile === tileIndex ? "landed-pulse" : ""}`}
+                  className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
                   style={{
                     ...getTileStyle(index, "bottom", tile.color),
                     ...auctionStyle,
@@ -7449,6 +8346,7 @@ function App() {
                   }}
                   onClick={() => handleTileClick(tileIndex)}
                 >
+                  {grayed && <span className="tile-grayscale-overlay" />}
                   {renderUpgrades(tileIndex, "bottom")}
                   <span className="tile-name">{tile.name}</span>
                   {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
@@ -7458,40 +8356,28 @@ function App() {
                   )}
                   {tile.price && (
                     <span
-                      className={`tile-price ${ownerStyle ? "owned" : ""}`}
-                      style={ownerStyle || {}}
+                      className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
+                      style={
+                        mortgagedProperties[tileIndex]
+                          ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
+                          : (ownerStyle || {})
+                      }
                     >
-                      {ownerStyle
-                        ? mortgagedProperties[tileIndex]
-                          ? "MORTG"
-                          : calculateRent(tileIndex)
-                        : tile.price}
+                      {mortgagedProperties[tileIndex]
+                        ? "MORTG"
+                        : ownerStyle
+                          ? calculateRent(tileIndex)
+                          : tile.price}
                     </span>
                   )}
-                  {mortgagedProperties[tileIndex] && (
-                    <span className="tile-mortgage-badge">M</span>
-                  )}
-                  {/* Green Plus for Auction Selection */}
-                  {pendingAuctionProperty?.tileIndex === tileIndex && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%,-50%)",
-                        fontSize: "36px",
-                        color: "#4CAF50",
-                        textShadow: "0 0 8px #000",
-                        pointerEvents: "none",
-                      }}
-                    >
-                      +
-                    </div>
-                  )}
-                  {/* Deal Selection Indicator */}
+                  {/* Deal Selection Indicator (circular badge) */}
                   {renderDealIndicator(tileIndex)}
+                  {/* Bank Mortgage/Redeem Indicator (circular badge) */}
+                  {renderBankIndicator(tileIndex)}
                   {/* Train Destination Indicator */}
                   {renderTrainIndicator(tileIndex)}
+                  {/* Swap selection indicators on board tiles */}
+                  {renderSwapIndicator(tileIndex)}
                 </div>
               );
             })}
@@ -7507,10 +8393,29 @@ function App() {
               const swapStyle = getSwapSelectionStyle(tileIndex);
               const warStyle = getWarSelectionStyle(tileIndex);
               const trainStyle = getTrainTargetStyle(tileIndex);
+              const grayed = isTileGrayed(tileIndex);
+              const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
+              const swapGiveSelected = swapGiveTile === tileIndex;
+              const swapReceiveSelected = swapReceiveTile === tileIndex;
+              const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
+              const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
+              const currentTier =
+                buildMode && buildPreviewLevels[tileIndex] !== undefined
+                  ? buildPreviewLevels[tileIndex]
+                  : sellMode && sellPreviewLevels[tileIndex] !== undefined
+                    ? sellPreviewLevels[tileIndex]
+                    : propertyLevels[tileIndex] || 0;
+              const hasUpgrades = currentTier > 0;
+              const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
+              const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
+              const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
+              const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
+              const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
+              const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
               return (
                 <div
                   key={tile.id}
-                  className={`tile vertical left ${tile.type} ${getTileThemeClass(tile.color)} ${justLandedTile === tileIndex ? "landed-pulse" : ""}`}
+                  className={`tile vertical left ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
                   style={{
                     ...getTileStyle(index, "left", tile.color),
                     ...auctionStyle,
@@ -7523,6 +8428,7 @@ function App() {
                   }}
                   onClick={() => handleTileClick(tileIndex)}
                 >
+                  {grayed && <span className="tile-grayscale-overlay" />}
                   {renderUpgrades(tileIndex, "left")}
                   <span className="tile-name">{tile.name}</span>
                   {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
@@ -7532,8 +8438,12 @@ function App() {
                   )}
                   {tile.price && (
                     <span
-                      className={`tile-price ${ownerStyle ? "owned" : ""}`}
-                      style={ownerStyle || {}}
+                      className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
+                      style={
+                        mortgagedProperties[tileIndex]
+                          ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
+                          : (ownerStyle || {})
+                      }
                     >
                       {ownerStyle
                         ? mortgagedProperties[tileIndex]
@@ -7542,27 +8452,14 @@ function App() {
                         : tile.price}
                     </span>
                   )}
-                  {mortgagedProperties[tileIndex] && (
-                    <span className="tile-mortgage-badge">M</span>
-                  )}
-                  {pendingAuctionProperty?.tileIndex === tileIndex && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%,-50%)",
-                        fontSize: "36px",
-                        color: "#4CAF50",
-                        textShadow: "0 0 8px #000",
-                        pointerEvents: "none",
-                      }}
-                    >
-                      +
-                    </div>
-                  )}
+                  {/* Deal Selection Indicator (circular badge) */}
                   {renderDealIndicator(tileIndex)}
+                  {/* Bank Mortgage/Redeem Indicator (circular badge) */}
+                  {renderBankIndicator(tileIndex)}
+                  {/* Train Destination Indicator */}
                   {renderTrainIndicator(tileIndex)}
+                  {/* Swap selection indicators on board tiles */}
+                  {renderSwapIndicator(tileIndex)}
                 </div>
               );
             })}
@@ -7578,10 +8475,29 @@ function App() {
               const swapStyle = getSwapSelectionStyle(tileIndex);
               const warStyle = getWarSelectionStyle(tileIndex);
               const trainStyle = getTrainTargetStyle(tileIndex);
+              const grayed = isTileGrayed(tileIndex);
+              const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
+              const swapGiveSelected = swapGiveTile === tileIndex;
+              const swapReceiveSelected = swapReceiveTile === tileIndex;
+              const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
+              const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
+              const currentTier =
+                buildMode && buildPreviewLevels[tileIndex] !== undefined
+                  ? buildPreviewLevels[tileIndex]
+                  : sellMode && sellPreviewLevels[tileIndex] !== undefined
+                    ? sellPreviewLevels[tileIndex]
+                    : propertyLevels[tileIndex] || 0;
+              const hasUpgrades = currentTier > 0;
+              const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
+              const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
+              const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
+              const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
+              const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
+              const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
               return (
                 <div
                   key={tile.id}
-                  className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)} ${justLandedTile === tileIndex ? "landed-pulse" : ""}`}
+                  className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
                   style={{
                     ...getTileStyle(index, "top", tile.color),
                     ...auctionStyle,
@@ -7594,6 +8510,7 @@ function App() {
                   }}
                   onClick={() => handleTileClick(tileIndex)}
                 >
+                  {grayed && <span className="tile-grayscale-overlay" />}
                   {renderUpgrades(tileIndex, "top")}
                   <span className="tile-name">{tile.name}</span>
                   {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
@@ -7603,37 +8520,28 @@ function App() {
                   )}
                   {tile.price && (
                     <span
-                      className={`tile-price ${ownerStyle ? "owned" : ""}`}
-                      style={ownerStyle || {}}
+                      className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
+                      style={
+                        mortgagedProperties[tileIndex]
+                          ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
+                          : (ownerStyle || {})
+                      }
                     >
-                      {ownerStyle
-                        ? mortgagedProperties[tileIndex]
-                          ? "MORTG"
-                          : calculateRent(tileIndex)
-                        : tile.price}
+                      {mortgagedProperties[tileIndex]
+                        ? "MORTG"
+                        : ownerStyle
+                          ? calculateRent(tileIndex)
+                          : tile.price}
                     </span>
                   )}
-                  {mortgagedProperties[tileIndex] && (
-                    <span className="tile-mortgage-badge">M</span>
-                  )}
-                  {pendingAuctionProperty?.tileIndex === tileIndex && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%,-50%)",
-                        fontSize: "36px",
-                        color: "#4CAF50",
-                        textShadow: "0 0 8px #000",
-                        pointerEvents: "none",
-                      }}
-                    >
-                      +
-                    </div>
-                  )}
+                  {/* Deal Selection Indicator (circular badge) */}
                   {renderDealIndicator(tileIndex)}
+                  {/* Bank Mortgage/Redeem Indicator (circular badge) */}
+                  {renderBankIndicator(tileIndex)}
+                  {/* Train Destination Indicator */}
                   {renderTrainIndicator(tileIndex)}
+                  {/* Swap selection indicators on board tiles */}
+                  {renderSwapIndicator(tileIndex)}
                 </div>
               );
             })}
@@ -7649,10 +8557,29 @@ function App() {
               const swapStyle = getSwapSelectionStyle(tileIndex);
               const warStyle = getWarSelectionStyle(tileIndex);
               const trainStyle = getTrainTargetStyle(tileIndex);
+              const grayed = isTileGrayed(tileIndex);
+              const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
+              const swapGiveSelected = swapGiveTile === tileIndex;
+              const swapReceiveSelected = swapReceiveTile === tileIndex;
+              const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
+              const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
+              const currentTier =
+                buildMode && buildPreviewLevels[tileIndex] !== undefined
+                  ? buildPreviewLevels[tileIndex]
+                  : sellMode && sellPreviewLevels[tileIndex] !== undefined
+                    ? sellPreviewLevels[tileIndex]
+                    : propertyLevels[tileIndex] || 0;
+              const hasUpgrades = currentTier > 0;
+              const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
+              const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
+              const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
+              const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
+              const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
+              const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
               return (
                 <div
                   key={tile.id}
-                  className={`tile vertical right ${tile.type} ${getTileThemeClass(tile.color)} ${justLandedTile === tileIndex ? "landed-pulse" : ""}`}
+                  className={`tile vertical right ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
                   style={{
                     ...getTileStyle(index, "right", tile.color),
                     ...auctionStyle,
@@ -7665,6 +8592,7 @@ function App() {
                   }}
                   onClick={() => handleTileClick(tileIndex)}
                 >
+                  {grayed && <span className="tile-grayscale-overlay" />}
                   {renderUpgrades(tileIndex, "right")}
                   <span className="tile-name">{tile.name}</span>
                   {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
@@ -7674,8 +8602,12 @@ function App() {
                   )}
                   {tile.price && (
                     <span
-                      className={`tile-price ${ownerStyle ? "owned" : ""}`}
-                      style={ownerStyle || {}}
+                      className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
+                      style={
+                        mortgagedProperties[tileIndex]
+                          ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
+                          : (ownerStyle || {})
+                      }
                     >
                       {ownerStyle
                         ? mortgagedProperties[tileIndex]
@@ -7684,27 +8616,14 @@ function App() {
                         : tile.price}
                     </span>
                   )}
-                  {mortgagedProperties[tileIndex] && (
-                    <span className="tile-mortgage-badge">M</span>
-                  )}
-                  {pendingAuctionProperty?.tileIndex === tileIndex && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%,-50%)",
-                        fontSize: "36px",
-                        color: "#4CAF50",
-                        textShadow: "0 0 8px #000",
-                        pointerEvents: "none",
-                      }}
-                    >
-                      +
-                    </div>
-                  )}
+                  {/* Deal Selection Indicator (circular badge) */}
                   {renderDealIndicator(tileIndex)}
+                  {/* Bank Mortgage/Redeem Indicator (circular badge) */}
+                  {renderBankIndicator(tileIndex)}
+                  {/* Train Destination Indicator */}
                   {renderTrainIndicator(tileIndex)}
+                  {/* Swap selection indicators on board tiles */}
+                  {renderSwapIndicator(tileIndex)}
                 </div>
               );
             })}
@@ -7907,10 +8826,34 @@ function App() {
                     </div>
 
                     <div className="button-group">
-                      {/* Only show buttons if offline OR it's this player's turn */}
-                      {(networkMode === "offline" ||
-                        myPlayerIndex === currentPlayer) && (
-                        <>
+                      {/* Hide human buttons on bot turns */}
+                      {gamePlayers[currentPlayer]?.isBot ? (
+                        <div
+                          style={{
+                            gridColumn: "1 / -1",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "6px 14px",
+                            background: "rgba(10, 20, 36, 0.45)",
+                            backdropFilter: "blur(8px)",
+                            WebkitBackdropFilter: "blur(8px)",
+                            borderRadius: "18px",
+                            border: "1.5px solid rgba(59, 130, 246, 0.45)",
+                            color: "#93c5fd",
+                            fontFamily: "'Junegull', 'Fredoka One', sans-serif",
+                            fontSize: "12.5px",
+                            letterSpacing: "0.5px",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
+                            pointerEvents: "none",
+                            userSelect: "none",
+                          }}
+                        >
+                          🤖 {gamePlayers[currentPlayer]?.name}'s Turn...
+                        </div>
+                      ) : (networkMode === "offline" ||
+                          myPlayerIndex === currentPlayer) ? (
+                          <>
                           {/* Jail Controls */}
                           {jailStatus[currentPlayer] > 0 ? (
                             <>
@@ -7951,104 +8894,133 @@ function App() {
                             </>
                           ) : (
                             /* Normal Controls */
-                            <>
-                              {/* Show buy button only when player can afford the property */}
-                              {buyingProperty &&
-                                !showBuyModal &&
-                                !buyingProperty.isTravelOffer &&
-                                (playerMoney[currentPlayer] >=
-                                buyingProperty.price ? (
-                                  <button
-                                    className="buy-button"
-                                    onClick={() => setShowBuyModal(true)}
-                                  >
-                                    <img
-                                      src={buyIcon}
-                                      alt="Buy"
-                                      className="btn-inline-icon"
-                                    />
-                                    <span>BUY</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    className="buy-button"
-                                    style={{ opacity: 0.5 }}
-                                    onClick={() =>
-                                      showToast(
-                                        `Not enough money! Need $${buyingProperty.price.toLocaleString()}`,
-                                      )
-                                    }
-                                  >
-                                    <img
-                                      src={buyIcon}
-                                      alt="Buy"
-                                      className="btn-inline-icon"
-                                    />
-                                    <span>BUY</span>
-                                  </button>
-                                ))}
+                            (() => {
+                              const currentPos = playerPositions[currentPlayer];
+                              const isAtOwnedTrain =
+                                TRAIN_TILES.includes(currentPos) &&
+                                propertyOwnership[currentPos] === currentPlayer;
+                              const ownedTrainsCount = TRAIN_TILES.filter(
+                                (t) => propertyOwnership[t] === currentPlayer,
+                              ).length;
+                              const canFastTravel =
+                                fastTravelAvailableThisTurn &&
+                                isAtOwnedTrain &&
+                                ownedTrainsCount > 1;
+                              const showTravelBtn =
+                                canFastTravel &&
+                                !showTrainTravelModal &&
+                                !travelMode &&
+                                (turnFinished ||
+                                  (buyingProperty && buyingProperty.isTravelOffer));
 
-                              {buyingProperty &&
-                                buyingProperty.isTravelOffer && (
-                                  <button
-                                    className="buy-button"
-                                    onClick={handleTravelStart}
-                                    style={{
-                                      background:
-                                        "linear-gradient(to bottom, #2196F3, #1976D2)",
-                                    }}
-                                  >
-                                    TRAVEL
-                                  </button>
-                                )}
-                              <button
-                                className={`roll-button ${turnFinished ? "done" : ""} ${!buyingProperty || showBuyModal ? "solo" : ""}`}
-                                onClick={() => {
-                                  if (
-                                    turnFinished ||
-                                    skippedTurns[currentPlayer]
-                                  ) {
-                                    // If balance is negative, show bankruptcy modal instead of ending turn
-                                    if (playerMoney[currentPlayer] < 0) {
-                                      setShowBankruptcyModal(true);
-                                    } else {
-                                      handleEndTurn();
-                                    }
-                                  } else {
-                                    rollDice();
-                                  }
-                                }}
-                                tabIndex="-1"
-                                disabled={
-                                  isLocalMoving ||
-                                  (!turnFinished &&
-                                    !skippedTurns[currentPlayer] &&
-                                    (isRolling || isProcessingTurn))
-                                }
-                              >
-                                {!turnFinished &&
-                                  !isLocalMoving &&
-                                  !skippedTurns[currentPlayer] && (
-                                    <img
-                                      src={rollDiceIcon}
-                                      alt="Roll"
-                                      className="btn-inline-icon"
-                                    />
+                              return (
+                                <>
+                                  {/* Show buy button only when player can afford the property */}
+                                  {buyingProperty &&
+                                    !showBuyModal &&
+                                    !buyingProperty.isTravelOffer &&
+                                    (playerMoney[currentPlayer] >=
+                                    buyingProperty.price ? (
+                                      <button
+                                        className="buy-button"
+                                        onClick={() => setShowBuyModal(true)}
+                                      >
+                                        <img
+                                          src={buyIcon}
+                                          alt="Buy"
+                                          className="btn-inline-icon"
+                                        />
+                                        <span>BUY</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        className="buy-button"
+                                        style={{ opacity: 0.5 }}
+                                        onClick={() =>
+                                          showToast(
+                                            `Not enough money! Need $${buyingProperty.price.toLocaleString()}`,
+                                          )
+                                        }
+                                      >
+                                        <img
+                                          src={buyIcon}
+                                          alt="Buy"
+                                          className="btn-inline-icon"
+                                        />
+                                        <span>BUY</span>
+                                      </button>
+                                    ))}
+
+                                  {showTravelBtn && (
+                                    <button
+                                      className="buy-button"
+                                      onClick={handleTravelStart}
+                                      style={{
+                                        background:
+                                          "linear-gradient(to bottom, #2196F3, #1976D2)",
+                                      }}
+                                    >
+                                      TRAVEL
+                                    </button>
                                   )}
-                                <span>
-                                  {isLocalMoving
-                                    ? "MOVING..."
-                                    : skippedTurns[currentPlayer]
-                                      ? "SKIP TURN"
-                                      : turnFinished
-                                        ? "DONE"
-                                        : "ROLL"}
-                                </span>
-                              </button>
-                            </>
+                                  <button
+                                    className={`roll-button ${turnFinished ? "done" : ""} ${(!buyingProperty || showBuyModal) && !showTravelBtn ? "solo" : ""}`}
+                                    onClick={() => {
+                                      if (
+                                        turnFinished ||
+                                        skippedTurns[currentPlayer]
+                                      ) {
+                                        // If balance is negative, show bankruptcy modal instead of ending turn
+                                        if (playerMoney[currentPlayer] < 0) {
+                                          setShowBankruptcyModal(true);
+                                        } else {
+                                          handleEndTurn();
+                                        }
+                                      } else {
+                                        rollDice();
+                                      }
+                                    }}
+                                    tabIndex="-1"
+                                    disabled={
+                                      gamePlayers[currentPlayer]?.isBot ||
+                                      isLocalMoving ||
+                                      (!turnFinished &&
+                                        !skippedTurns[currentPlayer] &&
+                                        (isRolling || isProcessingTurn))
+                                    }
+                                  >
+                                    {!turnFinished &&
+                                      !gamePlayers[currentPlayer]?.isBot &&
+                                      !isLocalMoving &&
+                                      !skippedTurns[currentPlayer] && (
+                                        <img
+                                          src={rollDiceIcon}
+                                          alt="Roll"
+                                          className="btn-inline-icon"
+                                        />
+                                      )}
+                                    <span>
+                                      {gamePlayers[currentPlayer]?.isBot
+                                        ? isRolling || isLocalMoving
+                                          ? "MOVING..."
+                                          : turnFinished
+                                            ? "BOT DONE..."
+                                            : "BOT'S TURN..."
+                                        : isLocalMoving
+                                          ? "MOVING..."
+                                          : skippedTurns[currentPlayer]
+                                            ? "SKIP TURN"
+                                            : turnFinished
+                                              ? "DONE"
+                                              : "ROLL"}
+                                    </span>
+                                  </button>
+                                </>
+                              );
+                            })()
                           )}
                         </>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
@@ -8078,149 +9050,138 @@ function App() {
               {showSwapModal && (
                 <div className="ref-modal-overlay">
                   <div className="ref-golden-card ref-swap-card">
-                    <button
-                      className="ref-help-btn"
-                      onClick={() => {
-                        setShowSwapModal(false);
-                        setIsProcessingTurn(false);
-                        setTurnFinished(false);
-                        handleEndTurn();
-                      }}
-                      aria-label="Close"
-                    >
-                      ✕
-                    </button>
                     <div className="ref-deal-header">
                       <span className="ref-deal-title">Property Swap</span>
-                    </div>
-                    <div className="ref-swap-desc">
-                      Swap 1 of your properties with 1 opponent property
-                    </div>
-                    <div className="ref-swap-upper">
-                      {/* Left: Your Properties */}
-                      <div className="ref-swap-player-card">
-                        <div className="ref-swap-player-header">
-                          <span className="ref-swap-player-title">You Give</span>
-                          <span style={{ fontSize: "8px", color: "#ffd54f" }}>
-                            {swapGiveTile !== null ? "1 selected" : "Pick 1"}
-                          </span>
-                        </div>
-                        <div className="ref-swap-props-list">
-                          {Object.keys(propertyOwnership)
-                            .map(Number)
-                            .filter((t) => propertyOwnership[t] === currentPlayer)
-                            .map((tIdx) => {
-                              const prop = getPropertyByTileIndex(tIdx);
-                              if (!prop) return null;
-                              const isSelected = swapGiveTile === tIdx;
-                              return (
-                                <div
-                                  key={tIdx}
-                                  className={`ref-swap-prop-chip ${isSelected ? "selected" : ""}`}
-                                  onClick={() =>
-                                    setSwapGiveTile(isSelected ? null : tIdx)
-                                  }
-                                >
-                                  <div className="ref-deal-prop-left">
-                                    <span
-                                      className="ref-deal-prop-color"
-                                      style={{
-                                        background: prop.color || "#888",
-                                      }}
-                                    />
-                                    <span className="ref-deal-prop-name">
-                                      {prop.name}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-
-                      {/* Right: Opponents' Properties */}
-                      <div className="ref-swap-player-card">
-                        <div className="ref-swap-player-header">
-                          <span className="ref-swap-player-title">You Get</span>
-                          <span style={{ fontSize: "8px", color: "#ffd54f" }}>
-                            {swapReceiveTile !== null ? "1 selected" : "Pick 1"}
-                          </span>
-                        </div>
-                        <div className="ref-swap-props-list">
-                          {Object.keys(propertyOwnership)
-                            .map(Number)
-                            .filter(
-                              (t) =>
-                                propertyOwnership[t] !== undefined &&
-                                propertyOwnership[t] !== null &&
-                                propertyOwnership[t] !== currentPlayer,
-                            )
-                            .map((tIdx) => {
-                              const prop = getPropertyByTileIndex(tIdx);
-                              if (!prop) return null;
-                              const ownerIdx = propertyOwnership[tIdx];
-                              const ownerName =
-                                gamePlayers[ownerIdx]?.name || `P${ownerIdx + 1}`;
-                              const isSelected = swapReceiveTile === tIdx;
-                              return (
-                                <div
-                                  key={tIdx}
-                                  className={`ref-swap-prop-chip ${isSelected ? "selected" : ""}`}
-                                  onClick={() =>
-                                    setSwapReceiveTile(isSelected ? null : tIdx)
-                                  }
-                                >
-                                  <div className="ref-deal-prop-left">
-                                    <span
-                                      className="ref-deal-prop-color"
-                                      style={{
-                                        background: prop.color || "#888",
-                                      }}
-                                    />
-                                    <span className="ref-deal-prop-name">
-                                      {prop.name}
-                                    </span>
-                                  </div>
-                                  <span className="ref-swap-prop-owner-tag">
-                                    {ownerName}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="ref-swap-bottom">
                       <button
-                        className="ref-pill-btn ref-pill-red"
-                        style={{ flex: 1, padding: "6px 0" }}
+                        className="ref-close-btn"
                         onClick={() => {
                           setShowSwapModal(false);
+                          setSwapGiveTile(null);
+                          setSwapReceiveTile(null);
                           setIsProcessingTurn(false);
                           setTurnFinished(false);
                           handleEndTurn();
                         }}
+                        aria-label="Close"
                       >
-                        SKIP
+                        <div className="x-mark" />
                       </button>
-                      <button
-                        className={`ref-pill-btn ref-pill-green ${swapGiveTile === null || swapReceiveTile === null ? "ref-btn-disabled" : ""}`}
-                        style={{
-                          flex: 1,
-                          padding: "6px 0",
-                          opacity:
+                    </div>
+                    <div className="ref-modal-body ref-swap-body">
+                      <div className="ref-swap-desc">
+                        Fee: $2,000 • Tap tiles on the board to swap
+                      </div>
+                      <div className="ref-deal-upper">
+                        {/* Left: You Give */}
+                        <div className="ref-deal-player-card">
+                          <div className="ref-deal-player-header">
+                            <img
+                              src={gamePlayers[currentPlayer]?.avatar}
+                              alt=""
+                              className="ref-deal-player-avatar"
+                            />
+                            <span className="ref-deal-player-name">You Give</span>
+                          </div>
+                          <div className="ref-deal-props-list ref-deal-compartment">
+                            {swapGiveTile !== null && (() => {
+                              const prop = getPropertyByTileIndex(swapGiveTile);
+                              if (!prop) return null;
+                              const firstLetter = prop.name
+                                ? prop.name.trim().charAt(0).toUpperCase()
+                                : "";
+                              return (
+                                <div
+                                  key={swapGiveTile}
+                                  className="deal-tile-square-box"
+                                  onClick={() => setSwapGiveTile(null)}
+                                  title={`${prop.name} ($${prop.price || 0})`}
+                                  style={{ background: prop.color || "#888" }}
+                                >
+                                  <span className="deal-tile-square-letter">
+                                    {firstLetter}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Center Exchange Arrows */}
+                        <div className="ref-deal-arrows">⇄</div>
+
+                        {/* Right: You Get */}
+                        <div className="ref-deal-player-card">
+                          <div className="ref-deal-player-header">
+                            {swapReceiveTile !== null && propertyOwnership[swapReceiveTile] !== undefined ? (
+                              <img
+                                src={gamePlayers[propertyOwnership[swapReceiveTile]]?.avatar}
+                                alt=""
+                                className="ref-deal-player-avatar"
+                              />
+                            ) : (
+                              <span style={{ width: 18, height: 18 }} />
+                            )}
+                            <span className="ref-deal-player-name">You Get</span>
+                          </div>
+                          <div className="ref-deal-props-list ref-deal-compartment">
+                            {swapReceiveTile !== null && (() => {
+                              const prop = getPropertyByTileIndex(swapReceiveTile);
+                              if (!prop) return null;
+                              const firstLetter = prop.name
+                                ? prop.name.trim().charAt(0).toUpperCase()
+                                : "";
+                              return (
+                                <div
+                                  key={swapReceiveTile}
+                                  className="deal-tile-square-box"
+                                  onClick={() => setSwapReceiveTile(null)}
+                                  title={`${prop.name} ($${prop.price || 0})`}
+                                  style={{ background: prop.color || "#888" }}
+                                >
+                                  <span className="deal-tile-square-letter">
+                                    {firstLetter}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="ref-swap-bottom">
+                        <button
+                          className="ref-pill-btn ref-pill-red"
+                          style={{ flex: 1, height: "30px", fontSize: "12px" }}
+                          onClick={() => {
+                            setShowSwapModal(false);
+                            setSwapGiveTile(null);
+                            setSwapReceiveTile(null);
+                            setIsProcessingTurn(false);
+                            setTurnFinished(false);
+                            handleEndTurn();
+                          }}
+                        >
+                          SKIP
+                        </button>
+                        <button
+                          className={`ref-pill-btn ref-pill-green ${swapGiveTile === null || swapReceiveTile === null ? "ref-btn-disabled" : ""}`}
+                          style={{
+                            flex: 1,
+                            height: "30px",
+                            fontSize: "12px",
+                            opacity:
+                              swapGiveTile === null || swapReceiveTile === null
+                                ? 0.5
+                                : 1,
+                          }}
+                          disabled={
                             swapGiveTile === null || swapReceiveTile === null
-                              ? 0.5
-                              : 1,
-                        }}
-                        disabled={
-                          swapGiveTile === null || swapReceiveTile === null
-                        }
-                        onClick={handleExecutePropertySwap}
-                      >
-                        CONFIRM SWAP
-                      </button>
+                          }
+                          onClick={handleExecutePropertySwap}
+                        >
+                          SWAP ($2,000)
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -8230,95 +9191,68 @@ function App() {
               {showDealModal && (
                 <div className="ref-modal-overlay">
                   <div className="ref-golden-card">
-                    <button
-                      className="ref-help-btn"
-                      onClick={handleDealCancel}
-                      aria-label="Close"
-                    >
-                      ?
-                    </button>
                     {/* Header */}
                     <div className="ref-deal-header">
                       <span className="ref-deal-title">
                         {dealPhase === "select" ? "Choose Player" : "Deal"}
                       </span>
+                      <button
+                        className="ref-close-btn"
+                        onClick={handleDealCancel}
+                        aria-label="Close"
+                      >
+                        <div className="x-mark" />
+                      </button>
                     </div>
 
-                    {dealPhase === "select" ? (
-                      /* Player Selection Phase */
-                      <div
-                        style={{
-                          flex: 1,
-                          overflowY: "auto",
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: "8px",
-                          padding: "4px",
-                        }}
-                      >
-                        {gamePlayers.map((player, idx) => {
-                          if (idx === currentPlayer || bankruptPlayers[idx])
-                            return null;
-                          const propsCount = Object.keys(
-                            propertyOwnership,
-                          ).filter((t) => propertyOwnership[t] === idx).length;
-                          return (
-                            <div
-                              key={idx}
-                              className="ref-deal-player-card"
-                              style={{
-                                cursor: "pointer",
-                                alignItems: "center",
-                                textAlign: "center",
-                                padding: "8px 6px",
-                              }}
-                              onClick={() => handleDealPlayerSelect(idx)}
-                            >
-                              <img
-                                src={player.avatar}
-                                alt={player.name}
-                                style={{
-                                  width: "32px",
-                                  height: "32px",
-                                  borderRadius: "50%",
-                                  border: "1.5px solid #ffb72b",
-                                  marginBottom: "4px",
-                                }}
-                              />
-                              <span
-                                style={{
-                                  color: "#fff",
-                                  fontSize: "12px",
-                                  fontWeight: "900",
-                                }}
-                              >
-                                {player.name}
-                              </span>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: "6px",
-                                  marginTop: "4px",
-                                  fontSize: "10px",
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    color: "#4ade80",
-                                    fontWeight: "bold",
-                                  }}
+                    <div className="ref-modal-body ref-deal-body">
+                      {dealPhase === "select" ? (
+                        /* Player Selection Phase - Compact & Responsive */
+                        <>
+                          <div className="ref-deal-select-grid">
+                            {gamePlayers.map((player, idx) => {
+                              if (idx === currentPlayer || bankruptPlayers[idx])
+                                return null;
+                              const propsCount = Object.keys(
+                                propertyOwnership,
+                              ).filter((t) => propertyOwnership[t] === idx).length;
+                              return (
+                                <div
+                                  key={idx}
+                                  className="ref-deal-select-card"
+                                  onClick={() => handleDealPlayerSelect(idx)}
                                 >
-                                  ${(playerMoney[idx] || 0).toLocaleString()}
-                                </span>
-                                <span style={{ color: "#ffb72b" }}>
-                                  {propsCount} props
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
+                                  <img
+                                    src={player.avatar}
+                                    alt={player.name}
+                                    className="ref-deal-select-avatar"
+                                  />
+                                  <span className="ref-deal-select-name">
+                                    {player.name}
+                                  </span>
+                                  <div className="ref-deal-select-stats">
+                                    <span className="ref-deal-select-money">
+                                      ${(playerMoney[idx] || 0).toLocaleString()}
+                                    </span>
+                                    <span className="ref-deal-select-props">
+                                      🏠 {propsCount}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ marginTop: "4px", display: "flex", justifyContent: "center" }}>
+                            <button
+                              className="ref-pill-btn ref-pill-red"
+                              style={{ width: "100%", maxWidth: "160px", height: "30px", fontSize: "12px" }}
+                              onClick={handleDealCancel}
+                            >
+                              CANCEL
+                            </button>
+                          </div>
+                        </>
+                      ) : (
                       /* Configuration Phase - Exact Match to Screenshot 1 */
                       <>
                         <div className="ref-deal-upper">
@@ -8334,58 +9268,33 @@ function App() {
                                 {gamePlayers[currentPlayer]?.name}
                               </span>
                             </div>
-                            <div className="ref-deal-props-list">
-                              {Object.keys(propertyOwnership)
-                                .map(Number)
-                                .filter(
-                                  (t) => propertyOwnership[t] === currentPlayer,
-                                )
-                                .map((tIdx) => {
-                                  const prop = getPropertyByTileIndex(tIdx);
-                                  if (!prop) return null;
-                                  const isSelected =
-                                    dealGiveProperties.includes(tIdx);
-                                  return (
-                                    <div
-                                      key={tIdx}
-                                      className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
-                                      onClick={() => {
-                                        setDealGiveProperties((prev) =>
-                                          prev.includes(tIdx)
-                                            ? prev.filter((t) => t !== tIdx)
-                                            : [...prev, tIdx],
-                                        );
-                                      }}
-                                    >
-                                      <div className="ref-deal-prop-left">
-                                        <span
-                                          className="ref-deal-prop-color"
-                                          style={{
-                                            background: prop.color || "#888",
-                                          }}
-                                        />
-                                        <span className="ref-deal-prop-name">
-                                          {prop.name}
-                                        </span>
-                                      </div>
-                                      <span>${prop.price || 0}</span>
-                                    </div>
-                                  );
-                                })}
-                              {Object.keys(propertyOwnership).filter(
-                                (t) => propertyOwnership[t] === currentPlayer,
-                              ).length === 0 && (
-                                <div
-                                  style={{
-                                    color: "#9ca3af",
-                                    fontSize: "9px",
-                                    textAlign: "center",
-                                    margin: "auto",
-                                  }}
-                                >
-                                  No properties
-                                </div>
-                              )}
+                            <div className="ref-deal-props-list ref-deal-compartment">
+                              {dealGiveProperties.map((tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                if (!prop) return null;
+                                const firstLetter = prop.name
+                                  ? prop.name.trim().charAt(0).toUpperCase()
+                                  : "";
+                                return (
+                                  <div
+                                    key={tIdx}
+                                    className="deal-tile-square-box"
+                                    onClick={() => {
+                                      setDealGiveProperties((prev) =>
+                                        prev.filter((t) => t !== tIdx),
+                                      );
+                                    }}
+                                    title={`${prop.name} ($${prop.price || 0})`}
+                                    style={{
+                                      background: prop.color || "#888",
+                                    }}
+                                  >
+                                    <span className="deal-tile-square-letter">
+                                      {firstLetter}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
                             <div className="ref-deal-player-footer">
                               <span>Value:</span>
@@ -8418,61 +9327,33 @@ function App() {
                                 {gamePlayers[selectedDealPlayer]?.name}
                               </span>
                             </div>
-                            <div className="ref-deal-props-list">
-                              {Object.keys(propertyOwnership)
-                                .map(Number)
-                                .filter(
-                                  (t) =>
-                                    propertyOwnership[t] ===
-                                    selectedDealPlayer,
-                                )
-                                .map((tIdx) => {
-                                  const prop = getPropertyByTileIndex(tIdx);
-                                  if (!prop) return null;
-                                  const isSelected =
-                                    dealReceiveProperties.includes(tIdx);
-                                  return (
-                                    <div
-                                      key={tIdx}
-                                      className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
-                                      onClick={() => {
-                                        setDealReceiveProperties((prev) =>
-                                          prev.includes(tIdx)
-                                            ? prev.filter((t) => t !== tIdx)
-                                            : [...prev, tIdx],
-                                        );
-                                      }}
-                                    >
-                                      <div className="ref-deal-prop-left">
-                                        <span
-                                          className="ref-deal-prop-color"
-                                          style={{
-                                            background: prop.color || "#888",
-                                          }}
-                                        />
-                                        <span className="ref-deal-prop-name">
-                                          {prop.name}
-                                        </span>
-                                      </div>
-                                      <span>${prop.price || 0}</span>
-                                    </div>
-                                  );
-                                })}
-                              {Object.keys(propertyOwnership).filter(
-                                (t) =>
-                                  propertyOwnership[t] === selectedDealPlayer,
-                              ).length === 0 && (
-                                <div
-                                  style={{
-                                    color: "#9ca3af",
-                                    fontSize: "9px",
-                                    textAlign: "center",
-                                    margin: "auto",
-                                  }}
-                                >
-                                  No properties
-                                </div>
-                              )}
+                            <div className="ref-deal-props-list ref-deal-compartment">
+                              {dealReceiveProperties.map((tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                if (!prop) return null;
+                                const firstLetter = prop.name
+                                  ? prop.name.trim().charAt(0).toUpperCase()
+                                  : "";
+                                return (
+                                  <div
+                                    key={tIdx}
+                                    className="deal-tile-square-box"
+                                    onClick={() => {
+                                      setDealReceiveProperties((prev) =>
+                                        prev.filter((t) => t !== tIdx),
+                                      );
+                                    }}
+                                    title={`${prop.name} ($${prop.price || 0})`}
+                                    style={{
+                                      background: prop.color || "#888",
+                                    }}
+                                  >
+                                    <span className="deal-tile-square-letter">
+                                      {firstLetter}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
                             <div className="ref-deal-player-footer">
                               <span>Value:</span>
@@ -8633,195 +9514,127 @@ function App() {
                         </div>
                       </>
                     )}
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Deal Review Modal (for recipient) */}
-              {showDealReviewModal && incomingDeal && (
-                <div className="modal-overlay deal-modal-overlay">
-                  <div className="buy-modal deal-modal deal-review-modal">
-                    <div className="modal-heading">
-                      <span className="modal-heading-text">Deal Offer</span>
+              {showDealReviewModal && incomingDeal && !gamePlayers[incomingDeal.recipient]?.isBot && (
+                <div className="ref-modal-overlay">
+                  <div className="ref-golden-card" style={{ maxWidth: "380px" }}>
+                    <div className="ref-deal-header">
+                      <span className="ref-deal-title">Deal Offer</span>
+                      <button
+                        className="ref-close-btn"
+                        onClick={handleDealDeny}
+                        aria-label="Close"
+                      >
+                        <div className="x-mark" />
+                      </button>
                     </div>
-                    <div className="modal-body">
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "6px 10px 8px", boxSizing: "border-box", overflow: "hidden", justifyContent: "space-between" }}>
                       <div
                         style={{
                           textAlign: "center",
-                          fontFamily: "Junegull, sans-serif",
+                          fontFamily: "'Baloo 2', cursive, sans-serif",
                           fontSize: "13px",
-                          color: "#4e342e",
-                          margin: "2px 0 6px",
+                          fontWeight: "800",
+                          color: "#7c3b1c",
+                          margin: "1px 0 4px",
+                          textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
                         }}
                       >
-                        {gamePlayers[incomingDeal.proposer]?.name} offers a
-                        trade!
+                        {gamePlayers[incomingDeal.proposer]?.name} offers a trade!
                       </div>
 
-                      <div className="deal-columns-wrapper">
+                      <div className="ref-deal-upper" style={{ minHeight: "80px", maxHeight: "115px" }}>
                         {/* What you give */}
-                        <div className="deal-card-column">
-                          <div className="deal-col-header">
-                            <span
-                              className="name"
-                              style={{ color: "#c62828", fontWeight: "900" }}
-                            >
+                        <div className="ref-deal-player-card">
+                          <div className="ref-deal-player-header">
+                            <span className="ref-deal-player-name" style={{ color: "#c62828" }}>
                               You Give
                             </span>
                           </div>
-                          <div className="deal-prop-scroll-list">
-                            {(incomingDeal.receiveProperties || []).map(
-                              (tIdx) => {
-                                const prop = getPropertyByTileIndex(tIdx);
-                                return (
-                                  <div
-                                    key={tIdx}
-                                    className="deal-prop-chip selected"
-                                  >
-                                    <div className="deal-prop-left">
-                                      <span
-                                        className="deal-prop-color-bar"
-                                        style={{
-                                          background: prop?.color || "#888",
-                                        }}
-                                      />
-                                      <span className="deal-prop-name">
-                                        {prop?.name}
-                                      </span>
-                                    </div>
-                                    <span className="deal-prop-val">
-                                      ${prop?.price || 0}
-                                    </span>
-                                  </div>
-                                );
-                              },
-                            )}
-                            {incomingDeal.moneyOffer < 0 && (
-                              <div
-                                className="deal-prop-chip"
-                                style={{
-                                  border: "1px solid #ef5350",
-                                  background: "#ffebee",
-                                }}
-                              >
-                                <div className="deal-prop-left">
-                                  <img
-                                    src="/modal_ui/coin_stack.png"
-                                    style={{ width: "14px", height: "14px" }}
-                                    alt=""
-                                  />
-                                  <span
-                                    className="deal-prop-name"
-                                    style={{ color: "#c62828" }}
-                                  >
-                                    Cash Request
-                                  </span>
-                                </div>
-                                <span
-                                  className="deal-prop-val"
-                                  style={{ color: "#c62828" }}
-                                >
-                                  $
-                                  {Math.abs(
-                                    incomingDeal.moneyOffer,
-                                  ).toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-                            {(incomingDeal.receiveProperties || []).length ===
-                              0 &&
-                              incomingDeal.moneyOffer >= 0 && (
-                                <div className="bank-empty-hint">
-                                  Nothing requested
-                                </div>
-                              )}
-                          </div>
-                        </div>
-
-                        {/* What you receive */}
-                        <div className="deal-card-column">
-                          <div className="deal-col-header">
-                            <span
-                              className="name"
-                              style={{ color: "#2e7d32", fontWeight: "900" }}
-                            >
-                              You Get
-                            </span>
-                          </div>
-                          <div className="deal-prop-scroll-list">
-                            {(incomingDeal.giveProperties || []).map((tIdx) => {
+                          <div className="ref-deal-props-list ref-deal-compartment">
+                            {(incomingDeal.receiveProperties || []).map((tIdx) => {
                               const prop = getPropertyByTileIndex(tIdx);
+                              if (!prop) return null;
+                              const firstLetter = prop.name ? prop.name.trim().charAt(0).toUpperCase() : "";
                               return (
                                 <div
                                   key={tIdx}
-                                  className="deal-prop-chip selected"
+                                  className="deal-tile-square-box"
+                                  title={`${prop.name} ($${prop.price || 0})`}
+                                  style={{ background: prop.color || "#888" }}
                                 >
-                                  <div className="deal-prop-left">
-                                    <span
-                                      className="deal-prop-color-bar"
-                                      style={{
-                                        background: prop?.color || "#888",
-                                      }}
-                                    />
-                                    <span className="deal-prop-name">
-                                      {prop?.name}
-                                    </span>
-                                  </div>
-                                  <span className="deal-prop-val">
-                                    ${prop?.price || 0}
-                                  </span>
+                                  <span className="deal-tile-square-letter">{firstLetter}</span>
+                                </div>
+                              );
+                            })}
+                            {incomingDeal.moneyOffer < 0 && (
+                              <div style={{ width: "100%", textAlign: "center", color: "#c62828", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "800", fontSize: "11px", marginTop: "2px" }}>
+                                Cash: ${Math.abs(incomingDeal.moneyOffer).toLocaleString()}
+                              </div>
+                            )}
+                            {(incomingDeal.receiveProperties || []).length === 0 && incomingDeal.moneyOffer >= 0 && (
+                              <div style={{ color: "#7c3b1c", opacity: 0.7, fontSize: "10px", margin: "auto", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "700" }}>
+                                Nothing requested
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="ref-deal-arrows">⇄</div>
+
+                        {/* What you receive */}
+                        <div className="ref-deal-player-card">
+                          <div className="ref-deal-player-header">
+                            <span className="ref-deal-player-name" style={{ color: "#2e7d32" }}>
+                              You Get
+                            </span>
+                          </div>
+                          <div className="ref-deal-props-list ref-deal-compartment">
+                            {(incomingDeal.giveProperties || []).map((tIdx) => {
+                              const prop = getPropertyByTileIndex(tIdx);
+                              if (!prop) return null;
+                              const firstLetter = prop.name ? prop.name.trim().charAt(0).toUpperCase() : "";
+                              return (
+                                <div
+                                  key={tIdx}
+                                  className="deal-tile-square-box"
+                                  title={`${prop.name} ($${prop.price || 0})`}
+                                  style={{ background: prop.color || "#888" }}
+                                >
+                                  <span className="deal-tile-square-letter">{firstLetter}</span>
                                 </div>
                               );
                             })}
                             {incomingDeal.moneyOffer > 0 && (
-                              <div
-                                className="deal-prop-chip"
-                                style={{
-                                  border: "1px solid #81c784",
-                                  background: "#e8f5e9",
-                                }}
-                              >
-                                <div className="deal-prop-left">
-                                  <img
-                                    src="/modal_ui/coin_stack.png"
-                                    style={{ width: "14px", height: "14px" }}
-                                    alt=""
-                                  />
-                                  <span
-                                    className="deal-prop-name"
-                                    style={{ color: "#2e7d32" }}
-                                  >
-                                    Cash Offer
-                                  </span>
-                                </div>
-                                <span
-                                  className="deal-prop-val"
-                                  style={{ color: "#2e7d32" }}
-                                >
-                                  +$
-                                  {incomingDeal.moneyOffer.toLocaleString()}
-                                </span>
+                              <div style={{ width: "100%", textAlign: "center", color: "#2e7d32", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "800", fontSize: "11px", marginTop: "2px" }}>
+                                Cash: +${incomingDeal.moneyOffer.toLocaleString()}
                               </div>
                             )}
-                            {(incomingDeal.giveProperties || []).length === 0 &&
-                              incomingDeal.moneyOffer <= 0 && (
-                                <div className="bank-empty-hint">
-                                  Nothing offered
-                                </div>
-                              )}
+                            {(incomingDeal.giveProperties || []).length === 0 && incomingDeal.moneyOffer <= 0 && (
+                              <div style={{ color: "#7c3b1c", opacity: 0.7, fontSize: "10px", margin: "auto", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "700" }}>
+                                Nothing offered
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="modal-buttons" style={{ marginTop: "6px" }}>
+                      <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
                         <button
-                          className="modal-btn cancel"
+                          className="ref-pill-btn ref-pill-red"
+                          style={{ flex: 1, height: "32px", fontSize: "13px" }}
                           onClick={handleDealDeny}
                         >
                           DECLINE
                         </button>
                         <button
-                          className="modal-btn buy"
+                          className="ref-pill-btn ref-pill-green"
+                          style={{ flex: 1, height: "32px", fontSize: "13px" }}
                           onClick={handleDealAccept}
                         >
                           ACCEPT
@@ -8834,83 +9647,66 @@ function App() {
 
               {/* Deal Result Modal */}
               {showDealResultModal && (
-                <div className="modal-overlay">
-                  <div className="buy-modal deal-modal deal-result-modal">
-                    <div className="modal-heading">
-                      <span className="modal-heading-text">Deal Result</span>
+                <div className="ref-modal-overlay">
+                  <div className="ref-golden-card" style={{ maxWidth: "260px", maxHeight: "170px" }}>
+                    <div className="ref-deal-header">
+                      <span className="ref-deal-title">Deal Result</span>
+                      <button
+                        className="ref-close-btn"
+                        onClick={() => {
+                          setShowDealResultModal(false);
+                          setDealResultMessage("");
+                        }}
+                        aria-label="Close"
+                      >
+                        <div className="x-mark" />
+                      </button>
                     </div>
                     <div
-                      className="modal-body"
                       style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
                         alignItems: "center",
-                        justifyContent: "center",
-                        textAlign: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        boxSizing: "border-box",
                       }}
                     >
                       <div
-                        className="deal-result-text"
                         style={{
-                          fontFamily: "Junegull, sans-serif",
-                          fontSize: "20px",
-                          color: "#4a2c18",
-                          marginBottom: "20px",
+                          fontFamily: "'Baloo 2', cursive, sans-serif",
+                          fontSize: "15px",
+                          fontWeight: "800",
+                          color: "#7c3b1c",
+                          textAlign: "center",
+                          marginTop: "6px",
+                          textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
                         }}
                       >
                         {dealResultMessage}
                       </div>
-                      <div
-                        className="modal-buttons"
-                        style={{
-                          justifyContent: "center",
-                          marginTop: "10px",
-                          width: "100%",
+                      <button
+                        className="ref-pill-btn ref-pill-green"
+                        style={{ width: "120px", height: "32px", marginTop: "6px" }}
+                        onClick={() => {
+                          setShowDealResultModal(false);
+                          setDealResultMessage("");
                         }}
                       >
-                        <button
-                          className="modal-btn buy"
-                          style={{
-                            flex: "none",
-                            width: "140px",
-                            height: "45px",
-                            padding: "0",
-                          }}
-                          onClick={() => {
-                            setShowDealResultModal(false);
-                            setDealResultMessage("");
-                          }}
-                        >
-                          OK
-                        </button>
-                      </div>
+                        OK
+                      </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Bank Modal - Exact Match to Screenshot 2 */}
+              {/* Bank Modal - Exact Match to Buy Modal */}
               {showBankModal && (
                 <div className="ref-modal-overlay">
                   <div className="ref-golden-card ref-bank-card">
-                    <button
-                      className="ref-help-btn"
-                      onClick={() => {
-                        if (bankPhase !== "entry") {
-                          setBankPhase("entry");
-                        } else if (openedFromWar) {
-                          setShowBankModal(false);
-                          setOpenedFromWar(false);
-                          setShowWarModal(true);
-                        } else {
-                          setShowBankModal(false);
-                        }
-                      }}
-                      aria-label="Close"
-                    >
-                      ?
-                    </button>
-
                     <div className="ref-deal-header">
-                      <span className="ref-bank-title">
+                      <span className="ref-deal-title">
                         {bankPhase === "mortgage"
                           ? "MORTGAGE"
                           : bankPhase === "redeem"
@@ -8919,586 +9715,526 @@ function App() {
                               ? "CREDIT"
                               : "BANK"}
                       </span>
+                      <button
+                        className="ref-close-btn"
+                        onClick={() => {
+                          if (bankPhase !== "entry") {
+                            setBankPhase("entry");
+                          } else if (openedFromWar) {
+                            setShowBankModal(false);
+                            setOpenedFromWar(false);
+                            setShowWarModal(true);
+                          } else {
+                            setShowBankModal(false);
+                          }
+                        }}
+                        aria-label="Close"
+                      >
+                        <div className="x-mark" />
+                      </button>
                     </div>
 
-                    {bankPhase === "entry" ? (
-                      /* Main View Matching Screenshot 2: Big Safe Door + 2x2 Grid */
-                      <>
-                        <img
-                          src="/modal_ui/safe_door.png"
-                          alt="Bank Vault"
-                          className="ref-bank-vault-img"
-                        />
+                    <div className="ref-bank-body">
+                      {bankPhase === "entry" ? (
+                        /* Main View: Vault + 2x2 Grid */
+                        <>
+                          <img
+                            src="/modal_ui/safe_door.png"
+                            alt="Bank Vault"
+                            className="ref-bank-vault-img"
+                          />
 
-                        {playerLoans[currentPlayer] && (
-                          <div
-                            style={{
-                              background: "#3e2415",
-                              border: "1px solid #5c371f",
-                              borderRadius: "6px",
-                              padding: "4px 8px",
-                              color: "#fff",
-                              fontSize: "10px",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              width: "100%",
-                              boxSizing: "border-box",
-                              margin: "2px 0",
-                            }}
-                          >
-                            <span>
-                              Debt: $
-                              {playerLoans[
-                                currentPlayer
-                              ].repayAmount.toLocaleString()}
-                            </span>
-                            <span style={{ color: "#facc15" }}>
-                              {playerLoans[currentPlayer].lapsRemaining} laps
-                              left
-                            </span>
-                          </div>
-                        )}
+                          {playerLoans[currentPlayer] && (
+                            <div className="ref-bank-debt-badge">
+                              <span>
+                                Debt: ${playerLoans[currentPlayer].repayAmount.toLocaleString()}
+                              </span>
+                              <span style={{ color: "#ca8a04" }}>
+                                {playerLoans[currentPlayer].lapsRemaining} laps left
+                              </span>
+                            </div>
+                          )}
 
-                        {/* 2x2 Grid of Actions Matching Reference Screenshot 2 */}
-                        <div className="ref-bank-grid">
-                          <button
-                            className="ref-pill-btn ref-pill-blue ref-bank-btn"
-                            onClick={() => {
-                              setSelectedMortgageTiles([]);
-                              setBankPhase("mortgage");
-                            }}
-                          >
-                            <img src="/modal_ui/mortgage_icon.png" alt="" />
-                            <span>MORTGAGE</span>
-                          </button>
-                          {playerLoans[currentPlayer] ? (
+                          {/* 2x2 Grid of Actions */}
+                          <div className="ref-bank-grid">
                             <button
-                              className="ref-pill-btn ref-pill-green ref-bank-btn"
-                              onClick={handleRepayLoanManual}
-                            >
-                              <img src="/modal_ui/coin_stack.png" alt="" />
-                              <span>REPAY</span>
-                            </button>
-                          ) : (
-                            <button
-                              className="ref-pill-btn ref-pill-green ref-bank-btn"
+                              className="ref-pill-btn ref-pill-blue ref-bank-btn"
                               onClick={() => {
-                                setLoanSliderValue(1000);
-                                setBankPhase("credit");
+                                setSelectedMortgageTiles([]);
+                                setBankPhase("mortgage");
                               }}
                             >
-                              <img src="/modal_ui/bank_icon.png" alt="" />
-                              <span>TAKE CREDIT</span>
+                              <img src="/modal_ui/mortgage_icon.png" alt="" />
+                              <span>MORTGAGE</span>
                             </button>
-                          )}
-                          <button
-                            className="ref-pill-btn ref-pill-blue ref-bank-btn"
-                            onClick={() => {
-                              setSelectedRedeemTiles([]);
-                              setBankPhase("redeem");
-                            }}
-                          >
-                            <img src="/modal_ui/piggy_bank.png" alt="" />
-                            <span>REDEEM</span>
-                          </button>
-                          <button
-                            className="ref-pill-btn ref-pill-red ref-bank-btn"
-                            onClick={() => {
-                              setShowBankModal(false);
-                              if (openedFromWar) {
-                                setOpenedFromWar(false);
-                                setShowWarModal(true);
-                              }
-                            }}
-                          >
-                            <span>BACK</span>
-                          </button>
-                        </div>
-                      </>
-                    ) : bankPhase === "credit" || bankPhase === "loan" ? (
-                      /* Credit / Loan Phase with Reference Golden Slider */
-                      <>
-                        <div
-                          style={{
-                            background: "#3e2415",
-                            border: "1.5px solid #5c371f",
-                            borderRadius: "8px",
-                            padding: "6px 10px",
-                            color: "#fff",
-                            fontSize: "11px",
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "3px",
-                            width: "100%",
-                            boxSizing: "border-box",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>Credit Term:</span>
-                            <span
-                              style={{ color: "#facc15", fontWeight: "bold" }}
-                            >
-                              3 Laps
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>Interest Rate:</span>
-                            <span
-                              style={{ color: "#facc15", fontWeight: "bold" }}
-                            >
-                              30%
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>Your Credit:</span>
-                            <span
-                              style={{ color: "#4ade80", fontWeight: "900" }}
-                            >
-                              ${loanSliderValue.toLocaleString()}
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>Debt:</span>
-                            <span
-                              style={{ color: "#ef4444", fontWeight: "900" }}
-                            >
-                              $
-                              {Math.round(
-                                loanSliderValue * 1.3,
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Preset Chips */}
-                        <div
-                          className="ref-deal-chips-row"
-                          style={{ width: "100%", margin: "4px 0" }}
-                        >
-                          {[500, 1000, 2000, 3000].map((amt) => (
+                            {playerLoans[currentPlayer] ? (
+                              <button
+                                className="ref-pill-btn ref-pill-green ref-bank-btn"
+                                onClick={handleRepayLoanManual}
+                              >
+                                <img src="/modal_ui/coin_stack.png" alt="" />
+                                <span>REPAY</span>
+                              </button>
+                            ) : (
+                              <button
+                                className="ref-pill-btn ref-pill-green ref-bank-btn"
+                                onClick={() => {
+                                  setLoanSliderValue(1000);
+                                  setBankPhase("credit");
+                                }}
+                              >
+                                <img src="/modal_ui/bank_icon.png" alt="" />
+                                <span>TAKE CREDIT</span>
+                              </button>
+                            )}
                             <button
-                              key={amt}
-                              className={`ref-pill-btn ${loanSliderValue === amt ? "ref-pill-yellow" : "ref-pill-blue"} ref-deal-chip-btn`}
-                              onClick={() => setLoanSliderValue(amt)}
+                              className="ref-pill-btn ref-pill-blue ref-bank-btn"
+                              onClick={() => {
+                                setSelectedRedeemTiles([]);
+                                setBankPhase("redeem");
+                              }}
                             >
-                              ${amt.toLocaleString()}
+                              <img src="/modal_ui/piggy_bank.png" alt="" />
+                              <span>REDEEM</span>
                             </button>
-                          ))}
-                        </div>
-
-                        {/* Range Slider with - and + */}
-                        <div
-                          className="ref-deal-slider-row"
-                          style={{ width: "100%", margin: "2px 0 6px" }}
-                        >
-                          <button
-                            className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
-                            onClick={() =>
-                              setLoanSliderValue((prev) =>
-                                Math.max(0, prev - 100),
-                              )
-                            }
-                          >
-                            -100
-                          </button>
-                          <input
-                            type="range"
-                            min="0"
-                            max="3000"
-                            step="100"
-                            value={loanSliderValue}
-                            onChange={(e) =>
-                              setLoanSliderValue(
-                                parseInt(e.target.value) || 0,
-                              )
-                            }
-                            className="ref-golden-slider"
-                          />
-                          <button
-                            className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
-                            onClick={() =>
-                              setLoanSliderValue((prev) =>
-                                Math.min(3000, prev + 100),
-                              )
-                            }
-                          >
-                            +100
-                          </button>
-                        </div>
-
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: "8px",
-                            width: "100%",
-                          }}
-                        >
-                          <button
-                            className="ref-pill-btn ref-pill-red"
-                            style={{ flex: 1, height: "30px", fontSize: "11px" }}
-                            onClick={() => {
-                              if (openedFromWar) {
+                            <button
+                              className="ref-pill-btn ref-pill-red ref-bank-btn"
+                              onClick={() => {
                                 setShowBankModal(false);
-                                setOpenedFromWar(false);
-                                setShowWarModal(true);
-                              } else {
-                                setBankPhase("entry");
+                                if (openedFromWar) {
+                                  setOpenedFromWar(false);
+                                  setShowWarModal(true);
+                                }
+                              }}
+                            >
+                              <span>BACK</span>
+                            </button>
+                          </div>
+                        </>
+                      ) : bankPhase === "credit" || bankPhase === "loan" ? (
+                        /* Credit / Loan Phase with Golden Slider */
+                        <>
+                          <div className="ref-bank-info-box">
+                            <div className="ref-bank-info-row">
+                              <span className="ref-bank-info-label">Credit Term:</span>
+                              <span className="ref-bank-info-val">3 Laps</span>
+                            </div>
+                            <div className="ref-bank-info-row">
+                              <span className="ref-bank-info-label">Interest Rate:</span>
+                              <span className="ref-bank-info-val">30%</span>
+                            </div>
+                            <div className="ref-bank-info-row">
+                              <span className="ref-bank-info-label">Your Credit:</span>
+                              <span className="ref-bank-info-val highlight">
+                                ${loanSliderValue.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="ref-bank-info-row">
+                              <span className="ref-bank-info-label">Debt:</span>
+                              <span className="ref-bank-info-val danger">
+                                ${Math.round(loanSliderValue * 1.3).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Preset Chips */}
+                          <div
+                            className="ref-deal-chips-row"
+                            style={{ width: "100%", margin: "2px 0" }}
+                          >
+                            {[500, 1000, 2000, 3000].map((amt) => (
+                              <button
+                                key={amt}
+                                className={`ref-pill-btn ${loanSliderValue === amt ? "ref-pill-yellow" : "ref-pill-blue"} ref-deal-chip-btn`}
+                                onClick={() => setLoanSliderValue(amt)}
+                              >
+                                ${amt.toLocaleString()}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Range Slider with - and + */}
+                          <div
+                            className="ref-deal-slider-row"
+                            style={{ width: "100%", margin: "1px 0 4px" }}
+                          >
+                            <button
+                              className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
+                              onClick={() =>
+                                setLoanSliderValue((prev) =>
+                                  Math.max(0, prev - 100),
+                                )
                               }
+                            >
+                              -100
+                            </button>
+                            <input
+                              type="range"
+                              min="0"
+                              max="3000"
+                              step="100"
+                              value={loanSliderValue}
+                              onChange={(e) =>
+                                setLoanSliderValue(
+                                  parseInt(e.target.value) || 0,
+                                )
+                              }
+                              className="ref-golden-slider"
+                            />
+                            <button
+                              className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
+                              onClick={() =>
+                                setLoanSliderValue((prev) =>
+                                  Math.min(3000, prev + 100),
+                                )
+                              }
+                            >
+                              +100
+                            </button>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "8px",
+                              width: "100%",
                             }}
                           >
-                            {openedFromWar ? "CANCEL" : "BACK"}
-                          </button>
-                          <button
-                            className="ref-pill-btn ref-pill-green"
-                            style={{ flex: 1, height: "30px", fontSize: "11px" }}
-                            onClick={handleConfirmLoan}
-                            disabled={loanSliderValue <= 0}
-                          >
-                            TAKE
-                          </button>
-                        </div>
-                      </>
-                    ) : bankPhase === "mortgage" ? (
-                      /* Mortgage Sub-view */
-                      <>
-                        {(() => {
-                          const eligibleMortgageProps = Object.keys(
-                            propertyOwnership,
-                          )
-                            .map(Number)
-                            .filter(
-                              (tIdx) =>
-                                propertyOwnership[tIdx] === currentPlayer &&
-                                !mortgagedProperties[tIdx] &&
-                                (propertyLevels[tIdx] || 0) === 0,
-                            );
-                          const mortgageTotalGained =
-                            selectedMortgageTiles.reduce((sum, tIdx) => {
-                              const prop = getPropertyByTileIndex(tIdx);
-                              return sum + Math.round((prop?.price || 0) / 2);
-                            }, 0);
-
-                          return (
-                            <>
-                              <div
-                                style={{
-                                  flex: 1,
-                                  width: "100%",
-                                  overflowY: "auto",
-                                  background: "#3e2415",
-                                  border: "1.5px solid #5c371f",
-                                  borderRadius: "8px",
-                                  padding: "4px",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "3px",
-                                  boxSizing: "border-box",
-                                }}
-                              >
-                                {eligibleMortgageProps.length === 0 ? (
-                                  <div
-                                    style={{
-                                      color: "#9ca3af",
-                                      fontSize: "10px",
-                                      textAlign: "center",
-                                      margin: "auto",
-                                    }}
-                                  >
-                                    No eligible properties to mortgage (sell any
-                                    buildings first).
-                                  </div>
-                                ) : (
-                                  eligibleMortgageProps.map((tIdx) => {
-                                    const prop = getPropertyByTileIndex(tIdx);
-                                    const val = Math.round(
-                                      (prop?.price || 0) / 2,
-                                    );
-                                    const isSelected =
-                                      selectedMortgageTiles.includes(tIdx);
-                                    return (
-                                      <div
-                                        key={tIdx}
-                                        className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
-                                        style={{ padding: "4px 6px" }}
-                                        onClick={() =>
-                                          handleToggleMortgageTile(tIdx)
-                                        }
-                                      >
-                                        <div className="ref-deal-prop-left">
-                                          <span
-                                            className="ref-deal-prop-color"
-                                            style={{
-                                              background:
-                                                prop?.color || "#888",
-                                            }}
-                                          />
-                                          <span className="ref-deal-prop-name">
-                                            {prop?.name}
-                                          </span>
-                                        </div>
-                                        <span
-                                          style={{
-                                            color: "#4ade80",
-                                            fontWeight: "bold",
-                                          }}
-                                        >
-                                          +${val.toLocaleString()}
-                                        </span>
-                                      </div>
-                                    );
-                                  })
-                                )}
-                              </div>
-
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  width: "100%",
-                                  padding: "4px 8px",
-                                  fontSize: "11px",
-                                  color: "#4a2c18",
-                                  fontWeight: "900",
-                                }}
-                              >
-                                <span>Total Mortgage:</span>
-                                <span style={{ color: "#2e7d32" }}>
-                                  +${mortgageTotalGained.toLocaleString()}
-                                </span>
-                              </div>
-
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: "8px",
-                                  width: "100%",
-                                }}
-                              >
-                                <button
-                                  className="ref-pill-btn ref-pill-red"
-                                  style={{ flex: 1, height: "30px", fontSize: "11px" }}
-                                  onClick={() => setBankPhase("entry")}
-                                >
-                                  BACK
-                                </button>
-                                <button
-                                  className="ref-pill-btn ref-pill-green"
-                                  style={{ flex: 1, height: "30px", fontSize: "11px" }}
-                                  onClick={handleConfirmMortgage}
-                                  disabled={
-                                    selectedMortgageTiles.length === 0
-                                  }
-                                >
-                                  MORTGAGE
-                                </button>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </>
-                    ) : bankPhase === "redeem" ? (
-                      /* Redeem Sub-view */
-                      <>
-                        {(() => {
-                          const mortgagedOwnedProps = Object.keys(
-                            propertyOwnership,
-                          )
-                            .map(Number)
-                            .filter(
-                              (tIdx) =>
-                                propertyOwnership[tIdx] === currentPlayer &&
-                                !!mortgagedProperties[tIdx],
-                            );
-                          const redeemTotalCost =
-                            selectedRedeemTiles.reduce((sum, tIdx) => {
-                              const prop = getPropertyByTileIndex(tIdx);
-                              return (
-                                sum + Math.round((prop?.price || 0) * 0.55)
+                            <button
+                              className="ref-pill-btn ref-pill-red"
+                              style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                              onClick={() => {
+                                if (openedFromWar) {
+                                  setShowBankModal(false);
+                                  setOpenedFromWar(false);
+                                  setShowWarModal(true);
+                                } else {
+                                  setBankPhase("entry");
+                                }
+                              }}
+                            >
+                              {openedFromWar ? "CANCEL" : "BACK"}
+                            </button>
+                            <button
+                              className="ref-pill-btn ref-pill-green"
+                              style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                              onClick={handleConfirmLoan}
+                              disabled={loanSliderValue <= 0}
+                            >
+                              TAKE
+                            </button>
+                          </div>
+                        </>
+                      ) : bankPhase === "mortgage" ? (
+                        /* Mortgage Sub-view */
+                        <>
+                          {(() => {
+                            const eligibleMortgageProps = Object.keys(
+                              propertyOwnership,
+                            )
+                              .map(Number)
+                              .filter(
+                                (tIdx) => canMortgageProperty(tIdx, currentPlayer),
                               );
-                            }, 0);
-                          const canAfford =
-                            (playerMoney[currentPlayer] || 0) >=
-                            redeemTotalCost;
+                            const mortgageTotalGained =
+                              selectedMortgageTiles.reduce((sum, tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                return sum + Math.round((prop?.price || 0) / 2);
+                              }, 0);
 
-                          return (
-                            <>
-                              <div
-                                style={{
-                                  flex: 1,
-                                  width: "100%",
-                                  overflowY: "auto",
-                                  background: "#3e2415",
-                                  border: "1.5px solid #5c371f",
-                                  borderRadius: "8px",
-                                  padding: "4px",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "3px",
-                                  boxSizing: "border-box",
-                                }}
-                              >
-                                {mortgagedOwnedProps.length === 0 ? (
-                                  <div
-                                    style={{
-                                      color: "#9ca3af",
-                                      fontSize: "10px",
-                                      textAlign: "center",
-                                      margin: "auto",
-                                    }}
-                                  >
-                                    No mortgaged properties to redeem.
-                                  </div>
-                                ) : (
-                                  mortgagedOwnedProps.map((tIdx) => {
-                                    const prop = getPropertyByTileIndex(tIdx);
-                                    const cost = Math.round(
-                                      (prop?.price || 0) * 0.55,
-                                    );
-                                    const isSelected =
-                                      selectedRedeemTiles.includes(tIdx);
-                                    return (
-                                      <div
-                                        key={tIdx}
-                                        className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
-                                        style={{ padding: "4px 6px" }}
-                                        onClick={() =>
-                                          handleToggleRedeemTile(tIdx)
-                                        }
-                                      >
-                                        <div className="ref-deal-prop-left">
+                            return (
+                              <>
+                                <div className="ref-bank-list-panel">
+                                  {eligibleMortgageProps.length === 0 ? (
+                                    <div
+                                      style={{
+                                        color: "#7c3b1c",
+                                        fontSize: "11px",
+                                        fontWeight: "700",
+                                        textAlign: "center",
+                                        margin: "auto",
+                                        fontFamily: "'Baloo 2', cursive, sans-serif",
+                                      }}
+                                    >
+                                      No eligible properties to mortgage (sell any
+                                      buildings first).
+                                    </div>
+                                  ) : (
+                                    eligibleMortgageProps.map((tIdx) => {
+                                      const prop = getPropertyByTileIndex(tIdx);
+                                      const val = Math.round(
+                                        (prop?.price || 0) / 2,
+                                      );
+                                      const isSelected =
+                                        selectedMortgageTiles.includes(tIdx);
+                                      return (
+                                        <div
+                                          key={tIdx}
+                                          className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
+                                          onClick={() =>
+                                            handleToggleMortgageTile(tIdx)
+                                          }
+                                        >
+                                          <div className="ref-deal-prop-left">
+                                            <span
+                                              className="ref-deal-prop-color"
+                                              style={{
+                                                background:
+                                                  prop?.color || "#888",
+                                              }}
+                                            />
+                                            <span className="ref-deal-prop-name">
+                                              {prop?.name}
+                                            </span>
+                                          </div>
                                           <span
-                                            className="ref-deal-prop-color"
                                             style={{
-                                              background:
-                                                prop?.color || "#888",
+                                              color: "#2e7d32",
+                                              fontWeight: "800",
                                             }}
-                                          />
-                                          <span className="ref-deal-prop-name">
-                                            {prop?.name}
+                                          >
+                                            +${val.toLocaleString()}
                                           </span>
                                         </div>
-                                        <span
-                                          style={{
-                                            color: "#ef4444",
-                                            fontWeight: "bold",
-                                          }}
+                                      );
+                                    })
+                                  )}
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                    padding: "2px 4px",
+                                    fontSize: "12px",
+                                    color: "#7c3b1c",
+                                    fontFamily: "'Baloo 2', cursive, sans-serif",
+                                    fontWeight: "800",
+                                  }}
+                                >
+                                  <span>Total Mortgage:</span>
+                                  <span style={{ color: "#2e7d32" }}>
+                                    +${mortgageTotalGained.toLocaleString()}
+                                  </span>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: "8px",
+                                    width: "100%",
+                                  }}
+                                >
+                                  <button
+                                    className="ref-pill-btn ref-pill-red"
+                                    style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                    onClick={() => setBankPhase("entry")}
+                                  >
+                                    BACK
+                                  </button>
+                                  <button
+                                    className="ref-pill-btn ref-pill-green"
+                                    style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                    onClick={handleConfirmMortgage}
+                                    disabled={
+                                      selectedMortgageTiles.length === 0
+                                    }
+                                  >
+                                    MORTGAGE
+                                  </button>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </>
+                      ) : bankPhase === "redeem" ? (
+                        /* Redeem Sub-view */
+                        <>
+                          {(() => {
+                            const mortgagedOwnedProps = Object.keys(
+                              propertyOwnership,
+                            )
+                              .map(Number)
+                              .filter(
+                                (tIdx) =>
+                                  propertyOwnership[tIdx] === currentPlayer &&
+                                  !!mortgagedProperties[tIdx],
+                              );
+                            const redeemTotalCost =
+                              selectedRedeemTiles.reduce((sum, tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                return (
+                                  sum + Math.round((prop?.price || 0) * 0.55)
+                                );
+                              }, 0);
+                            const canAfford =
+                              (playerMoney[currentPlayer] || 0) >=
+                              redeemTotalCost;
+
+                            return (
+                              <>
+                                <div className="ref-bank-list-panel">
+                                  {mortgagedOwnedProps.length === 0 ? (
+                                    <div
+                                      style={{
+                                        color: "#7c3b1c",
+                                        fontSize: "11px",
+                                        fontWeight: "700",
+                                        textAlign: "center",
+                                        margin: "auto",
+                                        fontFamily: "'Baloo 2', cursive, sans-serif",
+                                      }}
+                                    >
+                                      No mortgaged properties to redeem.
+                                    </div>
+                                  ) : (
+                                    mortgagedOwnedProps.map((tIdx) => {
+                                      const prop = getPropertyByTileIndex(tIdx);
+                                      const cost = Math.round(
+                                        (prop?.price || 0) * 0.55,
+                                      );
+                                      const isSelected =
+                                        selectedRedeemTiles.includes(tIdx);
+                                      return (
+                                        <div
+                                          key={tIdx}
+                                          className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
+                                          onClick={() =>
+                                            handleToggleRedeemTile(tIdx)
+                                          }
                                         >
-                                          -${cost.toLocaleString()}
-                                        </span>
-                                      </div>
-                                    );
-                                  })
-                                )}
-                              </div>
+                                          <div className="ref-deal-prop-left">
+                                            <span
+                                              className="ref-deal-prop-color"
+                                              style={{
+                                                background:
+                                                  prop?.color || "#888",
+                                              }}
+                                            />
+                                            <span className="ref-deal-prop-name">
+                                              {prop?.name}
+                                            </span>
+                                          </div>
+                                          <span
+                                            style={{
+                                              color: "#c62828",
+                                              fontWeight: "800",
+                                            }}
+                                          >
+                                            -${cost.toLocaleString()}
+                                          </span>
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                </div>
 
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  width: "100%",
-                                  padding: "4px 8px",
-                                  fontSize: "11px",
-                                  color: "#4a2c18",
-                                  fontWeight: "900",
-                                }}
-                              >
-                                <span>Total Cost:</span>
-                                <span style={{ color: "#c62828" }}>
-                                  -${redeemTotalCost.toLocaleString()}
-                                </span>
-                              </div>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                    padding: "2px 4px",
+                                    fontSize: "12px",
+                                    color: "#7c3b1c",
+                                    fontFamily: "'Baloo 2', cursive, sans-serif",
+                                    fontWeight: "800",
+                                  }}
+                                >
+                                  <span>Total Cost:</span>
+                                  <span style={{ color: "#c62828" }}>
+                                    -${redeemTotalCost.toLocaleString()}
+                                  </span>
+                                </div>
 
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: "8px",
-                                  width: "100%",
-                                }}
-                              >
-                                <button
-                                  className="ref-pill-btn ref-pill-red"
-                                  style={{ flex: 1, height: "30px", fontSize: "11px" }}
-                                  onClick={() => setBankPhase("entry")}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: "8px",
+                                    width: "100%",
+                                  }}
                                 >
-                                  BACK
-                                </button>
-                                <button
-                                  className="ref-pill-btn ref-pill-green"
-                                  style={{ flex: 1, height: "30px", fontSize: "11px" }}
-                                  onClick={handleConfirmRedeem}
-                                  disabled={
-                                    selectedRedeemTiles.length === 0 ||
-                                    !canAfford
-                                  }
-                                >
-                                  REDEEM
-                                </button>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </>
-                    ) : null}
+                                  <button
+                                    className="ref-pill-btn ref-pill-red"
+                                    style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                    onClick={() => setBankPhase("entry")}
+                                  >
+                                    BACK
+                                  </button>
+                                  <button
+                                    className="ref-pill-btn ref-pill-green"
+                                    style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                    onClick={handleConfirmRedeem}
+                                    disabled={
+                                      selectedRedeemTiles.length === 0 ||
+                                      !canAfford
+                                    }
+                                  >
+                                    REDEEM
+                                  </button>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Bank Debit Modal */}
               {showBankDebitModal && (
-                <div className="modal-overlay">
-                  <div className="buy-modal deal-modal bank-modal">
-                    <div className="modal-heading">
-                      <span className="modal-heading-text">Bank Alert</span>
+                <div className="ref-modal-overlay">
+                  <div className="ref-golden-card" style={{ maxWidth: "260px", maxHeight: "170px" }}>
+                    <div className="ref-deal-header">
+                      <span className="ref-deal-title">Bank Alert</span>
+                      <button
+                        className="ref-close-btn"
+                        onClick={() => setShowBankDebitModal(false)}
+                        aria-label="Close"
+                      >
+                        <div className="x-mark" />
+                      </button>
                     </div>
-                    <div className="modal-body" style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        boxSizing: "border-box",
+                      }}
+                    >
                       <div
                         style={{
-                          fontFamily: "Junegull, sans-serif",
-                          fontSize: "18px",
-                          color: "#4a2c18",
-                          marginBottom: "20px",
+                          fontFamily: "'Baloo 2', cursive, sans-serif",
+                          fontSize: "15px",
+                          fontWeight: "800",
+                          color: "#7c3b1c",
+                          textAlign: "center",
+                          marginTop: "6px",
+                          textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
                         }}
                       >
                         The bank has debited your loan.
                       </div>
-                      <div
-                        className="modal-buttons"
-                        style={{ justifyContent: "center" }}
+                      <button
+                        className="ref-pill-btn ref-pill-green"
+                        style={{ width: "120px", height: "32px", marginTop: "6px" }}
+                        onClick={() => setShowBankDebitModal(false)}
                       >
-                        <button
-                          className="modal-btn buy"
-                          style={{ flex: "none", minWidth: "120px" }}
-                          onClick={() => setShowBankDebitModal(false)}
-                        >
-                          OK
-                        </button>
-                      </div>
+                        OK
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -9506,58 +10242,75 @@ function App() {
 
               {/* Bankruptcy Modal */}
               {showBankruptcyModal && (
-                <div className="modal-overlay">
-                  <div className="buy-modal deal-modal bank-modal">
+                <div className="ref-modal-overlay">
+                  <div
+                    className="ref-golden-card"
+                    style={{ maxWidth: "300px", maxHeight: "230px" }}
+                  >
+                    <div className="ref-deal-header">
+                      <span className="ref-deal-title">⚠️ BANKRUPTCY</span>
+                      <button
+                        className="ref-close-btn"
+                        onClick={() => setShowBankruptcyModal(false)}
+                        aria-label="Close"
+                      >
+                        <div className="x-mark" />
+                      </button>
+                    </div>
                     <div
-                      className="modal-heading"
                       style={{
-                        background:
-                          "linear-gradient(to bottom, #B71C1C 0%, #7f0000 100%)",
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        boxSizing: "border-box",
+                        textAlign: "center",
                       }}
                     >
-                      <span className="modal-heading-text">⚠️ BANKRUPTCY</span>
-                    </div>
-                    <div className="modal-body" style={{ textAlign: "center" }}>
                       <div
                         style={{
                           fontFamily: "Junegull, sans-serif",
-                          fontSize: "18px",
-                          color: "#B71C1C",
-                          marginBottom: "10px",
+                          fontSize: "16px",
+                          color: "#c62828",
+                          marginTop: "2px",
                         }}
                       >
-                        Your balance is below $0!
+                        Balance is below $0!
                       </div>
                       <div
                         style={{
-                          fontSize: "14px",
+                          fontFamily: "'Baloo 2', cursive, sans-serif",
+                          fontSize: "12px",
                           color: "#5D4037",
-                          marginBottom: "20px",
-                          lineHeight: "1.5",
+                          lineHeight: "1.4",
+                          fontWeight: "700",
+                          margin: "6px 0",
                         }}
                       >
-                        You can take a loan from the Bank, or sell property
-                        upgrades to recover.
+                        Take a loan from the Bank or mortgage properties to recover, or declare bankruptcy to forfeit.
                       </div>
-                      <div className="modal-buttons" style={{ gap: "10px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "10px",
+                          width: "100%",
+                          marginTop: "6px",
+                        }}
+                      >
                         <button
-                          className="modal-btn"
-                          style={{
-                            background: "#4CAF50",
-                            color: "white",
-                            flex: 1,
-                          }}
+                          className="ref-pill-btn ref-pill-green"
+                          style={{ flex: 1, height: "34px", fontSize: "13px" }}
                           onClick={() => setShowBankruptcyModal(false)}
                         >
-                          NO
+                          CANCEL
                         </button>
                         <button
-                          className="modal-btn"
-                          style={{
-                            background: "#D32F2F",
-                            color: "white",
-                            flex: 1,
-                          }}
+                          className="ref-pill-btn ref-pill-red"
+                          style={{ flex: 1, height: "34px", fontSize: "13px" }}
                           onClick={handleBankrupt}
                         >
                           BANKRUPT
@@ -9568,38 +10321,96 @@ function App() {
                 </div>
               )}
 
+              {/* Game Victory / Winning Modal */}
+              {showWinModal && gameWinner && (
+                <div className="game-victory-overlay">
+                  <div className="game-victory-card">
+                    <div className="game-victory-trophy">🏆</div>
+                    <div className="game-victory-title">VICTORY!</div>
+                    <div className="game-victory-subtitle">CHAMPION OF PSEUDOPOLY</div>
+
+                    <div className="game-victory-avatar-wrap">
+                      <div className="game-victory-crown">👑</div>
+                      <img
+                        src={gameWinner.avatar}
+                        alt={gameWinner.name}
+                        className="game-victory-avatar"
+                      />
+                    </div>
+
+                    <div className="game-victory-name">{gameWinner.name}</div>
+
+                    <div className="game-victory-stats">
+                      <div className="game-victory-stat-item">
+                        <span className="stat-label">FINAL CASH</span>
+                        <span className="stat-val">
+                          ${(playerMoney[gameWinner.id] || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="game-victory-stat-divider" />
+                      <div className="game-victory-stat-item">
+                        <span className="stat-label">PROPERTIES</span>
+                        <span className="stat-val">
+                          {Object.values(propertyOwnership).filter((o) => o === gameWinner.id).length}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      className="game-victory-btn"
+                      onClick={() => {
+                        setShowWinModal(false);
+                        setGameWinner(null);
+                        handleExitGame();
+                      }}
+                    >
+                      BACK TO MAIN MENU
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Build No Monopoly Modal */}
               {buildNoMonopolyModal && (
-                <div className="modal-overlay">
-                  <div className="buy-modal deal-modal bank-modal">
-                    <div
-                      className="modal-heading"
-                      style={{ background: "#757575" }}
-                    >
-                      <span className="modal-heading-text">Build</span>
-                    </div>
-                    <div className="modal-body" style={{ textAlign: "center" }}>
-                      <div
-                        style={{
-                          fontFamily: "Junegull, sans-serif",
-                          fontSize: "18px",
-                          color: "#4a2c18",
-                          marginBottom: "20px",
-                        }}
-                      >
-                        You have no monopoly properties to build on.
-                      </div>
-                      <div
-                        className="modal-buttons"
-                        style={{ justifyContent: "center" }}
-                      >
-                        <button
-                          className="modal-btn cancel"
-                          style={{ flex: "none", minWidth: "120px" }}
+                <div
+                  className="modal-overlay ref-modal-overlay"
+                  style={{ pointerEvents: "auto", background: "transparent" }}
+                  onClick={() => setBuildNoMonopolyModal(false)}
+                >
+                  <div
+                    className="modal-shell buy-modal-replica mini-modal-replica"
+                    style={{ pointerEvents: "auto" }}
+                  >
+                    <div className="title-bar">
+                      <div className="title-text">BUILD</div>
+                      <div className="icon-group">
+                        <div
+                          className="icon-btn close"
                           onClick={() => setBuildNoMonopolyModal(false)}
                         >
-                          CLOSE
-                        </button>
+                          <div className="x-mark" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="build-body-panel" style={{ padding: "10px 14px", gap: "8px" }}>
+                      <div
+                        className="maroon"
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          textAlign: "center",
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        You need to own all properties in a color group to build upgrades!
+                      </div>
+                      <div className="buttons-row" style={{ marginTop: "4px" }}>
+                        <div
+                          className="action-btn btn-cancel"
+                          onClick={() => setBuildNoMonopolyModal(false)}
+                        >
+                          OK
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -9609,238 +10420,218 @@ function App() {
               {/* Build Modal (Main) */}
               {showBuildModal && (
                 <div
-                  className="modal-overlay modal-overlay-inline"
+                  className="modal-overlay ref-modal-overlay"
                   style={{ pointerEvents: "none", background: "transparent" }}
                 >
                   <div
-                    className="ref-golden-card"
-                    style={{
-                      pointerEvents: "auto",
-                      maxHeight: "88%",
-                      maxWidth: "380px",
-                    }}
+                    className="modal-shell buy-modal-replica build-modal-replica"
+                    style={{ pointerEvents: "auto" }}
                   >
-                    <button
-                      className="ref-help-btn"
-                      onClick={cancelBuildMode}
-                      aria-label="Close"
-                    >
-                      ?
-                    </button>
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">BUILD</span>
-                    </div>
-
-                    {!selectedBuildColor ? (
-                      <div
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: "16px 8px",
-                          textAlign: "center",
-                        }}
-                      >
+                    <div className="title-bar">
+                      <div className="title-text">BUILD</div>
+                      <div className="icon-group">
                         <div
-                          style={{
-                            fontSize: "13px",
-                            fontWeight: "900",
-                            color: "#4a2c18",
-                            marginBottom: "6px",
-                          }}
+                          className="icon-btn help"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Upgrade properties in your monopoly"
                         >
-                          SELECT A MONOPOLY
+                          <span>?</span>
                         </div>
                         <div
-                          style={{
-                            fontSize: "11px",
-                            color: "#5d4037",
-                            lineHeight: "1.4",
-                          }}
+                          className="icon-btn close"
+                          onClick={cancelBuildMode}
+                          title="Close"
                         >
-                          Tap any of your monopoly properties on the board to
-                          build upgrades.
+                          <div className="x-mark" />
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <div
-                          style={{
-                            textAlign: "center",
-                            margin: "2px 0 6px",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: "18px",
-                              fontWeight: "900",
-                              color: "#2e7d32",
-                            }}
-                          >
-                            Cost: ${buildTotalCost.toLocaleString()}
-                          </span>
-                        </div>
+                    </div>
 
-                        {/* ONLY the selected color group properties */}
-                        <div
-                          style={{
-                            flex: 1,
-                            overflowY: "auto",
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "4px",
-                            background: "#3e2415",
-                            border: "1.5px solid #5c371f",
-                            borderRadius: "8px",
-                            padding: "6px",
-                            boxSizing: "border-box",
-                          }}
-                        >
-                          {(COLOR_GROUPS[selectedBuildColor] || []).map(
-                            (tileIdx) => {
+                    <div className="build-body-panel">
+                      {!selectedBuildColor ? (
+                        <>
+                          <div className="build-header-title">CHOOSE MONOPOLY</div>
+                          <div className="build-monopoly-list">
+                            {getPlayerMonopolyColors(currentPlayer).map((color) => {
+                              const groupTiles = COLOR_GROUPS[color] || [];
+                              const sampleColor = getTileColor(groupTiles[0]) || color;
+                              return (
+                                <button
+                                  key={color}
+                                  className="build-monopoly-chip"
+                                  onClick={() => setSelectedBuildColor(color)}
+                                >
+                                  <span
+                                    className="chip-dot"
+                                    style={{ background: sampleColor }}
+                                  />
+                                  <span className="chip-name">
+                                    {color.toUpperCase()} MONOPOLY
+                                  </span>
+                                  <span className="chip-count">
+                                    {groupTiles.length} Props
+                                  </span>
+                                  <span className="chip-arrow">➔</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="build-hint-text">
+                            Tap a monopoly or any property on the board
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="build-sub-bar">
+                            <div className="build-group-label">
+                              {getPlayerMonopolyColors(currentPlayer).length > 1 && (
+                                <button
+                                  className="build-switch-btn"
+                                  onClick={() => setSelectedBuildColor(null)}
+                                  title="Switch monopoly"
+                                >
+                                  ◀ ALL
+                                </button>
+                              )}
+                              <span
+                                className="chip-dot"
+                                style={{
+                                  background: getTileColor(
+                                    COLOR_GROUPS[selectedBuildColor]?.[0],
+                                  ),
+                                }}
+                              />
+                              <span className="group-title">
+                                {selectedBuildColor.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="build-cost-badge">
+                              Cost:{" "}
+                              <span className="cost-val">
+                                ${buildTotalCost.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Selected color group properties */}
+                          <div className="build-props-container">
+                            {(COLOR_GROUPS[selectedBuildColor] || []).map((tileIdx) => {
                               const prop = RENT_DATA[tileIdx];
-                              const level =
-                                buildMode &&
+                              const baseLvl = propertyLevels[tileIdx] || 0;
+                              const currentStaged =
                                 buildPreviewLevels[tileIdx] !== undefined
                                   ? buildPreviewLevels[tileIdx]
-                                  : propertyLevels[tileIdx] || 0;
+                                  : baseLvl;
                               const tileColor = getTileColor(tileIdx);
                               const cost = getUpgradeCost(tileIdx);
+
                               return (
-                                <div
-                                  key={tileIdx}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    padding: "5px 8px",
-                                    background: "#54321d",
-                                    borderLeft: `5px solid ${tileColor}`,
-                                    border: "1px solid #6e4126",
-                                    borderRadius: "6px",
-                                    cursor: "pointer",
-                                  }}
-                                  onClick={() => handleBuildTileTap(tileIdx)}
-                                >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      alignItems: "flex-start",
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        fontWeight: "800",
-                                        color: "#fff",
-                                        fontSize: "11px",
-                                        lineHeight: "1.2",
-                                      }}
-                                    >
-                                      {prop?.name || `Tile ${tileIdx}`}
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontSize: "9.5px",
-                                        color: "#facc15",
-                                      }}
-                                    >
-                                      ${cost.toLocaleString()} / lvl
-                                    </span>
+                                <div key={tileIdx} className="build-prop-item">
+                                  <div className="prop-left">
+                                    <div
+                                      className="prop-color-bar"
+                                      style={{ background: tileColor }}
+                                    />
+                                    <div className="prop-text-col">
+                                      <span className="prop-name">
+                                        {prop?.name || `Tile ${tileIdx}`}
+                                      </span>
+                                      <span className="prop-cost-sub">
+                                        +${cost.toLocaleString()} / lvl
+                                      </span>
+                                    </div>
                                   </div>
 
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "3px",
-                                    }}
-                                  >
-                                    {[1, 2, 3, 4, 5].map((barIdx) => {
-                                      const isFilled = level >= barIdx;
-                                      const isHotel = level === 5;
-                                      return (
-                                        <div
-                                          key={barIdx}
-                                          style={{
-                                            width: "8px",
-                                            height: "12px",
-                                            borderRadius: "2px",
-                                            background: isFilled
-                                              ? isHotel
-                                                ? "linear-gradient(180deg, #ef4444 0%, #b91c1c 100%)"
-                                                : "linear-gradient(180deg, #4ade80 0%, #16a34a 100%)"
-                                              : "rgba(255, 255, 255, 0.15)",
-                                            border: isFilled
-                                              ? "1px solid rgba(0,0,0,0.3)"
-                                              : "1px solid rgba(255,255,255,0.08)",
-                                          }}
-                                        />
-                                      );
-                                    })}
-                                    <span
-                                      style={{
-                                        fontSize: "9.5px",
-                                        fontWeight: "900",
-                                        marginLeft: "4px",
-                                        minWidth: "32px",
-                                        textAlign: "right",
-                                        color:
-                                          level === 5
-                                            ? "#ef4444"
-                                            : level > 0
-                                              ? "#4ade80"
-                                              : "#9ca3af",
-                                      }}
+                                  <div className="prop-right">
+                                    <button
+                                      className="build-circle-btn minus"
+                                      onClick={() => handleBuildStep(tileIdx, -1)}
+                                      disabled={currentStaged <= baseLvl}
+                                      title="Undo upgrade"
                                     >
-                                      {level === 0
+                                      −
+                                    </button>
+
+                                    <div
+                                      className="build-progress-bars"
+                                      onClick={() => handleBuildStep(tileIdx, 1)}
+                                      title="Tap to add upgrade"
+                                    >
+                                      {[1, 2, 3, 4, 5].map((barIdx) => {
+                                        const isFilled = currentStaged >= barIdx;
+                                        const isHotel = currentStaged === 5;
+                                        return (
+                                          <div
+                                            key={barIdx}
+                                            className={`bar ${
+                                              isFilled
+                                                ? isHotel
+                                                  ? "hotel"
+                                                  : "house"
+                                                : "empty"
+                                            }`}
+                                          />
+                                        );
+                                      })}
+                                    </div>
+
+                                    <button
+                                      className="build-circle-btn plus"
+                                      onClick={() => handleBuildStep(tileIdx, 1)}
+                                      disabled={currentStaged >= 5}
+                                      title="Add upgrade"
+                                    >
+                                      +
+                                    </button>
+
+                                    <span
+                                      className={`build-lvl-text ${
+                                        currentStaged === 5
+                                          ? "hotel"
+                                          : currentStaged > 0
+                                            ? "house"
+                                            : "base"
+                                      }`}
+                                    >
+                                      {currentStaged === 0
                                         ? "Lv 0"
-                                        : level === 5
+                                        : currentStaged === 5
                                           ? "HOTEL"
-                                          : `Lv ${level}`}
+                                          : `Lv ${currentStaged}`}
                                     </span>
                                   </div>
                                 </div>
                               );
-                            },
-                          )}
-                        </div>
-                      </>
-                    )}
+                            })}
+                          </div>
+                        </>
+                      )}
 
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "8px",
-                        marginTop: "6px",
-                      }}
-                    >
-                      <button
-                        className="ref-pill-btn ref-pill-red"
-                        style={{ flex: 1, height: "30px", fontSize: "11px" }}
-                        onClick={cancelBuildMode}
-                      >
-                        CANCEL
-                      </button>
-                      <button
-                        className={`ref-pill-btn ${!selectedBuildColor ? "ref-pill-gray" : "ref-pill-green"}`}
-                        style={{
-                          flex: 1,
-                          height: "30px",
-                          fontSize: "11px",
-                        }}
-                        onClick={closeBuildMode}
-                        disabled={!selectedBuildColor}
-                      >
-                        BUILD{" "}
-                        {buildTotalCost > 0
-                          ? `($${buildTotalCost.toLocaleString()})`
-                          : ""}
-                      </button>
+                      <div className="buttons-row">
+                        <div
+                          className="action-btn btn-cancel"
+                          onClick={cancelBuildMode}
+                        >
+                          CANCEL
+                        </div>
+                        <div
+                          className={`action-btn btn-buy ${
+                            !selectedBuildColor || buildTotalCost === 0
+                              ? "disabled"
+                              : ""
+                          }`}
+                          onClick={
+                            selectedBuildColor && buildTotalCost > 0
+                              ? closeBuildMode
+                              : undefined
+                          }
+                        >
+                          BUILD{" "}
+                          {buildTotalCost > 0
+                            ? `($${buildTotalCost.toLocaleString()})`
+                            : ""}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -9866,7 +10657,7 @@ function App() {
                           tileIndex: null,
                         });
                       }
-                      endTurn(currentPlayer, false);
+                      setTurnFinished(true);
                     }
                   }}
                 >
@@ -9900,299 +10691,144 @@ function App() {
                     <div
                       className="modal-body"
                       style={{
-                        padding: "8px 10px",
-                        textAlign: "center",
+                        padding: "12px 14px",
                         background: "#FFFDF7",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "8px",
                       }}
                     >
-                      <div
-                        style={{
-                          fontSize: "9.5px",
-                          color: "#555",
-                          marginBottom: "5px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        From:{" "}
-                        <span style={{ color: "#1565C0", fontWeight: "bold" }}>
-                          {getTileName(
-                            travelSourceIndex ?? playerPositions[currentPlayer],
-                          )}
-                        </span>{" "}
-                        ($100/station)
-                      </div>
-
-                      {/* Selectable Train Cards - Compact all-in-one */}
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "3px",
-                          marginBottom: "5px",
-                          maxHeight: "120px",
-                          overflowY: "auto",
-                          scrollbarWidth: "none",
-                          msOverflowStyle: "none",
-                        }}
-                      >
-                        {TRAIN_TILES.filter(
-                          (t) =>
-                            t !==
-                              (travelSourceIndex ??
-                                playerPositions[currentPlayer]) &&
-                            propertyOwnership[t] === currentPlayer,
-                        ).map((destTile) => {
-                          const sortedTrains = [4, 13, 21, 32];
-                          const srcIdx = sortedTrains.indexOf(
-                            travelSourceIndex ?? playerPositions[currentPlayer],
-                          );
-                          const tgtIdx = sortedTrains.indexOf(destTile);
-                          const stationDist = (tgtIdx - srcIdx + 4) % 4;
-                          const cost = stationDist * 100;
-                          const isSelected = selectedTrainTile === destTile;
-                          const canAfford = playerMoney[currentPlayer] >= cost;
-
-                          return (
-                            <div
-                              key={destTile}
-                              onClick={() => {
-                                setSelectedTrainTile(destTile);
-                                if (networkMode === "online") {
-                                  sendGameAction("select_train_destination", {
-                                    tileIndex: destTile,
-                                  });
-                                }
-                              }}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                background: isSelected ? "#E3F2FD" : "#F5F5F5",
-                                border: isSelected
-                                  ? "1.5px solid #1E88E5"
-                                  : "1px solid #CFD8DC",
-                                borderRadius: "4px",
-                                padding: "3px 8px",
-                                cursor: "pointer",
-                                boxShadow: isSelected
-                                  ? "0 1px 4px rgba(30,136,229,0.25)"
-                                  : "none",
-                                transition: "all 0.15s ease",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                  textAlign: "left",
-                                }}
-                              >
-                                <span style={{ fontSize: "13px" }}>🚅</span>
-                                <div>
-                                  <div
-                                    style={{
-                                      fontWeight: "bold",
-                                      fontSize: "10px",
-                                      color: isSelected ? "#0D47A1" : "#37474F",
-                                      lineHeight: "1.1",
-                                    }}
-                                  >
-                                    {getTileName(destTile)}
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: "8.5px",
-                                      color: "#78909C",
-                                      lineHeight: "1",
-                                    }}
-                                  >
-                                    {stationDist} station{stationDist > 1 ? "s" : ""} away
-                                  </div>
-                                </div>
-                              </div>
-                              <div style={{ textAlign: "right" }}>
-                                <span
-                                  style={{
-                                    fontSize: "9.5px",
-                                    fontWeight: "bold",
-                                    color: isSelected ? "#1565C0" : "#546E7A",
-                                    background: isSelected
-                                      ? "#BBDEFB"
-                                      : "#ECEFF1",
-                                    padding: "1px 6px",
-                                    borderRadius: "3px",
-                                  }}
-                                >
-                                  ${cost} {isSelected && "✓"}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Price & Balance Preview (Only when selected) */}
                       {(() => {
-                        if (selectedTrainTile === null) return null;
                         const sortedTrains = [4, 13, 21, 32];
                         const srcIdx = sortedTrains.indexOf(
                           travelSourceIndex ?? playerPositions[currentPlayer],
                         );
-                        const tgtIdx = sortedTrains.indexOf(selectedTrainTile);
-                        const stationDist = (tgtIdx - srcIdx + 4) % 4;
+                        const tgtIdx =
+                          selectedTrainTile !== null
+                            ? sortedTrains.indexOf(selectedTrainTile)
+                            : -1;
+                        const stationDist =
+                          tgtIdx >= 0 ? (tgtIdx - srcIdx + 4) % 4 : 0;
                         const cost = stationDist * 100;
                         const canAfford = playerMoney[currentPlayer] >= cost;
 
                         return (
-                          <div
-                            style={{
-                              margin: "3px 0 5px",
-                              padding: "4px 8px",
-                              background: "#FFF8E1",
-                              border: "1px solid #FFE082",
-                              borderRadius: "4px",
-                              fontSize: "9.5px",
-                              color: "#5D4037",
-                              textAlign: "left",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              <span>Fare:</span>
-                              <span
+                          <>
+                            {selectedTrainTile !== null ? (
+                              <div
                                 style={{
-                                  color: canAfford ? "#E65100" : "#C62828",
+                                  width: "100%",
+                                  padding: "10px 12px",
+                                  background: "#E3F2FD",
+                                  border: "1.5px solid #1E88E5",
+                                  borderRadius: "8px",
+                                  boxSizing: "border-box",
+                                  textAlign: "center",
                                 }}
                               >
-                                ${cost}
-                              </span>
-                            </div>
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                fontSize: "8.5px",
-                                color: "#8D6E63",
-                                marginTop: "1px",
-                              }}
-                            >
-                              <span>Cash After:</span>
-                              <span
+                                <div
+                                  style={{
+                                    fontSize: "13px",
+                                    fontWeight: "900",
+                                    color: "#0D47A1",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  🚅 {getTileName(selectedTrainTile)}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: "16px",
+                                    fontWeight: "900",
+                                    color: canAfford ? "#E65100" : "#C62828",
+                                  }}
+                                >
+                                  Fare: ${cost}
+                                </div>
+                              </div>
+                            ) : (
+                              <div
                                 style={{
-                                  fontWeight: "bold",
-                                  color: canAfford ? "#2E7D32" : "#C62828",
+                                  fontSize: "11px",
+                                  color: "#546E7A",
+                                  padding: "10px 0",
+                                  textAlign: "center",
                                 }}
                               >
-                                ${Math.max(
-                                  0,
-                                  playerMoney[currentPlayer] - cost,
-                                ).toLocaleString()}
-                                {!canAfford && " (Short funds)"}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                                Tap an owned train station on the board to travel to
+                              </div>
+                            )}
 
-                      {/* Action Buttons */}
-                      <div
-                        className="modal-buttons"
-                        style={{
-                          display: "flex",
-                          gap: "6px",
-                          justifyContent: "center",
-                          padding: 0,
-                          marginTop: "4px",
-                        }}
-                      >
-                        <button
-                          className="modal-btn cancel"
-                          style={{
-                            height: "26px",
-                            minHeight: "26px",
-                            fontSize: "10px",
-                            padding: "0 10px",
-                            flex: 1,
-                            borderRadius: "4px",
-                          }}
-                          onClick={() => {
-                            setShowTrainTravelModal(false);
-                            setTravelMode(false);
-                            setBuyingProperty(null);
-                            setSelectedTrainTile(null);
-                            if (networkMode === "online") {
-                              sendGameAction("select_train_destination", {
-                                tileIndex: null,
-                              });
-                            }
-                            endTurn(currentPlayer, false);
-                          }}
-                        >
-                          STAY HERE
-                        </button>
-                        {(() => {
-                          if (selectedTrainTile === null) {
-                            return (
+                            {/* Action Buttons */}
+                            <div
+                              className="modal-buttons"
+                              style={{
+                                display: "flex",
+                                gap: "8px",
+                                width: "100%",
+                                marginTop: "4px",
+                              }}
+                            >
                               <button
-                                className="modal-btn buy"
-                                disabled={true}
+                                className="modal-btn cancel"
                                 style={{
-                                  height: "26px",
-                                  minHeight: "26px",
-                                  fontSize: "10px",
+                                  height: "28px",
+                                  minHeight: "28px",
+                                  fontSize: "11px",
                                   padding: "0 10px",
                                   flex: 1,
-                                  opacity: 0.45,
-                                  background: "#9E9E9E",
-                                  cursor: "not-allowed",
-                                  borderRadius: "4px",
+                                  borderRadius: "5px",
+                                }}
+                                onClick={() => {
+                                  setShowTrainTravelModal(false);
+                                  setTravelMode(false);
+                                  setBuyingProperty(null);
+                                  setSelectedTrainTile(null);
+                                  if (networkMode === "online") {
+                                    sendGameAction("select_train_destination", {
+                                      tileIndex: null,
+                                    });
+                                  }
+                                  setTurnFinished(true);
                                 }}
                               >
-                                SELECT
+                                CANCEL
                               </button>
-                            );
-                          }
-                          const sortedTrains = [4, 13, 21, 32];
-                          const srcIdx = sortedTrains.indexOf(
-                            travelSourceIndex ?? playerPositions[currentPlayer],
-                          );
-                          const tgtIdx =
-                            sortedTrains.indexOf(selectedTrainTile);
-                          const stationDist = (tgtIdx - srcIdx + 4) % 4;
-                          const cost = stationDist * 100;
-                          const canAfford = playerMoney[currentPlayer] >= cost;
-
-                          return (
-                            <button
-                              className="modal-btn buy"
-                              disabled={!canAfford}
-                              style={{
-                                height: "26px",
-                                minHeight: "26px",
-                                fontSize: "10px",
-                                padding: "0 10px",
-                                flex: 1,
-                                borderRadius: "4px",
-                                background: canAfford
-                                  ? "linear-gradient(to bottom, #1E88E5, #1565C0)"
-                                  : "#B0BEC5",
-                              }}
-                              onClick={() => {
-                                setShowTrainTravelModal(false);
-                                handleTravelConfirm(selectedTrainTile, cost);
-                              }}
-                            >
-                              TRAVEL (${cost})
-                            </button>
-                          );
-                        })()}
-                      </div>
+                              <button
+                                className="modal-btn buy"
+                                disabled={selectedTrainTile === null || !canAfford}
+                                style={{
+                                  height: "28px",
+                                  minHeight: "28px",
+                                  fontSize: "11px",
+                                  padding: "0 10px",
+                                  flex: 1,
+                                  borderRadius: "5px",
+                                  opacity:
+                                    selectedTrainTile === null || !canAfford ? 0.5 : 1,
+                                  cursor:
+                                    selectedTrainTile === null || !canAfford
+                                      ? "not-allowed"
+                                      : "pointer",
+                                  background:
+                                    selectedTrainTile !== null && canAfford
+                                      ? "linear-gradient(to bottom, #1E88E5, #1565C0)"
+                                      : "#9E9E9E",
+                                }}
+                                onClick={() => {
+                                  if (selectedTrainTile !== null && canAfford) {
+                                    setShowTrainTravelModal(false);
+                                    handleTravelConfirm(selectedTrainTile, cost);
+                                  }
+                                }}
+                              >
+                                TRAVEL {selectedTrainTile !== null && `($${cost})`}
+                              </button>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -10200,44 +10836,45 @@ function App() {
 
               {/* Sell No Buildings Modal */}
               {sellNoBuildingsModal && (
-                <div className="modal-overlay">
+                <div
+                  className="modal-overlay ref-modal-overlay"
+                  style={{ pointerEvents: "auto", background: "transparent" }}
+                  onClick={() => setSellNoBuildingsModal(false)}
+                >
                   <div
-                    className="buy-modal deal-modal bank-modal"
-                    style={{ pointerEvents: "auto", marginTop: "15vh" }}
+                    className="modal-shell buy-modal-replica mini-modal-replica"
+                    style={{ pointerEvents: "auto" }}
                   >
-                    <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          "linear-gradient(to bottom, #FF9800 0%, #F57C00 100%)",
-                      }}
-                    >
-                      <span className="modal-heading-text">
-                        ⚠️ SELL BUILDINGS
-                      </span>
-                    </div>
-                    <div className="modal-body" style={{ textAlign: "center" }}>
-                      <div
-                        style={{
-                          fontFamily: "Junegull, sans-serif",
-                          fontSize: "18px",
-                          color: "#4a2c18",
-                          marginBottom: "20px",
-                        }}
-                      >
-                        You don't have any buildings to sell.
-                      </div>
-                      <div
-                        className="modal-buttons"
-                        style={{ justifyContent: "center" }}
-                      >
-                        <button
-                          className="modal-btn cancel"
-                          style={{ flex: "none", minWidth: "120px" }}
+                    <div className="title-bar">
+                      <div className="title-text">SELL</div>
+                      <div className="icon-group">
+                        <div
+                          className="icon-btn close"
                           onClick={() => setSellNoBuildingsModal(false)}
                         >
-                          CLOSE
-                        </button>
+                          <div className="x-mark" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="build-body-panel" style={{ padding: "10px 14px", gap: "8px" }}>
+                      <div
+                        className="maroon"
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          textAlign: "center",
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        You don't have any built upgrades to sell!
+                      </div>
+                      <div className="buttons-row" style={{ marginTop: "4px" }}>
+                        <div
+                          className="action-btn btn-cancel"
+                          onClick={() => setSellNoBuildingsModal(false)}
+                        >
+                          OK
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -10247,246 +10884,229 @@ function App() {
               {/* Sell Modal (Main) */}
               {showSellModal && (
                 <div
-                  className="modal-overlay modal-overlay-inline"
+                  className="modal-overlay ref-modal-overlay"
                   style={{ pointerEvents: "none", background: "transparent" }}
                 >
                   <div
-                    className="ref-golden-card"
-                    style={{
-                      pointerEvents: "auto",
-                      maxHeight: "88%",
-                      maxWidth: "380px",
-                    }}
+                    className="modal-shell buy-modal-replica sell-modal-replica"
+                    style={{ pointerEvents: "auto" }}
                   >
-                    <button
-                      className="ref-help-btn"
-                      onClick={cancelSellMode}
-                      aria-label="Close"
-                    >
-                      ?
-                    </button>
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">SELL</span>
-                    </div>
-
-                    {!selectedSellColor ? (
-                      <div
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: "16px 8px",
-                          textAlign: "center",
-                        }}
-                      >
+                    <div className="title-bar">
+                      <div className="title-text">SELL</div>
+                      <div className="icon-group">
                         <div
-                          style={{
-                            fontSize: "13px",
-                            fontWeight: "900",
-                            color: "#4a2c18",
-                            marginBottom: "6px",
-                          }}
+                          className="icon-btn help"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Sell buildings for a 50% refund"
                         >
-                          SELECT A PROPERTY
+                          <span>?</span>
                         </div>
                         <div
-                          style={{
-                            fontSize: "11px",
-                            color: "#5d4037",
-                            lineHeight: "1.4",
-                          }}
+                          className="icon-btn close"
+                          onClick={cancelSellMode}
+                          title="Close"
                         >
-                          Tap any property on the board with buildings to sell.
+                          <div className="x-mark" />
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <div
-                          style={{
-                            textAlign: "center",
-                            margin: "2px 0 6px",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: "18px",
-                              fontWeight: "900",
-                              color: "#f57c00",
-                            }}
-                          >
-                            Refund: ${sellTotalRefund.toLocaleString()}
-                          </span>
-                        </div>
+                    </div>
 
-                        {/* ONLY the selected color group properties */}
-                        <div
-                          style={{
-                            flex: 1,
-                            overflowY: "auto",
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "4px",
-                            background: "#3e2415",
-                            border: "1.5px solid #5c371f",
-                            borderRadius: "8px",
-                            padding: "6px",
-                            boxSizing: "border-box",
-                          }}
-                        >
-                          {(COLOR_GROUPS[selectedSellColor] || [])
-                            .filter(
-                              (idx) =>
-                                propertyOwnership[idx] === currentPlayer,
-                            )
-                            .map((tileIdx) => {
-                              const prop = RENT_DATA[tileIdx];
-                              const level =
-                                sellMode &&
-                                sellPreviewLevels[tileIdx] !== undefined
-                                  ? sellPreviewLevels[tileIdx]
-                                  : propertyLevels[tileIdx] || 0;
-                              const baseLvl = propertyLevels[tileIdx] || 0;
-                              const tileColor = getTileColor(tileIdx);
-                              const cost = getUpgradeCost(tileIdx);
-                              const refundPerLevel = Math.round(cost * 0.5);
-                              const canSell = baseLvl > 0;
+                    <div className="build-body-panel">
+                      {!selectedSellColor ? (
+                        <>
+                          <div className="build-header-title">CHOOSE PROPERTY GROUP</div>
+                          <div className="build-monopoly-list">
+                            {getPlayerColorsWithBuildings(currentPlayer).map((color) => {
+                              const groupTiles = COLOR_GROUPS[color] || [];
+                              const sampleColor = getTileColor(groupTiles[0]) || color;
+                              const bldgCount = groupTiles.reduce((acc, t) => {
+                                return propertyOwnership[t] === currentPlayer ? acc + (propertyLevels[t] || 0) : acc;
+                              }, 0);
                               return (
-                                <div
-                                  key={tileIdx}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    padding: "5px 8px",
-                                    background: "#54321d",
-                                    borderLeft: `5px solid ${tileColor}`,
-                                    border: "1px solid #6e4126",
-                                    borderRadius: "6px",
-                                    cursor: canSell ? "pointer" : "default",
-                                    opacity: canSell ? 1 : 0.55,
-                                  }}
-                                  onClick={() =>
-                                    canSell && handleSellTileTap(tileIdx)
-                                  }
+                                <button
+                                  key={color}
+                                  className="build-monopoly-chip"
+                                  onClick={() => setSelectedSellColor(color)}
                                 >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      alignItems: "flex-start",
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        fontWeight: "800",
-                                        color: "#fff",
-                                        fontSize: "11px",
-                                        lineHeight: "1.2",
-                                      }}
-                                    >
-                                      {prop?.name || `Tile ${tileIdx}`}
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontSize: "9.5px",
-                                        color: "#facc15",
-                                      }}
-                                    >
-                                      +${refundPerLevel.toLocaleString()} / lvl
-                                    </span>
-                                  </div>
-
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "3px",
-                                    }}
-                                  >
-                                    {[1, 2, 3, 4, 5].map((barIdx) => {
-                                      const isFilled = level >= barIdx;
-                                      const isHotel = level === 5;
-                                      return (
-                                        <div
-                                          key={barIdx}
-                                          style={{
-                                            width: "8px",
-                                            height: "12px",
-                                            borderRadius: "2px",
-                                            background: isFilled
-                                              ? isHotel
-                                                ? "linear-gradient(180deg, #ef4444 0%, #b91c1c 100%)"
-                                                : "linear-gradient(180deg, #f59e0b 0%, #d97706 100%)"
-                                              : "rgba(255, 255, 255, 0.15)",
-                                            border: isFilled
-                                              ? "1px solid rgba(0,0,0,0.3)"
-                                              : "1px solid rgba(255,255,255,0.08)",
-                                          }}
-                                        />
-                                      );
-                                    })}
-                                    <span
-                                      style={{
-                                        fontSize: "9.5px",
-                                        fontWeight: "900",
-                                        marginLeft: "4px",
-                                        minWidth: "32px",
-                                        textAlign: "right",
-                                        color:
-                                          level === 5
-                                            ? "#ef4444"
-                                            : level > 0
-                                              ? "#f59e0b"
-                                              : "#9ca3af",
-                                      }}
-                                    >
-                                      {level === 0
-                                        ? "Lv 0"
-                                        : level === 5
-                                          ? "HOTEL"
-                                          : `Lv ${level}`}
-                                    </span>
-                                  </div>
-                                </div>
+                                  <span
+                                    className="chip-dot"
+                                    style={{ background: sampleColor }}
+                                  />
+                                  <span className="chip-name">
+                                    {color.toUpperCase()}
+                                  </span>
+                                  <span className="chip-count">
+                                    {bldgCount} Upgrades
+                                  </span>
+                                  <span className="chip-arrow">➔</span>
+                                </button>
                               );
                             })}
-                        </div>
-                      </>
-                    )}
+                          </div>
+                          <div className="build-hint-text">
+                            Tap a group or any built property on the board
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="build-sub-bar">
+                            <div className="build-group-label">
+                              {getPlayerColorsWithBuildings(currentPlayer).length > 1 && (
+                                <button
+                                  className="build-switch-btn"
+                                  onClick={() => setSelectedSellColor(null)}
+                                  title="Switch group"
+                                >
+                                  ◀ ALL
+                                </button>
+                              )}
+                              <span
+                                className="chip-dot"
+                                style={{
+                                  background: getTileColor(
+                                    COLOR_GROUPS[selectedSellColor]?.[0],
+                                  ),
+                                }}
+                              />
+                              <span className="group-title">
+                                {selectedSellColor.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="build-cost-badge">
+                              Refund:{" "}
+                              <span className="refund-val">
+                                +${sellTotalRefund.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "8px",
-                        marginTop: "6px",
-                      }}
-                    >
-                      <button
-                        className="ref-pill-btn ref-pill-red"
-                        style={{ flex: 1, height: "30px", fontSize: "11px" }}
-                        onClick={cancelSellMode}
-                      >
-                        CANCEL
-                      </button>
-                      <button
-                        className={`ref-pill-btn ${!selectedSellColor || sellTotalRefund === 0 ? "ref-pill-gray" : "ref-pill-green"}`}
-                        style={{
-                          flex: 1,
-                          height: "30px",
-                          fontSize: "11px",
-                        }}
-                        onClick={closeSellMode}
-                        disabled={!selectedSellColor || sellTotalRefund === 0}
-                      >
-                        SELL{" "}
-                        {sellTotalRefund > 0
-                          ? `($${sellTotalRefund.toLocaleString()})`
-                          : ""}
-                      </button>
+                          {/* Properties that belong to current player */}
+                          <div className="build-props-container">
+                            {(COLOR_GROUPS[selectedSellColor] || [])
+                              .filter((idx) => propertyOwnership[idx] === currentPlayer)
+                              .map((tileIdx) => {
+                                const prop = RENT_DATA[tileIdx];
+                                const baseLvl = propertyLevels[tileIdx] || 0;
+                                const currentStaged =
+                                  sellPreviewLevels[tileIdx] !== undefined
+                                    ? sellPreviewLevels[tileIdx]
+                                    : baseLvl;
+                                const tileColor = getTileColor(tileIdx);
+                                const cost = getUpgradeCost(tileIdx);
+                                const refundPerLevel = Math.round(cost * 0.5);
+                                const canSell = baseLvl > 0;
+
+                                return (
+                                  <div
+                                    key={tileIdx}
+                                    className="build-prop-item"
+                                    style={{ opacity: canSell ? 1 : 0.5 }}
+                                  >
+                                    <div className="prop-left">
+                                      <div
+                                        className="prop-color-bar"
+                                        style={{ background: tileColor }}
+                                      />
+                                      <div className="prop-text-col">
+                                        <span className="prop-name">
+                                          {prop?.name || `Tile ${tileIdx}`}
+                                        </span>
+                                        <span className="prop-refund-sub">
+                                          +${refundPerLevel.toLocaleString()} / refund
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="prop-right">
+                                      <button
+                                        className="build-circle-btn minus"
+                                        onClick={() => handleSellStep(tileIdx, -1)}
+                                        disabled={currentStaged <= 0}
+                                        title="Sell 1 upgrade"
+                                      >
+                                        −
+                                      </button>
+
+                                      <div
+                                        className="build-progress-bars"
+                                        onClick={() => canSell && handleSellStep(tileIdx, -1)}
+                                        title="Tap to sell upgrade"
+                                      >
+                                        {[1, 2, 3, 4, 5].map((barIdx) => {
+                                          const isFilled = currentStaged >= barIdx;
+                                          const isHotel = currentStaged === 5;
+                                          return (
+                                            <div
+                                              key={barIdx}
+                                              className={`bar ${
+                                                isFilled
+                                                  ? isHotel
+                                                    ? "hotel"
+                                                    : "house"
+                                                  : "empty"
+                                              }`}
+                                            />
+                                          );
+                                        })}
+                                      </div>
+
+                                      <button
+                                        className="build-circle-btn plus"
+                                        onClick={() => handleSellStep(tileIdx, 1)}
+                                        disabled={currentStaged >= baseLvl}
+                                        title="Undo sell"
+                                      >
+                                        +
+                                      </button>
+
+                                      <span
+                                        className={`build-lvl-text ${
+                                          currentStaged === 5
+                                            ? "hotel"
+                                            : currentStaged > 0
+                                              ? "house"
+                                              : "base"
+                                        }`}
+                                      >
+                                        {currentStaged === 0
+                                          ? "Lv 0"
+                                          : currentStaged === 5
+                                            ? "HOTEL"
+                                            : `Lv ${currentStaged}`}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </>
+                      )}
+
+                      <div className="buttons-row">
+                        <div
+                          className="action-btn btn-cancel"
+                          onClick={cancelSellMode}
+                        >
+                          CANCEL
+                        </div>
+                        <div
+                          className={`action-btn btn-sell ${
+                            !selectedSellColor || sellTotalRefund === 0
+                              ? "disabled"
+                              : ""
+                          }`}
+                          onClick={
+                            selectedSellColor && sellTotalRefund > 0
+                              ? closeSellMode
+                              : undefined
+                          }
+                        >
+                          SELL{" "}
+                          {sellTotalRefund > 0
+                            ? `(+$${sellTotalRefund.toLocaleString()})`
+                            : ""}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -10657,83 +11277,15 @@ function App() {
 
               {/* Buying Modal */}
               {(showBuyModal || (isModalClosing && closingModal === "buy")) &&
-                buyingProperty && (
-                  <div
-                    className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
-                    onClick={(e) => {
-                      if (e.target === e.currentTarget) handleCancelBuy();
-                    }}
-                  >
-                    <div className="buy-modal">
-                      <button
-                        className="modal-close-btn"
-                        onClick={handleCancelBuy}
-                        aria-label="Close"
-                      />
-                      {/* Header */}
-                      <div className="modal-heading">
-                        <span className="modal-heading-text">Buying</span>
-                      </div>
-
-                      {/* Body */}
-                      <div className="modal-body">
-                        <div className="modal-city-name">
-                          {buyingProperty.name}
-                        </div>
-                        <div className="modal-divider"></div>
-                        <div className="modal-details">
-                          <div className="modal-row">
-                            <span>cost</span>
-                            <span className="modal-value">
-                              {activeEffects[buyingProperty.buyerIndex]
-                                ?.discount_50 ? (
-                                <>
-                                  <span
-                                    style={{
-                                      textDecoration: "line-through",
-                                      color: "#999",
-                                      marginRight: "8px",
-                                      fontSize: "0.8em",
-                                    }}
-                                  >
-                                    ${buyingProperty.price?.toLocaleString()}
-                                  </span>
-                                  <span style={{ color: "#4CAF50" }}>
-                                    $
-                                    {Math.floor(
-                                      buyingProperty.price / 2,
-                                    )?.toLocaleString()}
-                                  </span>
-                                </>
-                              ) : (
-                                `$${buyingProperty.price?.toLocaleString()}`
-                              )}
-                            </span>
-                          </div>
-                          <div className="modal-row">
-                            <span>rent</span>
-                            <span className="modal-value">
-                              ${buyingProperty.rent?.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="modal-buttons">
-                          <button
-                            className="modal-btn cancel"
-                            onClick={handleCancelBuy}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            className="modal-btn buy"
-                            onClick={handleBuyProperty}
-                          >
-                            Buy
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                buyingProperty &&
+                !gamePlayers[buyingProperty.buyerIndex]?.isBot && (
+                  <BuyModal
+                    property={buyingProperty}
+                    hasDiscount={!!activeEffects[buyingProperty.buyerIndex]?.discount_50}
+                    isClosing={isModalClosing && closingModal === "buy"}
+                    onBuy={handleBuyProperty}
+                    onCancel={handleCancelBuy}
+                  />
                 )}
 
               {/* Rob Bank Modal */}
@@ -12844,7 +13396,7 @@ function App() {
                             </div>
                             <div
                               style={{
-                                fontSize: "18px",
+                                fontSize: "14px",
                                 fontWeight: "bold",
                                 color: "#2E7D32",
                                 lineHeight: "1.1",
@@ -13430,8 +13982,15 @@ function App() {
                         : null
                     }
                     isMortgaged={!!mortgagedProperties[selectedProperty.tileIndex]}
+                    isMyProperty={propertyOwnership[selectedProperty.tileIndex] === currentPlayer}
+                    canMortgage={canMortgageProperty(selectedProperty.tileIndex, currentPlayer)}
+                    canRedeem={playerMoney[currentPlayer] >= Math.round((selectedProperty.price || 0) * 0.55)}
+                    mortgageValue={Math.round((selectedProperty.price || 0) / 2)}
+                    redeemCost={Math.round((selectedProperty.price || 0) * 0.55)}
+                    onMortgage={() => handleMortgageSingle(selectedProperty.tileIndex)}
+                    onRedeem={() => handleRedeemSingle(selectedProperty.tileIndex)}
                     isClosing={isModalClosing && closingModal === "property"}
-                    onClose={closeAllModals}
+                    onClose={() => closeAllModals()}
                   />
                 )}
             </div>
@@ -13543,6 +14102,22 @@ function App() {
                         >
                           {player.name}
                         </span>
+                        {player.isBot && (
+                          <span
+                            style={{
+                              fontSize: "8.5px",
+                              background: "rgba(59, 130, 246, 0.25)",
+                              color: "#60a5fa",
+                              border: "1px solid rgba(96, 165, 250, 0.4)",
+                              borderRadius: "3px",
+                              padding: "0 3px",
+                              fontWeight: "800",
+                              lineHeight: "1.2",
+                            }}
+                          >
+                            BOT
+                          </span>
+                        )}
                         {bankruptPlayers[index] && <span>💀</span>}
                         {player.kicked && (
                           <span

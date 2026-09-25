@@ -466,9 +466,16 @@ io.on('connection', (socket) => {
           const gOwner = room.gameState.propertyOwnership[gTile];
           const rOwner = room.gameState.propertyOwnership[rTile];
           if (gOwner !== undefined && rOwner !== undefined) {
+            const swapFee = 2000;
+            if (room.gameState.playerMoney && room.gameState.playerMoney[gOwner] !== undefined) {
+              room.gameState.playerMoney[gOwner] = Math.max(0, room.gameState.playerMoney[gOwner] - swapFee);
+            }
+            room.gameState.cashStack = (room.gameState.cashStack || 0) + swapFee;
+
             room.gameState.propertyOwnership[gTile] = rOwner;
             room.gameState.propertyOwnership[rTile] = gOwner;
-            room.gameState.history.unshift(`🔄 ${room.players[gOwner]?.name || 'Player'} swapped property with ${room.players[rOwner]?.name || 'Player'}!`);
+            room.gameState.history.unshift(`🔄 ${room.players[gOwner]?.name || 'Player'} paid $2,000 to swap property with ${room.players[rOwner]?.name || 'Player'}!`);
+            room.gameState.turnFinished = true;
             broadcastState(room);
           }
         }
@@ -1097,7 +1104,6 @@ function handleLanding(room, playerIndex, tileIndex) {
   } else if (tileIndex === 7) {
     // 2. PROPERTY SWAP
     room.gameState.history.unshift(`🔄 ${room.players[playerIndex]?.name || 'Player'} landed on Property Swap!`);
-    room.gameState.turnFinished = true;
     room.gameState.isProcessingTurn = false;
   } else if (tileIndex === 28) {
     // 3. GO TO JAIL

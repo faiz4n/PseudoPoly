@@ -131,36 +131,36 @@ body {
   border: none !important;
   box-shadow: none !important;
   border-radius: 0;
-  overflow: hidden;
+  overflow: visible;
   z-index: 10;
 }
 
 .corner.start {
-  bottom: 2.0359%;
-  right: 1.8418%;
-  width: 12.2427%;
-  height: 14.1317%;
+  bottom: 0%;
+  right: 0%;
+  width: 12.6966%;
+  height: 14.7316%;
 }
 
 .corner.parking {
-  bottom: 2.0359%;
-  left: 1.7335%;
-  width: 11.8093%;
-  height: 14.1317%;
+  bottom: 0%;
+  left: 0%;
+  width: 12.2472%;
+  height: 14.7316%;
 }
 
 .corner.robbank {
-  top: 2.0359%;
-  left: 1.7335%;
-  width: 11.8093%;
-  height: 13.8922%;
+  top: 0%;
+  left: 0%;
+  width: 12.2472%;
+  height: 14.4819%;
 }
 
 .corner.jail {
-  top: 2.0359%;
-  right: 1.8418%;
-  width: 12.2427%;
-  height: 13.8922%;
+  top: 0%;
+  right: 0%;
+  width: 12.6966%;
+  height: 14.4819%;
 }
 
 .corner-icon,
@@ -183,9 +183,9 @@ body {
   justify-content: space-between;
   padding: 1px;
   margin: 0;
-  border: none !important;
+  border: none;
   background: transparent !important;
-  box-shadow: none !important;
+  box-shadow: none;
   user-select: none;
   box-sizing: border-box;
   overflow: visible;
@@ -194,6 +194,23 @@ body {
 
 .tile::after {
   display: none !important;
+}
+
+/* Black and white overlay element for tiles during selection modes (fallback) */
+.tile .tile-grayscale-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Black and white: backdrop filter to grayscale board image underneath */
+  backdrop-filter: grayscale(100%) brightness(0.8);
+  -webkit-backdrop-filter: grayscale(100%) brightness(0.8);
+  background: rgba(128, 128, 128, 0.15);
+  display: block;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: inherit;
 }
 
 /* Tile content elements - icons hidden, baked into master board texture */
@@ -219,7 +236,9 @@ body {
   background: transparent;
   padding: 0 2px;
   margin-top: clamp(3px, 0.7vh, 5px) !important;
-  text-shadow: none !important;
+  -webkit-text-stroke: 0.5px rgba(20, 10, 2, 0.85);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
   word-break: normal;
   overflow-wrap: break-word;
   max-width: 96%;
@@ -228,11 +247,19 @@ body {
   text-size-adjust: none;
 }
 
-/* All tile labels maintain the same brown color with no text shadow */
+/* Push tile label down when property has built houses / upgrades so there's zero overlap */
+.tile.has-upgrades .tile-name,
+.tile.has-upgrades.vertical .tile-name {
+  margin-top: clamp(10px, 2.2vh, 13px) !important;
+}
+
+/* All tile labels maintain the same brown color with dark borders */
 .tile.tile-dark .tile-name,
 .tile.tile-light .tile-name {
   color: #3e1e08 !important;
-  text-shadow: none !important;
+  -webkit-text-stroke: 0.5px rgba(20, 10, 2, 0.85);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 /* Property War and Forced Auction action tile labels kept as is */
@@ -243,6 +270,9 @@ body {
   font-weight: 800;
   color: #3e1e08 !important;
   text-align: center;
+  -webkit-text-stroke: 0.5px rgba(20, 10, 2, 0.85);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 /* Price - BOTTOM aligned, Junegull font */
@@ -251,6 +281,8 @@ body {
   font-size: clamp(7.5px, 2vh, 10px);
   font-weight: 500;
   color: white;
+  -webkit-text-stroke: 0.6px rgba(20, 10, 2, 0.9);
+  paint-order: stroke fill;
   text-shadow:
     -1px -1px 0 #333,
     1px -1px 0 #333,
@@ -279,6 +311,16 @@ body {
     0 2px 4px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
   text-align: center;
+}
+
+/* Mortgaged property badge - solid red */
+.tile .tile-price.mortgaged,
+.tile .tile-price.owned.mortgaged {
+  background: #d32f2f !important;
+  background-color: #d32f2f !important;
+  color: #ffffff !important;
+  border: 1px solid #b71c1c !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Train / Railroad Tile Styling - transparent hitbox over master board */
@@ -425,14 +467,14 @@ body {
 /* ==================== CENTER AREA ==================== */
 .board-center {
   position: absolute;
-  /* borderT + cornerHT = 2.0359 + 13.8922 = 15.9281 */
-  top: 15.9281%;
-  /* borderL + cornerWL = 1.7335 + 11.8093 = 13.5428 */
-  left: 13.5428%;
-  /* borderR + cornerWR = 1.8418 + 12.2427 = 14.0845 */
-  right: 14.0845%;
-  /* borderB + cornerHB = 2.0359 + 14.1317 = 16.1676 */
-  bottom: 16.1676%;
+  /* cornerHT = 14.4819 */
+  top: 14.4819%;
+  /* cornerWL = 12.2472 */
+  left: 12.2472%;
+  /* cornerWR = 12.6966 */
+  right: 12.6966%;
+  /* cornerHB = 14.7316 */
+  bottom: 14.7316%;
   background: transparent !important;
   display: flex;
   flex-direction: column;
@@ -654,10 +696,11 @@ body {
 /* Shared Button Styles */
 .roll-button,
 .buy-button {
-  height: 45px;
+  height: 45px !important;
   width: 100%;
   /* Fill grid cell */
   min-width: unset;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -672,7 +715,7 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   background-size: 100% 100% !important;
   background-repeat: no-repeat !important;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: none !important;
 }
 
 .btn-inline-icon {
@@ -688,13 +731,15 @@ body {
   grid-column: 2;
   background: url("./assets/btn_blue.png") no-repeat center / 100% 100% !important;
   color: white;
+  box-shadow: none !important;
 }
 
 .roll-button.solo {
-  grid-column: 1 / -1;
-  max-width: 170px;
-  width: 100%;
-  margin: 0 auto;
+  grid-column: 2 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  justify-self: end !important;
 }
 
 .roll-button:hover {
@@ -711,6 +756,7 @@ body {
 .roll-button.done {
   background: url("./assets/btn_green.png") no-repeat center / 100% 100% !important;
   color: white;
+  box-shadow: none !important;
 }
 
 .roll-button.done:hover {
@@ -727,6 +773,7 @@ body {
   grid-column: 1;
   background: url("./assets/btn_green.png") no-repeat center / 100% 100% !important;
   color: white;
+  box-shadow: none !important;
 }
 
 .buy-button:hover {
@@ -748,13 +795,17 @@ body {
 
   .roll-button,
   .buy-button {
-    height: 35px;
+    height: 45px !important;
     font-size: 16px;
     border-radius: 8px;
+    box-shadow: none !important;
   }
 
   .roll-button.solo {
-    max-width: 140px;
+    grid-column: 2 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    justify-self: end !important;
   }
 }
 
@@ -860,10 +911,9 @@ body {
   border: 2px solid transparent;
 }
 
-.deal-player-item:hover {
+.deal-player-item:active {
   background: rgba(255, 255, 255, 0.35);
-  border-color: white;
-  transform: scale(1.03);
+  transform: scale(0.97);
 }
 
 .deal-player-avatar {
@@ -1219,37 +1269,107 @@ body {
 
 .tile.deal-selectable {
   cursor: pointer;
-  transition: transform 0.15s;
 }
 
 .tile.deal-selectable:hover {
-  transform: scale(1.05);
   z-index: 20;
 }
 
 .deal-tile-indicator {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 20px;
-  height: 20px;
+  top: 3px;
+  right: 3px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-  color: white;
+  font-family: 'Roboto', sans-serif;
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffffff;
   z-index: 10;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
 }
 
 .deal-tile-indicator.give {
-  background: #f44336;
+  background: #d32f2f;
+  color: #ffffff;
 }
 
 .deal-tile-indicator.receive {
-  background: #4caf50;
+  background: #2e7d32;
+  color: #ffffff;
+}
+
+/* Bank Mortgage / Redeem Indicators */
+.bank-tile-indicator {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Roboto', sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffffff;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.bank-tile-indicator.mortgage {
+  background: #d32f2f;
+  border: 1px solid #ffffff;
+}
+
+.bank-tile-indicator.redeem {
+  background: #2e7d32;
+  border: 1px solid #ffffff;
+}
+
+/* Train Travel Destination Highlights - Subtle uniform blue glow, 2px border */
+.tile.train-selected-dest {
+  border: 2px solid #00E5FF !important;
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.8), 0 0 12px rgba(0, 229, 255, 0.4) !important;
+  border-radius: 4px !important;
+  z-index: 130 !important;
+}
+
+.tile.train-selectable-dest {
+  cursor: pointer !important;
+  z-index: 25 !important;
+}
+
+/* Mortgage & Redeem Selection on Board - Subtle uniform glow, 2px border */
+.tile.mortgage-selected {
+  border: 2px solid #FF1744 !important;
+  box-shadow: 0 0 6px rgba(255, 23, 68, 0.8), 0 0 12px rgba(255, 23, 68, 0.4) !important;
+  border-radius: 4px !important;
+  z-index: 130 !important;
+}
+
+.tile.mortgage-selectable {
+  cursor: pointer !important;
+  z-index: 25 !important;
+}
+
+.tile.redeem-selected {
+  border: 2px solid #00E676 !important;
+  box-shadow: 0 0 6px rgba(0, 230, 118, 0.8), 0 0 12px rgba(0, 230, 118, 0.4) !important;
+  border-radius: 4px !important;
+  z-index: 130 !important;
+}
+
+.tile.redeem-selectable {
+  cursor: pointer !important;
+  z-index: 25 !important;
 }
 
 /* ==================== SIDEBAR ==================== */
@@ -1538,21 +1658,18 @@ body {
     box-shadow:
       0 0 14px #00e676,
       inset 0 0 8px #b9f6ca;
-    transform: scale(1.02);
   }
 
   50% {
     box-shadow:
-      0 0 26px #00c853,
-      inset 0 0 14px #69f0ae;
-    transform: scale(1.06);
+      0 0 22px #00c853,
+      inset 0 0 12px #69f0ae;
   }
 
   100% {
     box-shadow:
       0 0 14px #00e676,
       inset 0 0 8px #b9f6ca;
-    transform: scale(1.02);
   }
 }
 
@@ -1561,21 +1678,18 @@ body {
     box-shadow:
       0 0 14px #ff9100,
       inset 0 0 8px #ffe57f;
-    transform: scale(1.02);
   }
 
   50% {
     box-shadow:
-      0 0 26px #ff6d00,
-      inset 0 0 14px #ffd180;
-    transform: scale(1.06);
+      0 0 22px #ff6d00,
+      inset 0 0 12px #ffd180;
   }
 
   100% {
     box-shadow:
       0 0 14px #ff9100,
       inset 0 0 8px #ffe57f;
-    transform: scale(1.02);
   }
 }
 
@@ -1630,21 +1744,18 @@ body {
     box-shadow:
       0 0 14px #ffc107,
       inset 0 0 8px #fff8e1;
-    transform: scale(1.02);
   }
 
   50% {
     box-shadow:
-      0 0 26px #ffa000,
+      0 0 24px #ffa000,
       inset 0 0 14px #ffe082;
-    transform: scale(1.06);
   }
 
   100% {
     box-shadow:
       0 0 14px #ffc107,
       inset 0 0 8px #fff8e1;
-    transform: scale(1.02);
   }
 }
 
@@ -1658,7 +1769,7 @@ body {
   max-width: 380px;
   max-height: 94%;
   box-sizing: border-box;
-  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: scaleIn 0.12s cubic-bezier(0, 0, 0.2, 1);
   background: transparent !important;
   border-style: solid !important;
   border-width: 22px !important;
@@ -1671,7 +1782,7 @@ body {
 
 @keyframes scaleIn {
   from {
-    transform: scale(0.85);
+    transform: scale(0.94);
     opacity: 0;
   }
   to {
@@ -1685,7 +1796,7 @@ body {
   max-width: 440px;
 }
 
-/* Closing Animations */
+/* Closing Animations - Instant & Crisp */
 @keyframes fadeOut {
   from { opacity: 1; }
   to { opacity: 0; }
@@ -1693,15 +1804,19 @@ body {
 
 @keyframes scaleOut {
   from { transform: scale(1); opacity: 1; }
-  to { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(0.94); opacity: 0; }
 }
 
 .modal-overlay.closing {
-  animation: fadeOut 0.25s ease-in forwards;
+  animation: fadeOut 0.1s ease-out forwards !important;
 }
 
-.modal-overlay.closing .buy-modal {
-  animation: scaleOut 0.25s ease-in forwards;
+.modal-overlay.closing .buy-modal,
+.modal-overlay.closing .modal-shell,
+.modal-overlay.closing .baloo-modal-shell,
+.modal-overlay.closing .ref-build-card,
+.modal-overlay.closing .ref-golden-card {
+  animation: scaleOut 0.1s ease-out forwards !important;
 }
 
 /* Modal Header - Reference Blue Ribbon Banner */
@@ -2802,7 +2917,8 @@ body {
   font-size: clamp(1px, 2vh, 6px) !important;
   line-height: 1.1 !important;
   max-height: 2.5em !important;
-  -webkit-text-stroke: 0px !important;
+  -webkit-text-stroke: 0.5px rgba(20, 10, 2, 0.85) !important;
+  paint-order: stroke fill !important;
   letter-spacing: 0.15px !important;
   padding: 0px 0px 0 !important;
   margin-top: clamp(2.5px, 0.6vh, 4.5px) !important;
@@ -2813,7 +2929,7 @@ body {
   word-break: normal !important;
   overflow-wrap: break-word !important;
   color: #3e1e08 !important;
-  text-shadow: none !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4) !important;
   -webkit-text-size-adjust: none !important;
   text-size-adjust: none !important;
 }
@@ -2826,7 +2942,8 @@ body {
 
 .is-capacitor .tile .tile-price {
   font-size: clamp(7.5px, 2vh, 9.5px) !important;
-  -webkit-text-stroke: 0px !important;
+  -webkit-text-stroke: 0.6px rgba(20, 10, 2, 0.9) !important;
+  paint-order: stroke fill !important;
   line-height: 1 !important;
   padding: 0.5px 2px !important;
   bottom: 1.5px !important;
@@ -2927,8 +3044,8 @@ body {
   cursor: pointer !important;
 }
 
-.dev-tap-active .tile:hover,
-.dev-tap-active .corner:hover {
+.dev-tap-active .tile:active,
+.dev-tap-active .corner:active {
   filter: brightness(1.22) contrast(1.1) !important;
   box-shadow:
     inset 0 0 0 2px #00e676,

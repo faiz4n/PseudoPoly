@@ -33,4 +33,6 @@ build-apk/
 *.apk
 local.properties
 server/referenceApk/
+claude
+old_master_board.webp
 

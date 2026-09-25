@@ -98,6 +98,17 @@ export const PROPERTY_COLORS = {
   special: '#e0ca9b',
 };
 
+export const COLOR_GROUPS = {
+  [PROPERTY_COLORS.yellow]: [1, 2, 5], // Shop, Super market, Service station
+  [PROPERTY_COLORS.red]: [6, 8, 9], // Swim pool, Zoo, Ice-rink
+  [PROPERTY_COLORS.pink]: [11, 12, 14], // Pizzeria, Cinema, Night club
+  [PROPERTY_COLORS.darkOrange]: [15, 16, 17], // Airport, Car salon, Harbor
+  [PROPERTY_COLORS.lightGreen]: [19, 20, 22], // Newspaper, TV channel, Mobile op.
+  [PROPERTY_COLORS.purple]: [24, 25, 27], // Toy factory, Candy factory, Organic farm
+  [PROPERTY_COLORS.darkGreen]: [29, 30], // Oil well, Diamond mine (only 2)
+  [PROPERTY_COLORS.limeGreen]: [34, 35], // Hollywood, Electronics factory (only 2)
+};
+
 export const SPACE_TYPES = {
   PROPERTY: 'property',
   RAILROAD: 'railroad',

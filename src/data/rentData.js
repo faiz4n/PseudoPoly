@@ -264,3 +264,5 @@ export const RENT_DATA = {
 
 export const TRAIN_RENT = [125, 250, 500, 1000];
 export const TRAIN_TILES = [4, 13, 21, 32]; // Central Station, Left Train, Top Train, Right Train
+export { COLOR_GROUPS } from './boardData';
+

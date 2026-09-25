@@ -162,6 +162,45 @@ function RadarIcon({ size = 24, color = "currentColor" }) {
   );
 }
 
+function UserIcon({ size = 12, color = "currentColor" }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function BotIcon({ size = 12, color = "currentColor" }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="11" width="18" height="10" rx="2" />
+      <circle cx="12" cy="5" r="2" />
+      <path d="M12 7v4" />
+      <line x1="8" y1="16" x2="8.01" y2="16" strokeWidth="2" />
+      <line x1="16" y1="16" x2="16.01" y2="16" strokeWidth="2" />
+    </svg>
+  );
+}
+
 export default function MatchmakingView({
   gameStage,
   setGameStage,
@@ -191,6 +230,7 @@ export default function MatchmakingView({
   onToggleReady,
   matchmakingPending,
   onRegisterBackHandler,
+  onStartPassAndPlay,
 }) {
   const [activeScreen, setActiveScreen] = useState("home");
   const [discoveredGames, setDiscoveredGames] = useState([]);
@@ -199,6 +239,107 @@ export default function MatchmakingView({
   const [showProfileDrawer, setShowProfileDrawer] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const pinInputRef = useRef(null);
+
+  // Pass & Play Custom Slots Setup (2 to 6 Players & Bots)
+  const BOT_DEFAULT_NAMES = [
+    "Bot Alpha",
+    "Bot Bravo",
+    "Bot Charlie",
+    "Bot Delta",
+    "Bot Echo",
+    "Bot Foxtrot",
+  ];
+
+  const [passPlaySlots, setPassPlaySlots] = useState(() => [
+    {
+      id: 0,
+      name: myIdentity?.name || "Player 1",
+      avatar: myIdentity?.avatar || avatarOptions[0]?.avatar,
+      isBot: false,
+      color: avatarOptions[0]?.color || "#E64A19",
+    },
+    {
+      id: 1,
+      name: "Bot Alpha",
+      avatar: avatarOptions[1]?.avatar || avatarOptions[0]?.avatar,
+      isBot: true,
+      color: avatarOptions[1]?.color || "#2196F3",
+    },
+  ]);
+
+  const handleAddPassPlaySlot = () => {
+    if (passPlaySlots.length >= 6) return;
+    const nextIdx = passPlaySlots.length;
+    const usedAvatars = passPlaySlots.map((s) => s.avatar);
+    const available =
+      avatarOptions.find((a) => !usedAvatars.includes(a.avatar)) ||
+      avatarOptions[nextIdx % avatarOptions.length];
+
+    setPassPlaySlots((prev) => [
+      ...prev,
+      {
+        id: nextIdx,
+        name: BOT_DEFAULT_NAMES[nextIdx] || `Bot ${nextIdx + 1}`,
+        avatar: available.avatar,
+        isBot: true,
+        color: available.color || "#43A047",
+      },
+    ]);
+  };
+
+  const handleRemovePassPlaySlot = (index) => {
+    if (passPlaySlots.length <= 2) return;
+    setPassPlaySlots((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleTogglePassPlayBot = (index) => {
+    setPassPlaySlots((prev) =>
+      prev.map((slot, idx) => {
+        if (idx !== index) return slot;
+        const newIsBot = !slot.isBot;
+        let newName = slot.name;
+        if (newIsBot && (slot.name === `Player ${idx + 1}` || slot.name === "")) {
+          newName = BOT_DEFAULT_NAMES[idx] || `Bot ${idx + 1}`;
+        } else if (!newIsBot && slot.name.startsWith("Bot")) {
+          newName =
+            idx === 0 && myIdentity?.name
+              ? myIdentity.name
+              : `Player ${idx + 1}`;
+        }
+        return {
+          ...slot,
+          isBot: newIsBot,
+          name: newName,
+        };
+      })
+    );
+  };
+
+  const handleCyclePassPlayAvatar = (index) => {
+    setPassPlaySlots((prev) =>
+      prev.map((slot, idx) => {
+        if (idx !== index) return slot;
+        const currentAvatarIdx = avatarOptions.findIndex(
+          (a) => a.avatar === slot.avatar
+        );
+        const nextAvatar =
+          avatarOptions[(currentAvatarIdx + 1) % avatarOptions.length];
+        return {
+          ...slot,
+          avatar: nextAvatar.avatar,
+          color: nextAvatar.color,
+        };
+      })
+    );
+  };
+
+  const handleUpdatePassPlayName = (index, newName) => {
+    setPassPlaySlots((prev) =>
+      prev.map((slot, idx) =>
+        idx === index ? { ...slot, name: newName } : slot
+      )
+    );
+  };
 
   // Register back gesture handler for Matchmaking screens and sub-modals
   useEffect(() => {
@@ -212,11 +353,18 @@ export default function MatchmakingView({
           setShowProfileDrawer(false);
           return true;
         }
+        if (activeScreen === "pass_play_setup") {
+          setActiveScreen("mode_select");
+          return true;
+        }
         if (activeScreen === "hotspot_scan") {
           setActiveScreen("hotspot_choice");
           return true;
         }
-        if (activeScreen === "hotspot_choice" || activeScreen === "online_menu") {
+        if (
+          activeScreen === "hotspot_choice" ||
+          activeScreen === "online_menu"
+        ) {
           setActiveScreen("mode_select");
           return true;
         }
@@ -527,10 +675,7 @@ export default function MatchmakingView({
               {/* Mode 1: Pass & Play */}
               <div
                 className="mm-mode-card pass-play"
-                onClick={() => {
-                  setNetworkMode("offline");
-                  setGameStage("playing");
-                }}
+                onClick={() => setActiveScreen("pass_play_setup")}
               >
                 <div className="mm-mode-icon-wrap">
                   <UsersIcon size={24} color="#27ae60" />
@@ -570,6 +715,131 @@ export default function MatchmakingView({
                   Create or join a room and play online
                 </p>
                 <button className="mm-mode-play-btn">Play</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================
+            SCREEN 2.5: PASS & PLAY SETUP (2 to 6 Players & Bots)
+            ================================================================= */}
+        {activeScreen === "pass_play_setup" && (
+          <div
+            style={{ height: "100%", display: "flex", flexDirection: "column" }}
+          >
+            <div className="mm-header">
+              <button
+                className="mm-back-btn"
+                onClick={() => setActiveScreen("mode_select")}
+                title="Back to mode select"
+              >
+                ‹
+              </button>
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <h2 className="mm-header-title">PASS & PLAY SETUP</h2>
+                <p className="mm-header-subtitle">Choose 2 to 6 players and bots</p>
+              </div>
+              <div className="mm-header-spacer" />
+            </div>
+
+            <div className="mm-passplay-container">
+              <div className="mm-passplay-slots-row">
+                {passPlaySlots.map((slot, index) => {
+                  const slotColor = slot.color || "#ffd54f";
+                  return (
+                    <div
+                      key={slot.id}
+                      className={`mm-passplay-card ${slot.isBot ? "is-bot" : ""}`}
+                      style={{ borderColor: `${slotColor}88` }}
+                    >
+                      <div className="mm-passplay-slot-badge">
+                        P{index + 1}
+                      </div>
+
+                      {passPlaySlots.length > 2 && (
+                        <button
+                          className="mm-passplay-remove-btn"
+                          onClick={() => handleRemovePassPlaySlot(index)}
+                          title="Remove Player"
+                        >
+                          ✕
+                        </button>
+                      )}
+
+                      <div
+                        className="mm-passplay-avatar-wrap"
+                        onClick={() => handleCyclePassPlayAvatar(index)}
+                        title="Tap to change avatar"
+                      >
+                        <img
+                          src={resolveAvatar(slot.avatar)}
+                          alt={slot.name}
+                          className="mm-passplay-avatar-img"
+                          style={{ borderColor: slotColor }}
+                        />
+                        <div className="mm-passplay-cycle-hint">↻</div>
+                      </div>
+
+                      <input
+                        type="text"
+                        className="mm-passplay-name-input"
+                        value={slot.name}
+                        maxLength={12}
+                        onChange={(e) =>
+                          handleUpdatePassPlayName(index, e.target.value)
+                        }
+                        placeholder={`Player ${index + 1}`}
+                      />
+
+                      <div className="mm-passplay-type-toggle">
+                        <button
+                          type="button"
+                          className={`mm-passplay-type-btn ${!slot.isBot ? "active human" : ""}`}
+                          onClick={() => slot.isBot && handleTogglePassPlayBot(index)}
+                        >
+                          <UserIcon size={11} /> Human
+                        </button>
+                        <button
+                          type="button"
+                          className={`mm-passplay-type-btn ${slot.isBot ? "active bot" : ""}`}
+                          onClick={() => !slot.isBot && handleTogglePassPlayBot(index)}
+                        >
+                          <BotIcon size={11} /> Bot
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {passPlaySlots.length < 6 && (
+                  <div
+                    className="mm-passplay-add-card"
+                    onClick={handleAddPassPlaySlot}
+                  >
+                    <div className="mm-passplay-add-icon">+</div>
+                    <span>Add Player</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mm-passplay-footer">
+                <div className="mm-passplay-summary">
+                  {passPlaySlots.filter((s) => !s.isBot).length} Humans,{" "}
+                  {passPlaySlots.filter((s) => s.isBot).length} Bots ({passPlaySlots.length}/6)
+                </div>
+                <button
+                  className="mm-passplay-start-btn"
+                  onClick={() => {
+                    setNetworkMode("offline");
+                    if (typeof onStartPassAndPlay === "function") {
+                      onStartPassAndPlay(passPlaySlots);
+                    } else {
+                      setGameStage("playing");
+                    }
+                  }}
+                >
+                  START GAME
+                </button>
               </div>
             </div>
           </div>

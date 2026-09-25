@@ -148,10 +148,8 @@
   transition: transform 0.1s ease, border-color 0.15s ease !important;
 }
 
-.deal-player-card:hover,
 .deal-player-card:active {
   transform: scale(0.98) !important;
-  border-color: #2e7d32 !important;
   background: #ffffff !important;
 }
 
@@ -653,7 +651,7 @@
   display: none !important;
 }
 
-.war-join-list > div {
+.war-join-list>div {
   padding: 0px 3px !important;
   margin-bottom: 0 !important;
   border-radius: 3px !important;
@@ -697,7 +695,7 @@
   display: none !important;
 }
 
-.war-rolling-list > div {
+.war-rolling-list>div {
   padding: 0px 3px !important;
   margin-bottom: 0 !important;
   font-size: 8.5px !important;
@@ -710,7 +708,7 @@
   transition: all 0.35s ease !important;
 }
 
-.war-rolling-list > div.winner-item {
+.war-rolling-list>div.winner-item {
   background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%) !important;
   color: #ffffff !important;
   border: 1px solid #FFD700 !important;
@@ -739,8 +737,15 @@
 }
 
 @keyframes warEvalPulse {
-  0% { opacity: 0.85; transform: scale(0.99); }
-  100% { opacity: 1; transform: scale(1.01); }
+  0% {
+    opacity: 0.85;
+    transform: scale(0.99);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
 }
 
 /* Tie Screen Styles */
@@ -799,6 +804,7 @@
     box-shadow: 0 0 8px rgba(255, 152, 0, 0.4), inset 0 0 6px rgba(255, 193, 7, 0.2);
     border-color: #FF9800;
   }
+
   100% {
     transform: scale(1.05);
     box-shadow: 0 0 18px rgba(255, 87, 34, 0.75), inset 0 0 12px rgba(255, 235, 59, 0.5);
@@ -903,7 +909,7 @@
   display: none !important;
 }
 
-.war-roll-list > div {
+.war-roll-list>div {
   padding: 0px 3px !important;
   margin-bottom: 0 !important;
   font-size: 8.5px !important;
@@ -929,16 +935,17 @@
 }
 
 /* Mobile & Small Screen Adaptations */
-@media (max-width: 480px), (max-height: 600px) {
+@media (max-width: 480px),
+(max-height: 600px) {
   .war-modal {
     height: 98% !important;
     max-height: 98% !important;
   }
-  
+
   .war-modal .modal-body {
     padding: 6px 8px !important;
   }
-  
+
   .war-modal .dice {
     width: 38px !important;
     height: 38px !important;
@@ -950,7 +957,7 @@
     gap: 1px !important;
     border-radius: 6px !important;
   }
-  
+
   .war-modal .dice .dot {
     width: 6px !important;
     height: 6px !important;
@@ -964,18 +971,21 @@
     font-size: 15px !important;
     margin-bottom: 3px !important;
   }
-  
+
   .war-join-list {
     max-height: 100px !important;
   }
-  
-  .war-rolling-list, .war-roll-list {
+
+  .war-rolling-list,
+  .war-roll-list {
     max-height: none !important;
     overflow: hidden !important;
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
   }
-  .war-rolling-list::-webkit-scrollbar, .war-roll-list::-webkit-scrollbar {
+
+  .war-rolling-list::-webkit-scrollbar,
+  .war-roll-list::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
@@ -1001,12 +1011,15 @@
 /* ========================================
    GLOBAL MODAL FIXES
    ======================================== */
-.buy-modal, .auction-modal, .modal {
-  box-shadow: 0 14px 40px rgba(0,0,0,0.45) !important;
+.buy-modal,
+.auction-modal,
+.modal {
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45) !important;
 }
 
 /* Mobile Modal Optimizations */
 @media (max-height: 700px) {
+
   /* Compact Indicator */
   .auction-bidder-indicator {
     padding: 2px 4px !important;
@@ -1019,94 +1032,124 @@
     gap: 2px !important;
     margin-top: 2px !important;
   }
-  
+
   .auction-bid-controls .your-bid-amount {
     font-size: 16px !important;
   }
-  
+
   .auction-bid-controls input[type="range"] {
-    margin: 4px 0 !important; /* Reduced margin */
+    margin: 4px 0 !important;
+    /* Reduced margin */
   }
 
   .auction-bid-buttons .modal-btn {
-    min-height: 32px !important; /* Reduced height */
+    min-height: 32px !important;
+    /* Reduced height */
     padding: 4px 8px !important;
     font-size: 12px !important;
   }
-  
+
   /* Specific override for super small screens */
   @media (max-height: 400px) {
-      .auction-modal .modal-heading { 
-          display: flex !important; 
-          min-height: 20px !important;
-          padding: 2px !important;
-          font-size: 11px !important;
-      }
+    .auction-modal .modal-heading {
+      display: flex !important;
+      min-height: 18px !important;
+      padding: 2px !important;
+      font-size: 10px !important;
+    }
   }
 
-  .auction-bidder-indicator span { font-size: 11px !important; }
-  
+  .auction-bidder-indicator span {
+    font-size: 10px !important;
+  }
+
   /* Bid History */
   .auction-bid-history {
     flex: 1 1 auto !important;
-    min-height: 50px !important;
+    min-height: 70px !important;
     max-height: none !important;
     overflow-y: auto !important;
-    margin-bottom: 3px !important;
-    padding: 3px 5px !important;
+    margin-bottom: 2px !important;
+    padding: 2px 4px !important;
   }
-  .auction-bid-history .history-label { font-size: 9px !important; margin-bottom: 2px !important; }
-  .auction-bid-history .bid-entry { padding: 2px 0 !important; font-size: 10px !important; }
-  
+
+  .auction-bid-history .history-label {
+    font-size: 8px !important;
+    margin-bottom: 1px !important;
+  }
+
+  .auction-bid-history .bid-entry {
+    padding: 1px 4px !important;
+    font-size: 9px !important;
+    min-height: 18px !important;
+  }
+
+  .auction-bid-history .bid-entry img {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
   /* Compact Controls */
-  .auction-bid-controls { gap: 6px; }
-  .auction-bid-controls .your-bid-label { font-size: 11px !important; }
-  .auction-bid-controls .your-bid-amount { font-size: 16px !important; }
-  
-  .auction-bid-controls input[type="range"] {
-    height: 24px !important;
-    margin: 4px 0;
+  .auction-bid-controls {
+    gap: 4px;
   }
+
+  .auction-bid-controls .your-bid-label {
+    font-size: 10px !important;
+  }
+
+  .auction-bid-controls .your-bid-amount {
+    font-size: 14px !important;
+  }
+
+  .auction-bid-controls input[type="range"] {
+    height: 20px !important;
+    margin: 2px 0;
+  }
+
   .auction-bid-controls input[type="range"]::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     margin-top: -6px;
   }
-  
+
   .auction-bid-buttons .modal-btn {
-    padding: 6px 10px !important;
-    font-size: 12px !important;
-    min-height: 36px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    min-height: 28px !important;
   }
-  
+
   /* PROPERTY DETAILS MODAL OPTIMIZATION */
   /* This targets the 'Rent Data Modal' overflow issue */
   .buy-modal .modal-city-name {
-    font-size: 18px !important; /* Smaller title */
+    font-size: 18px !important;
+    /* Smaller title */
     margin-bottom: 10px !important;
   }
-  
+
   .buy-modal .modal-details {
     padding: 0 4px !important;
   }
-  
+
   /* Rent Schedule Table */
-  .buy-modal .modal-details > div > div {
-    font-size: 12px !important; /* Smaller text */
-    padding: 2px 4px !important; /* Tighter padding */
+  .buy-modal .modal-details>div>div {
+    font-size: 12px !important;
+    /* Smaller text */
+    padding: 2px 4px !important;
+    /* Tighter padding */
   }
-  
+
   /* Cost rows */
   .buy-modal .modal-row,
   .buy-modal .modal-value {
     font-size: 12px !important;
   }
-  
+
   /* Make dividers smaller */
   .buy-modal .modal-divider {
     margin: 8px 0 !important;
   }
-  
+
   /* Reduce buttons */
   .buy-modal .modal-buttons .modal-btn {
     padding: 8px 12px !important;
@@ -1116,19 +1159,32 @@
 
 /* Extra small screens - Even more aggressive */
 @media (max-height: 500px) {
-  .auction-current-bid-display .bid-amount { font-size: 20px !important; }
-  .auction-bid-buttons .modal-btn { min-height: 32px !important; font-size: 11px !important; }
-  
+  .auction-current-bid-display .bid-amount {
+    font-size: 20px !important;
+  }
+
+  .auction-bid-buttons .modal-btn {
+    min-height: 32px !important;
+    font-size: 11px !important;
+  }
+
   /* Property Modal Extra Compression */
-  .buy-modal .modal-city-name { font-size: 16px !important; margin-bottom: 5px !important; }
-  .buy-modal .modal-details > div > div { font-size: 11px !important; padding: 1px 4px !important; }
+  .buy-modal .modal-city-name {
+    font-size: 16px !important;
+    margin-bottom: 5px !important;
+  }
+
+  .buy-modal .modal-details>div>div {
+    font-size: 11px !important;
+    padding: 1px 4px !important;
+  }
 }
 
 /* Landscape Mode Optimization */
 @media screen and (orientation: landscape) and (max-height: 650px),
-       screen and (orientation: landscape) and (max-width: 1200px),
-       screen and (max-height: 500px),
-       (hover: none) and (orientation: landscape) {
+screen and (orientation: landscape) and (max-width: 1200px),
+screen and (max-height: 500px),
+(hover: none) and (orientation: landscape) {
   .auction-modal {
     width: 94% !important;
     max-width: 440px !important;
@@ -1156,7 +1212,7 @@
     justify-content: space-between !important;
     padding: 6px 10px !important;
     overflow: hidden !important;
-    max-height: calc(100% - 32px) !important;
+    max-height: calc(100% - 0px) !important;
     box-sizing: border-box !important;
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
@@ -1166,17 +1222,45 @@
     display: none !important;
   }
 
+  .auction-bid-history {
+    flex: 1 1 auto !important;
+    min-height: 65px !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    padding: 2px 4px !important;
+    margin: 1px 0 !important;
+  }
+
+  .auction-bid-history .bid-entry {
+    padding: 1px 3px !important;
+    font-size: 8.5px !important;
+    min-height: 16px !important;
+    gap: 3px !important;
+  }
+
+  .auction-bid-history .bid-entry img {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  .auction-bid-history .history-label {
+    font-size: 7.5px !important;
+    margin-bottom: 1px !important;
+  }
+
   /* Property Modal Landscape Fixes */
   .buy-modal {
-     max-height: 98vh !important;
+    max-height: 98vh !important;
   }
+
   .war-modal {
-     height: 96% !important;
-     max-height: 96% !important;
+    height: 96% !important;
+    max-height: 96% !important;
   }
+
   .buy-modal:not(.war-modal):not(.auction-modal):not(.deal-modal) .modal-body {
-     padding: 8px !important;
-     overflow-y: auto;
+    padding: 8px !important;
+    overflow-y: auto;
   }
 }
 
@@ -1205,8 +1289,13 @@
 }
 
 @keyframes mmSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* ==========================================================================
@@ -1233,179 +1322,337 @@
   position: relative !important;
   display: flex !important;
   flex-direction: column !important;
-  width: 96% !important;
-  height: 96% !important;
-  max-width: 390px !important;
-  max-height: 96% !important;
+  width: 92% !important;
+  max-width: 370px !important;
+  height: 94% !important;
+  max-height: 240px !important;
   margin: auto !important;
-  background: linear-gradient(180deg, #ffc02b 0%, #f7a718 100%) !important;
-  border: 2px solid #df9410 !important;
-  border-radius: 12px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  background: linear-gradient(180deg, #ffd55f 0%, #ffb230 50%, #ff9122 100%) !important;
+  border: 2.5px solid #ffffff !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45) !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
-  padding: 8px 10px !important;
-  font-family: 'Lato', 'Roboto', sans-serif !important;
+  padding: 0 !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
   border-image: none !important;
   border-image-source: none !important;
-  user-select: none;
+  user-select: none !important;
+  animation: scaleIn 0.12s cubic-bezier(0, 0, 0.2, 1) !important;
 }
 
-/* Reference Help Button '?' top right */
+/* Reference Help / Close Button matching Buy Modal Replica */
+.ref-close-btn,
 .ref-help-btn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
-  border: 1.5px solid #e0f2fe;
-  color: #fff;
-  font-family: 'Lato', sans-serif;
-  font-size: 13px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  z-index: 10;
+  position: absolute !important;
+  top: 50% !important;
+  right: 5px !important;
+  transform: translateY(-50%) !important;
+  width: 19px !important;
+  height: 18px !important;
+  border-radius: 4px !important;
+  border: 1.5px solid #ffffff !important;
+  background: linear-gradient(180deg, #f0685c 0%, #de4438 40%, #b52a1f 100%) !important;
+  color: #fff !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  z-index: 10 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  user-select: none !important;
+  box-sizing: border-box !important;
 }
 
+.ref-close-btn:active,
 .ref-help-btn:active {
-  transform: scale(0.92);
+  transform: translateY(-50%) scale(0.92) !important;
 }
 
-/* Glossy Action Pill Buttons with Authentic Lato Bold and Subtle Outline */
+.ref-close-btn .x-mark,
+.ref-help-btn .x-mark {
+  position: relative !important;
+  width: 9px !important;
+  height: 9px !important;
+}
+
+.ref-close-btn .x-mark::before,
+.ref-close-btn .x-mark::after,
+.ref-help-btn .x-mark::before,
+.ref-help-btn .x-mark::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 9px !important;
+  height: 1.5px !important;
+  background: #ffffff !important;
+  border-radius: 1px !important;
+  box-shadow: 0 0.5px 0 #8a1e15 !important;
+}
+
+.ref-close-btn .x-mark::before,
+.ref-help-btn .x-mark::before {
+  transform: translate(-50%, -50%) rotate(45deg) !important;
+}
+
+.ref-close-btn .x-mark::after,
+.ref-help-btn .x-mark::after {
+  transform: translate(-50%, -50%) rotate(-45deg) !important;
+}
+
+/* Glossy Action Buttons matching Buy Modal Replica .action-btn */
 .ref-pill-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  font-family: 'Lato', sans-serif;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  border: none;
-  transition: all 0.15s ease;
-  user-select: none;
-  -webkit-text-stroke: 0.35px rgba(20, 10, 2, 0.85);
-  paint-order: stroke fill;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 32px !important;
+  border-radius: 9px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  font-size: 13.5px !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: transform 0.1s ease !important;
+  -webkit-text-stroke: 0.4px #1b0e04 !important;
+  paint-order: stroke fill !important;
+  text-align: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  padding: 0 12px !important;
+  box-sizing: border-box !important;
 }
 
 .ref-pill-btn:active:not(:disabled) {
-  transform: scale(0.95);
+  transform: translateY(1.5px) scale(0.97) !important;
 }
 
 .ref-pill-blue {
-  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
-  border: 1.5px solid #bae6fd;
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  border: 1px solid #165b94 !important;
+  background: linear-gradient(180deg, #a6ddfc 0%, #5fb1f3 30%, #298fe4 62%, #186fcb 100%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 0 #12507e !important;
 }
 
 .ref-pill-red {
-  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
-  border: 1.5px solid #fecaca;
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  border: 1px solid #8e1709 !important;
+  background: linear-gradient(180deg, #ffa99c 0%, #f36b5f 30%, #e43c33 62%, #cb2d24 100%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 0 #8a1a10 !important;
 }
 
 .ref-pill-green {
-  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
-  border: 1.5px solid #bbf7d0;
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  border: 1px solid #367512 !important;
+  background: linear-gradient(180deg, #d1f5af 0%, #a9e072 30%, #6dbe31 62%, #509a1d 100%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 0 #2e5e10 !important;
 }
 
 .ref-pill-yellow {
-  background: linear-gradient(180deg, #facc15 0%, #ca8a04 100%);
-  border: 1.5px solid #fef08a;
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  border: 1px solid #b57a07 !important;
+  background: linear-gradient(180deg, #fef08a 0%, #facc15 30%, #eab308 62%, #ca8a04 100%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 0 #854d0e !important;
 }
 
 .ref-pill-gray {
-  background: linear-gradient(180deg, #9ca3af 0%, #6b7280 100%);
-  border: 1.5px solid #d1d5db;
-  color: #e5e7eb;
-  opacity: 0.6;
-  cursor: not-allowed;
-  box-shadow: none;
+  border: 1px solid #6b7280 !important;
+  background: linear-gradient(180deg, #d1d5db 0%, #9ca3af 30%, #6b7280 62%, #4b5563 100%) !important;
+  color: #f3f4f6 !important;
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
 }
 
-/* Deal Modal Specifics (Screenshot 1) */
+/* Deal Modal Title Bar matching Buy Modal .title-bar */
 .ref-deal-header {
-  text-align: center;
-  margin-bottom: 4px;
+  position: relative !important;
+  flex: 0 0 28px !important;
+  height: 28px !important;
+  background: linear-gradient(180deg, #8fc3ec 0%, #4a9ad6 22%, #2c7dc0 50%, #1665a8 78%, #0e5292 100%) !important;
+  border-bottom: 2px solid #1c3b52 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  padding: 0 28px !important;
+  width: 100% !important;
+  margin: 0 !important;
 }
 
 .ref-deal-title {
-  font-family: 'Junegull', sans-serif;
-  font-size: 18px;
-  color: #ffffff;
-  font-weight: 900;
-  -webkit-text-stroke: 0.6px #2b1808;
-  paint-order: stroke fill;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  letter-spacing: 0.5px !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  -webkit-text-stroke: 0.5px #12507e !important;
+  paint-order: stroke fill !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+  position: relative !important;
+  top: -0.5px !important;
+  text-transform: uppercase !important;
 }
 
-.ref-deal-upper {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+/* Deal Player Selection Phase Cards matching Buy Modal */
+.ref-deal-select-grid {
   flex: 1 1 auto;
-  min-height: 75px;
-  max-height: 110px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+  gap: 6px;
+  padding: 4px 2px;
+  align-content: center;
+  scrollbar-width: none;
 }
 
-/* Darker translucent filter for Deal Player Cards */
-.ref-deal-player-card {
-  flex: 1;
-  height: 100%;
-  background: rgba(30, 18, 10, 0.52);
-  border: 1.5px solid rgba(255, 205, 80, 0.35);
-  border-radius: 8px;
+.ref-deal-select-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.ref-deal-select-card {
+  background: rgba(255, 255, 255, 0.22);
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 9px;
   padding: 4px 6px;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
-  overflow: hidden;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  font-family: 'Roboto', sans-serif;
-}
-
-.ref-deal-player-header {
-  display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 2px;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  box-sizing: border-box;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+  font-family: 'Baloo 2', cursive, sans-serif;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
-.ref-deal-player-avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid #ffb72b;
+.ref-deal-select-card:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.ref-deal-select-avatar {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: 1.5px solid #ffb72b !important;
+  margin-bottom: 2px !important;
   flex-shrink: 0;
 }
 
-.ref-deal-player-name {
-  color: #fff;
-  font-family: 'Junegull', sans-serif;
-  font-size: 11px;
-  font-weight: bold;
+.ref-deal-select-name {
+  color: #7c3b1c;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  -webkit-text-stroke: 0.4px #1b0e04;
-  paint-order: stroke fill;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+  max-width: 100%;
+  line-height: 1.2;
+}
+
+.ref-deal-select-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 1px;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ref-deal-select-money {
+  color: #15803d;
+  font-weight: 800;
+}
+
+.ref-deal-select-props {
+  color: #ca8a04;
+  font-weight: 800;
+}
+
+/* Universal Modal Body container for Deal, Swap, and Golden Cards */
+.ref-modal-body,
+.ref-deal-body,
+.ref-swap-body {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 5px 8px 7px !important;
+  box-sizing: border-box !important;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ref-deal-upper {
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  flex: 1 1 auto !important;
+  min-height: 70px !important;
+  max-height: 105px !important;
+}
+
+/* Translucent Glass Filter for Deal & Swap Player Cards matching Buy Modal */
+.ref-deal-player-card {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 9px !important;
+  padding: 4px 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15) !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+}
+
+.ref-deal-player-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin-bottom: 2px !important;
+}
+
+.ref-deal-player-avatar {
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  border: 1.5px solid #ffb72b !important;
+  flex-shrink: 0 !important;
+}
+
+.ref-deal-player-name {
+  color: #7c3b1c !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  -webkit-text-stroke: 0.35px #4a1e08 !important;
+  paint-order: stroke fill !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
 .ref-deal-props-list {
@@ -1421,86 +1668,177 @@
   display: none;
 }
 
+/* Deal Modal Square Box Compartments matching Buy Modal Frosted Glass */
+.ref-deal-compartment {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-content: flex-start !important;
+  gap: 5px !important;
+  padding: 4px !important;
+  min-height: 44px !important;
+  border-radius: 7px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+}
+
+.deal-tile-square-box {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  border-radius: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.75) !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  transition: transform 0.15s ease, filter 0.15s ease !important;
+}
+
+.deal-tile-square-box:hover {
+  transform: scale(1.08) !important;
+  filter: brightness(1.15) !important;
+}
+
+.deal-tile-square-box:active {
+  transform: scale(0.92) !important;
+}
+
+.deal-tile-square-letter {
+  font-family: 'Fredoka One', 'Junegull', 'Nunito', 'Roboto', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.8) !important;
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.6) !important;
+  line-height: 1 !important;
+  pointer-events: none !important;
+}
+
 .ref-deal-prop-chip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: rgba(45, 25, 12, 0.65);
-  font-family: 'Roboto', sans-serif;
-  font-size: 9px;
-  font-weight: 500;
-  color: #fff;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: #7c3b1c;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .ref-deal-prop-chip.selected {
-  border-color: #ffd54f;
-  background: rgba(90, 48, 20, 0.85);
-  box-shadow: 0 0 5px rgba(255, 213, 79, 0.4);
+  background: rgba(255, 255, 255, 0.55);
+  border-color: #ffffff;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.6);
 }
 
 .ref-deal-prop-left {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
   overflow: hidden;
 }
 
 .ref-deal-prop-color {
-  width: 6px;
-  height: 6px;
-  border-radius: 1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
   flex-shrink: 0;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
 }
 
 .ref-deal-prop-name {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: #7c3b1c;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 75px;
+  max-width: 110px;
+}
+
+.ref-deal-chip-addremove,
+.ref-swap-chip-addremove {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-align: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.ref-deal-prop-chip .ref-deal-chip-addremove {
+  background: #2e7d32;
+  color: #ffffff;
+}
+
+.ref-deal-prop-chip.selected .ref-deal-chip-addremove {
+  background: #c62828;
+  color: #ffffff;
 }
 
 .ref-deal-player-footer {
   margin-top: 2px;
   padding-top: 2px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  font-family: 'Roboto', sans-serif;
-  font-size: 9px;
-  color: #ffd54f;
-  font-weight: bold;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 10.5px;
+  color: #7c3b1c;
+  font-weight: 800;
   display: flex;
   justify-content: space-between;
 }
 
 .ref-deal-player-footer span:last-child {
-  font-family: 'Junegull', sans-serif;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-weight: 800;
+  font-size: 11px;
 }
 
 .ref-deal-arrows {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-family: 'Roboto', sans-serif;
+  color: #7c3b1c;
+  font-family: 'Baloo 2', cursive, sans-serif;
   font-size: 16px;
-  font-weight: bold;
-  width: 22px;
+  font-weight: 900;
+  width: 18px;
   flex-shrink: 0;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .ref-deal-adjustment {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 4px 0;
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
-  padding: 4px 6px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  margin: 2px 0 !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 8px !important;
+  padding: 3px 6px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
 }
 
 .ref-deal-slider-row {
@@ -1510,33 +1848,34 @@
 }
 
 .ref-deal-step-btn {
-  height: 22px;
-  padding: 0 8px;
-  font-size: 10px;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
+  height: 22px !important;
+  padding: 0 6px !important;
+  font-size: 10.5px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  border-radius: 6px !important;
 }
 
 .ref-golden-slider {
   flex: 1;
   -webkit-appearance: none;
   appearance: none;
-  height: 8px;
+  height: 7px;
   border-radius: 4px;
   background: linear-gradient(90deg, #ef4444 0%, #ef4444 48%, #ffffff 49%, #ffffff 51%, #22c55e 52%, #22c55e 100%);
-  border: 1px solid rgba(0,0,0,0.25);
+  border: 1px solid rgba(0, 0, 0, 0.25);
   outline: none;
 }
 
 .ref-golden-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #fff 0%, #fde047 30%, #ca8a04 100%);
   border: 1.5px solid #854d0e;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
   cursor: pointer;
 }
 
@@ -1549,106 +1888,212 @@
 
 .ref-deal-chip-btn {
   flex: 1;
-  height: 20px;
-  font-size: 9px;
-  padding: 0;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
+  height: 22px !important;
+  font-size: 10px !important;
+  padding: 0 !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  border-radius: 6px !important;
 }
 
 .ref-deal-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-top: 3px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+  margin-top: 2px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .ref-deal-action-btn {
-  width: 76px;
-  height: 28px;
-  font-size: 10.5px;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
+  width: 72px !important;
+  height: 30px !important;
+  font-size: 12px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  border-radius: 8px !important;
 }
 
 .ref-deal-balance-box {
-  flex: 1;
-  height: 28px;
-  background: rgba(30, 18, 10, 0.6);
-  border: 1.5px solid rgba(255, 205, 80, 0.35);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-family: 'Roboto', sans-serif;
-  font-size: 10px;
-  font-weight: 500;
+  flex: 1 !important;
+  height: 30px !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #7c3b1c !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  padding: 0 4px !important;
+  box-sizing: border-box !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
 .ref-deal-balance-box span {
-  font-family: 'Junegull', sans-serif;
-  font-size: 11px;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
 }
 
-/* Bank Modal Specifics (Screenshot 2) */
+/* ==================== BANK MODAL (EXACT BUY MODAL REPLICA STYLING) ==================== */
 .ref-bank-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  justify-content: space-between;
-  padding: 10px 14px !important;
-  font-family: 'Roboto', sans-serif;
+  padding: 0 !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  width: 90% !important;
+  max-width: 310px !important;
+  height: 224px !important;
+  max-height: 228px !important;
+  box-sizing: border-box !important;
 }
 
 .ref-bank-title {
-  font-family: 'Junegull', sans-serif;
-  font-size: 20px;
-  color: #ffffff;
-  font-weight: 900;
-  margin-bottom: 2px;
-  -webkit-text-stroke: 0.6px #2b1808;
-  paint-order: stroke fill;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  letter-spacing: 0.5px !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  -webkit-text-stroke: 0.5px #12507e !important;
+  paint-order: stroke fill !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+  text-transform: uppercase !important;
+  position: relative !important;
+  top: -0.5px !important;
+}
+
+.ref-bank-body {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px 8px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .ref-bank-vault-img {
-  width: 90px;
-  height: 90px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
-  margin: 4px auto;
-  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+  margin: 1px auto;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
 }
 
 .ref-bank-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 7px;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .ref-bank-btn {
-  height: 38px;
-  font-family: 'Roboto', sans-serif;
-  font-size: 11.5px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-radius: 8px;
-  -webkit-text-stroke: 0.35px #1b0e04;
-  paint-order: stroke fill;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  height: 32px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  border-radius: 9px !important;
+  -webkit-text-stroke: 0.4px #1b0e04 !important;
+  paint-order: stroke fill !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4) !important;
+  letter-spacing: 0.5px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  padding: 0 6px !important;
+  box-sizing: border-box !important;
 }
 
 .ref-bank-btn img {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
+}
+
+.ref-bank-debt-badge {
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: #7c3b1c;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 1px 0;
+}
+
+.ref-bank-info-box {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  padding: 5px 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  color: #7c3b1c;
+}
+
+.ref-bank-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ref-bank-info-label {
+  color: #7c3b1c;
+  font-size: 12px;
+}
+
+.ref-bank-info-val {
+  color: #7c3b1c;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ref-bank-info-val.highlight {
+  color: #2e7d32;
+}
+
+.ref-bank-info-val.danger {
+  color: #c62828;
+}
+
+.ref-bank-list-panel {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+.ref-bank-list-panel::-webkit-scrollbar {
+  display: none;
 }
 
 /* Property Info Modal Specifics (Screenshot 3) */
@@ -1678,7 +2123,7 @@
   font-weight: 900;
   -webkit-text-stroke: 0.6px #034870;
   paint-order: stroke fill;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
@@ -1887,4 +2332,1690 @@
   justify-content: space-between;
   gap: 8px;
   margin-top: 4px;
+}
+
+/* ==================== BALOO 2 — BUYING / PROPERTY INFO MODAL (MOBILE-FIRST) ==================== */
+
+.baloo-modal-shell {
+  position: relative;
+  width: 90%;
+  max-width: 240px;
+  box-sizing: border-box;
+  border: 2.5px solid #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: scaleIn 0.12s cubic-bezier(0, 0, 0.2, 1);
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
+  user-select: none;
+  margin: auto;
+}
+
+.baloo-modal-shell.info-mode {
+  max-width: 242px;
+  max-height: 250px;
+}
+
+/* ── Title Bar ── */
+.baloo-title-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 27px;
+  min-height: 27px;
+  padding: 0 30px;
+  background: linear-gradient(180deg,
+      #8fc3ec 0%,
+      #4a9ad6 22%,
+      #2c7dc0 50%,
+      #1665a8 78%,
+      #0e5292 100%);
+  border-bottom: 2px solid #1c3b52;
+  box-sizing: border-box;
+}
+
+.baloo-title-text {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 14.5px;
+  line-height: 1;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  -webkit-text-stroke: 0.4px #12507e;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.baloo-title-right {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 3.5px;
+}
+
+.baloo-help-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid #ffffff;
+  background: linear-gradient(180deg, #6cc0ec 0%, #3b96d6 40%, #1c72b8 100%);
+  color: #ffffff;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+  padding: 0;
+}
+
+.baloo-help-btn:active {
+  transform: scale(0.9);
+}
+
+.baloo-close-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid #ffffff;
+  background: linear-gradient(180deg, #f0685c 0%, #de4438 40%, #b52a1f 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+  padding: 0;
+}
+
+.baloo-close-btn:active {
+  transform: scale(0.9);
+}
+
+.baloo-x-mark {
+  position: relative;
+  width: 9px;
+  height: 9px;
+}
+
+.baloo-x-mark::before,
+.baloo-x-mark::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 1.5px;
+  background: #ffffff;
+  border-radius: 1px;
+}
+
+.baloo-x-mark::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.baloo-x-mark::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* ── Body Panel ── */
+.baloo-body {
+  background: linear-gradient(180deg,
+      #ffd55f 0%,
+      #ffb230 50%,
+      #ff9122 100%);
+  box-sizing: border-box;
+  user-select: none;
+}
+
+/* ── BUYING MODE STYLES ── */
+.baloo-buy-body-old {
+  padding: 6px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.baloo-prop-name {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #7c3b1c;
+  line-height: 1.2;
+  text-align: center;
+  margin: 2px 0 4px 0;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.baloo-cost-rent-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 3px 0 8px 0;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+.baloo-cr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.baloo-cr-label {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #7c3b1c;
+  line-height: 1;
+}
+
+.baloo-cr-val {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #7c3b1c;
+  line-height: 1;
+}
+
+.baloo-strikethrough {
+  text-decoration: line-through;
+  color: #999;
+  margin-right: 5px;
+  font-size: 0.8em;
+}
+
+.baloo-buy-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.baloo-action-btn {
+  flex: 1;
+  height: 29px;
+  border-radius: 8px;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25);
+  user-select: none;
+  transition: transform 0.1s ease;
+  padding: 0;
+}
+
+.baloo-action-btn:active {
+  transform: translateY(1.5px);
+}
+
+.baloo-btn-cancel {
+  border: 2px solid #7a160a;
+  background: linear-gradient(180deg, #ffa99c 0%, #f36b5f 30%, #e43c33 62%, #cb2d24 100%);
+  text-shadow: 0 1px 0 #8a1a10;
+}
+
+.baloo-btn-buy {
+  border: 2px solid #2c5d10;
+  background: linear-gradient(180deg, #d1f5af 0%, #a9e072 30%, #6dbe31 62%, #509a1d 100%);
+  text-shadow: 0 1px 0 #2e5e10;
+}
+
+/* ── TILE INFO MODE STYLES (Screenshot replica) ── */
+.baloo-info-body {
+  padding: 2px 8px 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.baloo-info-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  position: relative;
+  padding: 2px 0 3px 0;
+  width: 100%;
+}
+
+.baloo-info-half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.baloo-info-half .baloo-cr-label {
+  font-size: 10px;
+}
+
+.baloo-info-half .baloo-cr-val {
+  font-size: 12.5px;
+}
+
+.baloo-vertical-divider {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  transform: translateX(-50%);
+  background: #7c3b1c;
+  opacity: 0.35;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+.baloo-purple-ribbon {
+  margin: 1px -8px 0;
+  height: 18px;
+  min-height: 18px;
+  background: linear-gradient(180deg, #d946ef 0%, #a855f7 35%, #7e22ce 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border-top: 1px solid #f0abfc;
+  border-bottom: 1px solid #581c87;
+}
+
+.baloo-purple-ribbon span {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+.baloo-levels-table {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 1px 0 2px 0;
+}
+
+.baloo-table-row {
+  display: flex;
+  align-items: center;
+  height: 16px;
+  min-height: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'Baloo 2', sans-serif;
+  color: #7c3b1c;
+}
+
+.baloo-table-row.active {
+  background: rgba(255, 255, 255, 0.38);
+  border-radius: 3px;
+}
+
+.baloo-cell-left {
+  flex: 1;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding-right: 6px;
+}
+
+.baloo-cell-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 12px;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.baloo-houses-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+}
+
+.baloo-info-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.baloo-ok-btn {
+  height: 20px;
+  min-width: 60px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1.5px solid #1665a8;
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+  color: #ffffff;
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.baloo-ok-btn:active {
+  transform: scale(0.95);
+}
+
+.baloo-action-btn {
+  height: 20px;
+  min-width: 60px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+  border: 1.5px solid transparent;
+}
+
+.baloo-action-btn:active {
+  transform: scale(0.95);
+}
+
+.baloo-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55 !important;
+}
+
+.baloo-mortgage-btn {
+  border-color: #b71c1c;
+  background: linear-gradient(180deg, #ef5350 0%, #d32f2f 100%);
+  color: #ffffff;
+}
+
+.baloo-redeem-btn {
+  border-color: #1b5e20;
+  background: linear-gradient(180deg, #66bb6a 0%, #2e7d32 100%);
+  color: #ffffff;
+}
+
+/* ==================== AUTHENTIC BUILD / SELL / MINI MODALS (MOBILE-FIRST) ==================== */
+
+.ref-golden-card.ref-build-card,
+.ref-golden-card.ref-sell-card {
+  width: 96% !important;
+  max-width: 258px !important;
+  max-height: 236px !important;
+  height: auto !important;
+  padding: 6px 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  animation: scaleIn 0.12s cubic-bezier(0, 0, 0.2, 1) !important;
+  margin: auto !important;
+}
+
+.ref-golden-card.ref-mini-card {
+  width: 90% !important;
+  max-width: 230px !important;
+  max-height: 180px !important;
+  height: auto !important;
+  padding: 8px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  margin: auto !important;
+}
+
+.ref-modal-title {
+  font-family: 'Baloo 2', 'Junegull', cursive, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: #8c2e0b;
+  letter-spacing: 0.8px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  line-height: 1;
+  margin: 0;
+  text-align: center;
+  display: block;
+}
+
+/* Translucent Dark Glass Container */
+.ref-build-inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 138px;
+  background: rgba(30, 16, 8, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1.5px solid rgba(250, 204, 21, 0.4);
+  border-radius: 9px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+}
+
+.ref-build-inner::-webkit-scrollbar {
+  width: 3px;
+}
+
+.ref-build-inner::-webkit-scrollbar-thumb {
+  background: rgba(250, 204, 21, 0.4);
+  border-radius: 2px;
+}
+
+/* Mini Card Inner */
+.ref-mini-inner {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 8px;
+  gap: 6px;
+}
+
+.ref-mini-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.ref-mini-text {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.35;
+  -webkit-text-stroke: 0.35px #1b0e04;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Monopoly Picker State */
+.ref-build-prompt {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #fde047;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  -webkit-text-stroke: 0.35px #1b0e04;
+  paint-order: stroke fill;
+  margin: 1px 0 3px;
+}
+
+.ref-monopoly-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.ref-monopoly-badge-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: rgba(60, 32, 14, 0.85);
+  border: 1.2px solid rgba(250, 204, 21, 0.35);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s;
+  box-sizing: border-box;
+  width: 100%;
+  text-decoration: none;
+}
+
+.ref-monopoly-badge-btn:active {
+  transform: scale(0.97);
+  background: rgba(85, 45, 20, 0.95);
+}
+
+.ref-monopoly-color-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.ref-monopoly-badge-name {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffffff;
+  -webkit-text-stroke: 0.35px #1b0e04;
+  paint-order: stroke fill;
+  flex: 1;
+  text-align: left;
+  letter-spacing: 0.3px;
+}
+
+.ref-monopoly-badge-count {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #facc15;
+  margin-right: 2px;
+}
+
+.ref-monopoly-badge-arrow {
+  font-size: 10px;
+  color: #facc15;
+  font-weight: 900;
+}
+
+.ref-build-board-hint {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 9px;
+  color: rgba(255, 235, 200, 0.75);
+  text-align: center;
+  margin-top: 2px;
+  line-height: 1.1;
+}
+
+/* Active Group Subheader Bar */
+.ref-build-group-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+  margin-bottom: 2px;
+}
+
+.ref-build-group-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ref-switch-monopoly-btn {
+  height: 17px;
+  padding: 0 5px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  border-radius: 4px;
+  color: #fde047;
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 9.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.ref-switch-monopoly-btn:active {
+  transform: scale(0.92);
+}
+
+.ref-build-group-name {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: #5c2005;
+  letter-spacing: 0.3px;
+}
+
+.ref-build-cost-pill {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #4a2c18;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ref-cost-amount {
+  color: #15803d;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.ref-build-refund-pill {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #4a2c18;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ref-refund-amount {
+  color: #c2410c;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+/* Property Upgrade Row */
+.ref-build-prop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px;
+  background: rgba(50, 26, 12, 0.82);
+  border: 1px solid rgba(250, 204, 21, 0.25);
+  border-radius: 6px;
+  box-sizing: border-box;
+  gap: 4px;
+}
+
+.ref-build-prop-left {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ref-prop-indicator {
+  width: 4px;
+  height: 22px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  border: 0.5px solid rgba(0, 0, 0, 0.3);
+}
+
+.ref-build-prop-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ref-build-prop-name {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  color: #ffffff;
+  font-size: 10.5px;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-text-stroke: 0.35px #1b0e04;
+  paint-order: stroke fill;
+}
+
+.ref-build-prop-cost {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: #facc15;
+  line-height: 1;
+}
+
+.ref-build-prop-refund {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fb923c;
+  line-height: 1;
+}
+
+.ref-build-prop-right {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.ref-step-btn {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.08s ease;
+}
+
+.ref-step-minus {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+}
+
+.ref-step-plus {
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+}
+
+.ref-step-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.ref-step-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.ref-build-bars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px;
+  cursor: pointer;
+}
+
+.ref-build-bar {
+  width: 6.5px;
+  height: 12px;
+  border-radius: 1.5px;
+}
+
+.bar-house {
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+  border: 0.8px solid #14532d;
+  box-shadow: 0 0 3px rgba(74, 222, 128, 0.5);
+}
+
+.bar-hotel {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+  border: 0.8px solid #7f1d1d;
+  box-shadow: 0 0 3px rgba(239, 68, 68, 0.6);
+}
+
+.bar-empty {
+  background: rgba(255, 255, 255, 0.12);
+  border: 0.8px solid rgba(255, 255, 255, 0.08);
+}
+
+.ref-build-level-tag {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  min-width: 30px;
+  text-align: right;
+  line-height: 1;
+  -webkit-text-stroke: 0.35px #1b0e04;
+  paint-order: stroke fill;
+}
+
+.tag-hotel {
+  color: #f87171;
+}
+
+.tag-house {
+  color: #4ade80;
+}
+
+.tag-base {
+  color: #9ca3af;
+}
+
+/* 3D Beveled Buttons */
+.ref-build-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.ref-beveled-btn {
+  flex: 1;
+  height: 28px;
+  border-radius: 8px;
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border: 1.5px solid #ffffff;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: transform 0.1s;
+  box-shadow: 0 2.5px 5px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  -webkit-text-stroke: 0.35px #1b0e04;
+  paint-order: stroke fill;
+}
+
+.ref-beveled-btn:active:not(:disabled) {
+  transform: scale(0.96) translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.ref-btn-cancel {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #991b1b 100%);
+}
+
+.ref-btn-confirm {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 50%, #15803d 100%);
+}
+
+.ref-btn-sell {
+  background: linear-gradient(180deg, #f97316 0%, #ea580c 50%, #9a3412 100%);
+}
+
+.ref-beveled-btn:disabled {
+  background: linear-gradient(180deg, #9ca3af 0%, #6b7280 100%);
+  border-color: rgba(255, 255, 255, 0.4);
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none !important;
+}
+
+/* ==================== BUYING MODAL (EXACT PIXEL REPLICA SCALED MOBILE-FIRST) ==================== */
+
+.modal-shell.buy-modal-replica {
+  position: relative !important;
+  width: 90% !important;
+  max-width: 256px !important;
+  height: 224px !important;
+  max-height: 228px !important;
+  flex-shrink: 0 !important;
+  border: 2.5px solid #ffffff !important;
+  border-radius: 18px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45) !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  user-select: none !important;
+  margin: auto !important;
+  animation: scaleIn 0.12s cubic-bezier(0, 0, 0.2, 1) !important;
+}
+
+/* ---- Title bar ---- */
+.buy-modal-replica .title-bar {
+  position: relative;
+  flex: 0 0 28px;
+  height: 28px;
+  background: linear-gradient(180deg, #8fc3ec 0%, #4a9ad6 22%, #2c7dc0 50%, #1665a8 78%, #0e5292 100%);
+  border-bottom: 2px solid #1c3b52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 32px;
+}
+
+.buy-modal-replica .title-text {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  -webkit-text-stroke: 0.5px #12507e;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  position: relative;
+  top: -0.5px;
+}
+
+.buy-modal-replica .icon-group {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 3.5px;
+}
+
+.buy-modal-replica .icon-btn {
+  width: 19px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.buy-modal-replica .icon-btn:active {
+  transform: scale(0.92);
+}
+
+.buy-modal-replica .icon-btn.help {
+  background: linear-gradient(180deg, #6cc0ec 0%, #3b96d6 40%, #1c72b8 100%);
+}
+
+.buy-modal-replica .icon-btn.close {
+  background: linear-gradient(180deg, #f0685c 0%, #de4438 40%, #b52a1f 100%);
+}
+
+.buy-modal-replica .icon-btn span {
+  color: #fff;
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.buy-modal-replica .icon-btn.help span {
+  text-shadow: 0 1px 0 #1c5f8f;
+  -webkit-text-stroke: 0.35px #1c5f8f;
+  paint-order: stroke fill;
+  position: relative;
+  top: -0.5px;
+}
+
+.buy-modal-replica .x-mark {
+  position: relative;
+  width: 9px;
+  height: 9px;
+}
+
+.buy-modal-replica .x-mark::before,
+.buy-modal-replica .x-mark::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 1.5px;
+  background: #fff;
+  border-radius: 1px;
+  box-shadow: 0 0.5px 0 #8a1e15;
+}
+
+.buy-modal-replica .x-mark::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.buy-modal-replica .x-mark::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* ---- Body panel ---- */
+.buy-modal-replica .body-panel {
+  flex: 1;
+  background: linear-gradient(180deg, #ffd55f 0%, #ffb230 50%, #ff9122 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 10px;
+  box-sizing: border-box;
+}
+
+.buy-modal-replica .maroon {
+  color: #7c3b1c;
+  font-family: 'Baloo 2', cursive, sans-serif;
+}
+
+.buy-modal-replica .ice-rink {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0;
+  text-align: center;
+  -webkit-text-stroke: 0.35px #4a1e08;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 95%;
+}
+
+.buy-modal-replica .cost-rent-wrap {
+  width: 82%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.buy-modal-replica .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+}
+
+.buy-modal-replica .row .label {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: #7c3b1c;
+}
+
+.buy-modal-replica .row .value {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  color: #7c3b1c;
+}
+
+.buy-modal-replica .buttons-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.buy-modal-replica .action-btn {
+  flex: 1;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13.5px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s ease;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  -webkit-text-stroke: 0.4px #1b0e04;
+  paint-order: stroke fill;
+  text-align: center;
+}
+
+.buy-modal-replica .action-btn:active {
+  transform: translateY(1.5px) scale(0.97);
+}
+
+.buy-modal-replica .btn-cancel {
+  border: 1px solid #8e1709;
+  background: linear-gradient(180deg, #ffa99c 0%, #f36b5f 30%, #e43c33 62%, #cb2d24 100%);
+  text-shadow: 0 1px 0 #8a1a10;
+}
+
+.buy-modal-replica .btn-buy {
+  border: 1px solid #367512;
+  background: linear-gradient(180deg, #d1f5af 0%, #a9e072 30%, #6dbe31 62%, #509a1d 100%);
+  text-shadow: 0 1px 0 #2e5e10;
+}
+
+/* ==================== BUILD & SELL MODALS (UNIFIED WITH BUY MODAL REPLICA) ==================== */
+
+.modal-shell.build-modal-replica,
+.modal-shell.sell-modal-replica {
+  height: 224px !important;
+  max-height: 228px !important;
+  pointer-events: auto !important;
+}
+
+.modal-shell.mini-modal-replica {
+  height: auto !important;
+  max-height: 175px !important;
+  pointer-events: auto !important;
+}
+
+.buy-modal-replica .build-body-panel {
+  flex: 1;
+  background: linear-gradient(180deg, #ffd55f 0%, #ffb230 50%, #ff9122 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 8px;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.buy-modal-replica .build-header-title {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #7c3b1c;
+  -webkit-text-stroke: 0.35px #4a1e08;
+  paint-order: stroke fill;
+  text-align: center;
+  margin: 1px 0 3px;
+  line-height: 1;
+}
+
+.buy-modal-replica .build-monopoly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-height: 122px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 1px;
+}
+
+.buy-modal-replica .build-monopoly-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1.2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  cursor: pointer;
+  box-sizing: border-box;
+  width: 100%;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.buy-modal-replica .build-monopoly-chip:active {
+  transform: scale(0.97);
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.buy-modal-replica .chip-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.buy-modal-replica .chip-name {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #7c3b1c;
+  flex: 1;
+  text-align: left;
+  line-height: 1;
+}
+
+.buy-modal-replica .chip-count {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #5c270d;
+}
+
+.buy-modal-replica .chip-arrow {
+  font-size: 10.5px;
+  color: #7c3b1c;
+  font-weight: 900;
+}
+
+.buy-modal-replica .build-hint-text {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 9.5px;
+  color: #7c3b1c;
+  text-align: center;
+  line-height: 1.1;
+  margin-top: 2px;
+  opacity: 0.9;
+}
+
+/* Sub-bar when group is selected */
+.buy-modal-replica .build-sub-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 2px;
+  margin-bottom: 3px;
+}
+
+.buy-modal-replica .build-switch-btn {
+  height: 18px;
+  padding: 0 5px;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 5px;
+  color: #7c3b1c;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.buy-modal-replica .build-switch-btn:active {
+  transform: scale(0.92);
+}
+
+.buy-modal-replica .build-group-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.buy-modal-replica .build-group-label .group-title {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #7c3b1c;
+  line-height: 1;
+}
+
+.buy-modal-replica .build-cost-badge {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #7c3b1c;
+  background: rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  padding: 1px 5px;
+  line-height: 1;
+}
+
+.buy-modal-replica .cost-val {
+  color: #2c5d10;
+  font-weight: 900;
+}
+
+.buy-modal-replica .refund-val {
+  color: #c2410c;
+  font-weight: 900;
+}
+
+/* Property scroll container */
+.buy-modal-replica .build-props-container {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 114px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  padding: 3px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.buy-modal-replica .build-prop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 5px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 6px;
+  box-sizing: border-box;
+  gap: 3px;
+}
+
+.buy-modal-replica .prop-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.buy-modal-replica .prop-color-bar {
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+}
+
+.buy-modal-replica .prop-text-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.buy-modal-replica .prop-name {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-weight: 800;
+  color: #7c3b1c;
+  font-size: 10.5px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.buy-modal-replica .prop-cost-sub {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #2c5d10;
+  line-height: 1;
+}
+
+.buy-modal-replica .prop-refund-sub {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #b52a1f;
+  line-height: 1;
+}
+
+.buy-modal-replica .prop-right {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  flex-shrink: 0;
+}
+
+.buy-modal-replica .build-circle-btn {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  border: 1.2px solid #ffffff;
+  color: #ffffff;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.08s ease;
+}
+
+.buy-modal-replica .build-circle-btn.minus {
+  background: linear-gradient(180deg, #ffa99c 0%, #cb2d24 100%);
+}
+
+.buy-modal-replica .build-circle-btn.plus {
+  background: linear-gradient(180deg, #d1f5af 0%, #509a1d 100%);
+}
+
+.buy-modal-replica .build-circle-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.buy-modal-replica .build-circle-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.buy-modal-replica .build-progress-bars {
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+  padding: 1px 2px;
+  cursor: pointer;
+}
+
+.buy-modal-replica .build-progress-bars .bar {
+  width: 5.5px;
+  height: 11px;
+  border-radius: 1.5px;
+}
+
+.buy-modal-replica .bar.house {
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+  border: 0.6px solid #14532d;
+  box-shadow: 0 0 2px rgba(74, 222, 128, 0.5);
+}
+
+.buy-modal-replica .bar.hotel {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+  border: 0.6px solid #7f1d1d;
+  box-shadow: 0 0 2px rgba(239, 68, 68, 0.6);
+}
+
+.buy-modal-replica .bar.empty {
+  background: rgba(0, 0, 0, 0.12);
+  border: 0.6px solid rgba(0, 0, 0, 0.15);
+}
+
+.buy-modal-replica .build-lvl-text {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  min-width: 28px;
+  text-align: right;
+  line-height: 1;
+}
+
+.buy-modal-replica .build-lvl-text.hotel {
+  color: #b52a1f;
+}
+
+.buy-modal-replica .build-lvl-text.house {
+  color: #2c5d10;
+}
+
+.buy-modal-replica .build-lvl-text.base {
+  color: #7c3b1c;
+  opacity: 0.6;
+}
+
+.buy-modal-replica .btn-sell {
+  border: 1px solid #9a3412;
+  background: linear-gradient(180deg, #fdba74 0%, #fb923c 30%, #ea580c 62%, #c2410c 100%);
+  text-shadow: 0 1px 0 #7c2d12;
+}
+
+.buy-modal-replica .action-btn.disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ==========================================================================
+   GAME VICTORY / WINNING MODAL
+   ========================================================================== */
+.game-victory-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(4, 10, 22, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: winFadeIn 0.35s ease-out;
+}
+
+@keyframes winFadeIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.game-victory-card {
+  width: 90%;
+  max-width: 360px;
+  background: radial-gradient(circle at 50% 20%, #203a43, #0f2027);
+  border: 2px solid #ffd54f;
+  border-radius: 22px;
+  box-shadow: 0 0 30px rgba(255, 213, 79, 0.45), 0 10px 40px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 16px 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.game-victory-trophy {
+  font-size: 38px;
+  line-height: 1;
+  margin-bottom: 2px;
+  animation: trophyBounce 1.2s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.7));
+}
+
+@keyframes trophyBounce {
+  from { transform: translateY(0) scale(1); }
+  to { transform: translateY(-6px) scale(1.08); }
+}
+
+.game-victory-title {
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 26px;
+  color: #ffd54f;
+  text-shadow: 0 2px 8px rgba(255, 213, 79, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8);
+  letter-spacing: 1.5px;
+  line-height: 1.1;
+}
+
+.game-victory-subtitle {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.game-victory-avatar-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin: 6px 0 4px;
+}
+
+.game-victory-crown {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  z-index: 2;
+  animation: crownWiggle 2s ease-in-out infinite;
+}
+
+@keyframes crownWiggle {
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+  25% { transform: translateX(-50%) rotate(-6deg); }
+  75% { transform: translateX(-50%) rotate(6deg); }
+}
+
+.game-victory-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid #ffd54f;
+  object-fit: cover;
+  box-shadow: 0 0 15px rgba(255, 213, 79, 0.5);
+}
+
+.game-victory-name {
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 20px;
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  margin-top: 2px;
+}
+
+.game-victory-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 6px 16px;
+  margin: 10px 0 14px;
+  width: 80%;
+  box-sizing: border-box;
+}
+
+.game-victory-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-victory-stat-item .stat-label {
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.game-victory-stat-item .stat-val {
+  font-family: 'Junegull', 'Fredoka One', sans-serif;
+  font-size: 14px;
+  color: #4ade80;
+}
+
+.game-victory-stat-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.game-victory-btn {
+  height: 38px;
+  padding: 0 28px;
+  background: linear-gradient(135deg, #f5a623 0%, #f7c948 50%, #e6930a 100%);
+  border: 1.5px solid #ffffff;
+  border-radius: 19px;
+  color: #5c270d;
+  font-family: 'Baloo 2', cursive, sans-serif;
+  font-size: 13.5px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.game-victory-btn:active {
+  transform: scale(0.96);
 }

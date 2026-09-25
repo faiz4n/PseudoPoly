@@ -99,7 +99,7 @@ function App() {
           };
         }
       }
-    } catch {}
+    } catch { }
     return {
       name: "Player",
       avatar: players[0].avatar,
@@ -113,7 +113,7 @@ function App() {
         "pseudopoly_identity",
         JSON.stringify({ name: myIdentity.name, avatar: myIdentity.avatar }),
       );
-    } catch {}
+    } catch { }
   }, [myIdentity.name, myIdentity.avatar]);
 
   const [myPlayerIndex, setMyPlayerIndex] = useState(null); // 0-3 if playing, null if spectator/lobby
@@ -123,7 +123,7 @@ function App() {
     try {
       const p = new URLSearchParams(window.location.search);
       if (p.has("test")) return "playing";
-    } catch {}
+    } catch { }
     return "menu";
   });
 
@@ -430,7 +430,7 @@ function App() {
     playerAnimationEnabledRef.current = next;
     try {
       localStorage.setItem("pseudo_player_animation_enabled", String(next));
-    } catch {}
+    } catch { }
   };
 
   const updateAnimationSpeed = (val) => {
@@ -439,7 +439,7 @@ function App() {
     animationSpeedRef.current = speed;
     try {
       localStorage.setItem("pseudo_animation_speed", String(speed));
-    } catch {}
+    } catch { }
   };
 
   // Toast Notification
@@ -620,7 +620,7 @@ function App() {
       ) {
         const hostname = window.location.hostname;
         if (hostname.includes("vercel.app")) {
-          return "https://pseudopoly.onrender.com";
+          return "https://pseudopoly-2b3h.onrender.com";
         }
         if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1") {
           const protocol =
@@ -629,9 +629,9 @@ function App() {
         }
       }
       // Default cloud server for APK and web
-      return "https://pseudopoly.onrender.com";
+      return "https://pseudopoly-2b3h.onrender.com";
     } catch {
-      return "https://pseudopoly.onrender.com";
+      return "https://pseudopoly-2b3h.onrender.com";
     }
   };
 
@@ -643,7 +643,7 @@ function App() {
     setServerUrl(formatted);
     try {
       localStorage.setItem("pseudopoly_server_url", formatted);
-    } catch {}
+    } catch { }
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -724,7 +724,7 @@ function App() {
         setRobStatusText("CRACKING TUMBLERS...");
         setShowRobBankModal(true);
       }
-    } catch {}
+    } catch { }
 
     const checkNative = () => {
       if (
@@ -887,7 +887,7 @@ function App() {
               myIdentity.name,
               players ? players.length : 1,
             );
-          } catch (e) {}
+          } catch (e) { }
         }
         if (players) {
           setGamePlayers(
@@ -957,7 +957,7 @@ function App() {
             myIdentity.name,
             players ? players.length : 1,
           );
-        } catch (e) {}
+        } catch (e) { }
       }
       if (players) {
         setGamePlayers(
@@ -1702,7 +1702,7 @@ function App() {
     );
 
     const onlineServerUrl = formatServerUrl(
-      import.meta.env.VITE_SERVER_URL || "https://pseudopoly.onrender.com",
+      import.meta.env.VITE_SERVER_URL || "https://pseudopoly-2b3h.onrender.com",
     );
     let hotspotDefaultUrl = "http://192.168.43.1:3001";
     if (
@@ -1766,7 +1766,7 @@ function App() {
   const joinGame = joinRoom;
   const sendAction = (action, params = {}) =>
     sendGameAction(action.toLowerCase(), params);
-  const broadcastState = () => {}; // No longer needed - server handles state
+  const broadcastState = () => { }; // No longer needed - server handles state
 
   // Clear floating prices on mount to remove any stale state with duplicate keys
   useEffect(() => {
@@ -4552,7 +4552,7 @@ function App() {
     if (socketRef.current) {
       try {
         socketRef.current.emit("leave_room");
-      } catch {}
+      } catch { }
       socketRef.current.disconnect();
       socketRef.current = null;
     }
@@ -4560,7 +4560,7 @@ function App() {
       try {
         window.AndroidHostServer.updateRoomInfo("", "", 0);
         window.AndroidHostServer.stopHotspotServer();
-      } catch (e) {}
+      } catch (e) { }
     }
     setRoomCode("");
     setConnectedPlayers([]);
@@ -5224,7 +5224,7 @@ function App() {
       const audio = new Audio(cashRegisterSound);
       audio.volume = 0.5;
       audio.play().catch((e) => console.log("Audio play failed", e));
-    } catch (e) {}
+    } catch (e) { }
 
     // Open deal modal in player selection phase
     setShowDealModal(true);
@@ -6683,7 +6683,7 @@ function App() {
 
     // Online auction thinking/announcing
     if (networkMode === "online" &&
-        ["thinking", "announcing"].includes(auctionState?.status)) {
+      ["thinking", "announcing"].includes(auctionState?.status)) {
       if (!isAuctionSelectable(tileIndex)) return true;
     }
 
@@ -7443,21 +7443,21 @@ function App() {
       Array.isArray(configuredSlots) && configuredSlots.length >= 2
         ? configuredSlots
         : [
-            {
-              id: 0,
-              name: "Player 1",
-              avatar: CHOOSABLE_AVATARS[0].avatar,
-              isBot: false,
-              color: CHOOSABLE_AVATARS[0].color,
-            },
-            {
-              id: 1,
-              name: "Bot Alpha",
-              avatar: CHOOSABLE_AVATARS[1].avatar,
-              isBot: true,
-              color: CHOOSABLE_AVATARS[1].color,
-            },
-          ];
+          {
+            id: 0,
+            name: "Player 1",
+            avatar: CHOOSABLE_AVATARS[0].avatar,
+            isBot: false,
+            color: CHOOSABLE_AVATARS[0].color,
+          },
+          {
+            id: 1,
+            name: "Bot Alpha",
+            avatar: CHOOSABLE_AVATARS[1].avatar,
+            isBot: true,
+            color: CHOOSABLE_AVATARS[1].color,
+          },
+        ];
 
     const newPlayers = slots.map((slot, idx) => ({
       id: idx,
@@ -8152,7 +8152,7 @@ function App() {
             setDevMode(next);
             try {
               localStorage.setItem("pseudopoly_devmode", String(next));
-            } catch {}
+            } catch { }
           }}
           onOpenSettings={() => setShowSettingsModal(true)}
           serverUrl={serverUrl}
@@ -8175,983 +8175,885 @@ function App() {
             <div
               className={`board ${dealSelectionMode || buildMode || sellMode ? "deal-selection-active" : ""} ${devMode && devTapToMove ? "dev-tap-active" : ""}`}
             >
-            {/* Corner Spaces */}
-            {(() => {
-              const isCornerDimmed =
-                isSelectingAuctionProperty ||
-                (networkMode === "online" &&
-                  ["thinking", "announcing"].includes(auctionState?.status)) ||
-                (showDealModal && selectedDealPlayer !== null) ||
-                dealSelectionMode ||
-                buildMode ||
-                showBuildModal ||
-                sellMode ||
-                showSellModal ||
-                showSwapModal ||
-                showTrainTravelModal ||
-                travelMode ||
-                (showBankModal && (bankPhase === "mortgage" || bankPhase === "redeem"));
+              {/* Corner Spaces */}
+              {(() => {
+                const isCornerDimmed =
+                  isSelectingAuctionProperty ||
+                  (networkMode === "online" &&
+                    ["thinking", "announcing"].includes(auctionState?.status)) ||
+                  (showDealModal && selectedDealPlayer !== null) ||
+                  dealSelectionMode ||
+                  buildMode ||
+                  showBuildModal ||
+                  sellMode ||
+                  showSellModal ||
+                  showSwapModal ||
+                  showTrainTravelModal ||
+                  travelMode ||
+                  (showBankModal && (bankPhase === "mortgage" || bankPhase === "redeem"));
 
-              return (
-                <>
-                  <div
-                    className="corner start"
-                    onClick={() => handleTileClick(0)}
-                    style={{
-                      ...(isCornerDimmed
-                        ? {
+                return (
+                  <>
+                    <div
+                      className="corner start"
+                      onClick={() => handleTileClick(0)}
+                      style={{
+                        ...(isCornerDimmed
+                          ? {
                             backdropFilter: "grayscale(100%) brightness(0.8)",
                             WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
                             pointerEvents: "none",
                             transition: "backdrop-filter 0.3s",
                           }
-                        : { transition: "backdrop-filter 0.3s" }),
-                      cursor: devMode && devTapToMove ? "pointer" : "default",
-                    }}
-                    title={
-                      devMode && devTapToMove
-                        ? "🎯 Dev: Tap to move to START (0)"
-                        : undefined
-                    }
-                  >
-                    <img src={startIcon} alt="Start" className="corner-icon" />
-                  </div>
-
-                  <div
-                    className="corner parking"
-                    onClick={() => handleTileClick(10)}
-                    style={{
-                      ...(isCornerDimmed
-                        ? {
-                            backdropFilter: "grayscale(100%) brightness(0.8)",
-                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
-                            pointerEvents: "none",
-                            transition: "backdrop-filter 0.3s",
-                          }
-                        : { transition: "backdrop-filter 0.3s" }),
-                      cursor: devMode && devTapToMove ? "pointer" : "default",
-                    }}
-                    title={
-                      devMode && devTapToMove
-                        ? "🎯 Dev: Tap to move to PARKING (10)"
-                        : undefined
-                    }
-                  >
-                    <img
-                      src={parkingIcon}
-                      alt="Free Parking"
-                      className="corner-icon"
-                    />
-                  </div>
-
-                  <div
-                    className="corner robbank"
-                    onClick={() => handleTileClick(18)}
-                    style={{
-                      ...(isCornerDimmed
-                        ? {
-                            backdropFilter: "grayscale(100%) brightness(0.8)",
-                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
-                            pointerEvents: "none",
-                            transition: "backdrop-filter 0.3s",
-                          }
-                        : { transition: "backdrop-filter 0.3s" }),
-                      cursor: devMode && devTapToMove ? "pointer" : "default",
-                    }}
-                    title={
-                      devMode && devTapToMove
-                        ? "🎯 Dev: Tap to move to ROB BANK (18)"
-                        : undefined
-                    }
-                  >
-                    <span className="rob-text">ROB</span>
-                    <img
-                      src={robBankIcon}
-                      alt="Rob Bank"
-                      className="corner-icon-center"
-                    />
-                    <span className="bank-text">BANK</span>
-                  </div>
-
-                  <div
-                    className="corner jail"
-                    onClick={() => handleTileClick(28)}
-                    style={{
-                      ...(isCornerDimmed
-                        ? {
-                            backdropFilter: "grayscale(100%) brightness(0.8)",
-                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
-                            pointerEvents: "none",
-                            transition: "backdrop-filter 0.3s",
-                          }
-                        : { transition: "backdrop-filter 0.3s" }),
-                      cursor: devMode && devTapToMove ? "pointer" : "default",
-                    }}
-                    title={
-                      devMode && devTapToMove
-                        ? "🎯 Dev: Tap to move to JAIL (28)"
-                        : undefined
-                    }
-                  >
-                    <span className="jail-text">JAIL</span>
-                    <img src={jailIcon} alt="Jail" className="corner-icon-center" />
-                  </div>
-                </>
-              );
-            })()}
-
-            {/* Bottom Row */}
-            {bottomRow.map((tile, index) => {
-              const tileIndex = index + 1;
-              const ownerStyle = getOwnerStyle(tileIndex);
-              const auctionStyle = getAuctionSelectionStyle(tileIndex);
-              const dealStyle = getDealSelectionStyle(tileIndex);
-              const buildStyle = getBuildSelectionStyle(tileIndex);
-              const sellStyle = getSellSelectionStyle(tileIndex);
-              const swapStyle = getSwapSelectionStyle(tileIndex);
-              const warStyle = getWarSelectionStyle(tileIndex);
-              const trainStyle = getTrainTargetStyle(tileIndex);
-              const grayed = isTileGrayed(tileIndex);
-              const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
-              const swapGiveSelected = swapGiveTile === tileIndex;
-              const swapReceiveSelected = swapReceiveTile === tileIndex;
-              const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
-              const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
-              const currentTier =
-                buildMode && buildPreviewLevels[tileIndex] !== undefined
-                  ? buildPreviewLevels[tileIndex]
-                  : sellMode && sellPreviewLevels[tileIndex] !== undefined
-                    ? sellPreviewLevels[tileIndex]
-                    : propertyLevels[tileIndex] || 0;
-              const hasUpgrades = currentTier > 0;
-              const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
-              const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
-              const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
-              const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
-              const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
-              const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
-              return (
-                <div
-                  key={tile.id}
-                  className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
-                  style={{
-                    ...getTileStyle(index, "bottom", tile.color),
-                    ...auctionStyle,
-                    ...dealStyle,
-                    ...buildStyle,
-                    ...sellStyle,
-                    ...swapStyle,
-                    ...warStyle,
-                    ...trainStyle,
-                  }}
-                  onClick={() => handleTileClick(tileIndex)}
-                >
-                  {grayed && <span className="tile-grayscale-overlay" />}
-                  {renderUpgrades(tileIndex, "bottom")}
-                  <span className="tile-name">{tile.name}</span>
-                  {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
-                    <span className="tile-icon">
-                      <BoardIcon type={tile.icon} size={32} />
-                    </span>
-                  )}
-                  {tile.price && (
-                    <span
-                      className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
-                      style={
-                        mortgagedProperties[tileIndex]
-                          ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
-                          : (ownerStyle || {})
+                          : { transition: "backdrop-filter 0.3s" }),
+                        cursor: devMode && devTapToMove ? "pointer" : "default",
+                      }}
+                      title={
+                        devMode && devTapToMove
+                          ? "🎯 Dev: Tap to move to START (0)"
+                          : undefined
                       }
                     >
-                      {mortgagedProperties[tileIndex]
-                        ? "MORTG"
-                        : ownerStyle
-                          ? calculateRent(tileIndex)
-                          : tile.price}
-                    </span>
-                  )}
-                  {/* Deal Selection Indicator (circular badge) */}
-                  {renderDealIndicator(tileIndex)}
-                  {/* Bank Mortgage/Redeem Indicator (circular badge) */}
-                  {renderBankIndicator(tileIndex)}
-                  {/* Train Destination Indicator */}
-                  {renderTrainIndicator(tileIndex)}
-                  {/* Swap selection indicators on board tiles */}
-                  {renderSwapIndicator(tileIndex)}
-                </div>
-              );
-            })}
+                      <img src={startIcon} alt="Start" className="corner-icon" />
+                    </div>
 
-            {/* Left Column */}
-            {leftColumn.map((tile, index) => {
-              const tileIndex = index + 11;
-              const ownerStyle = getOwnerStyle(tileIndex);
-              const auctionStyle = getAuctionSelectionStyle(tileIndex);
-              const dealStyle = getDealSelectionStyle(tileIndex);
-              const buildStyle = getBuildSelectionStyle(tileIndex);
-              const sellStyle = getSellSelectionStyle(tileIndex);
-              const swapStyle = getSwapSelectionStyle(tileIndex);
-              const warStyle = getWarSelectionStyle(tileIndex);
-              const trainStyle = getTrainTargetStyle(tileIndex);
-              const grayed = isTileGrayed(tileIndex);
-              const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
-              const swapGiveSelected = swapGiveTile === tileIndex;
-              const swapReceiveSelected = swapReceiveTile === tileIndex;
-              const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
-              const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
-              const currentTier =
-                buildMode && buildPreviewLevels[tileIndex] !== undefined
-                  ? buildPreviewLevels[tileIndex]
-                  : sellMode && sellPreviewLevels[tileIndex] !== undefined
-                    ? sellPreviewLevels[tileIndex]
-                    : propertyLevels[tileIndex] || 0;
-              const hasUpgrades = currentTier > 0;
-              const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
-              const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
-              const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
-              const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
-              const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
-              const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
-              return (
-                <div
-                  key={tile.id}
-                  className={`tile vertical left ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
-                  style={{
-                    ...getTileStyle(index, "left", tile.color),
-                    ...auctionStyle,
-                    ...dealStyle,
-                    ...buildStyle,
-                    ...sellStyle,
-                    ...swapStyle,
-                    ...warStyle,
-                    ...trainStyle,
-                  }}
-                  onClick={() => handleTileClick(tileIndex)}
-                >
-                  {grayed && <span className="tile-grayscale-overlay" />}
-                  {renderUpgrades(tileIndex, "left")}
-                  <span className="tile-name">{tile.name}</span>
-                  {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
-                    <span className="tile-icon">
-                      <BoardIcon type={tile.icon} size={32} />
-                    </span>
-                  )}
-                  {tile.price && (
-                    <span
-                      className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
-                      style={
-                        mortgagedProperties[tileIndex]
-                          ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
-                          : (ownerStyle || {})
+                    <div
+                      className="corner parking"
+                      onClick={() => handleTileClick(10)}
+                      style={{
+                        ...(isCornerDimmed
+                          ? {
+                            backdropFilter: "grayscale(100%) brightness(0.8)",
+                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
+                            pointerEvents: "none",
+                            transition: "backdrop-filter 0.3s",
+                          }
+                          : { transition: "backdrop-filter 0.3s" }),
+                        cursor: devMode && devTapToMove ? "pointer" : "default",
+                      }}
+                      title={
+                        devMode && devTapToMove
+                          ? "🎯 Dev: Tap to move to PARKING (10)"
+                          : undefined
                       }
                     >
-                      {ownerStyle
-                        ? mortgagedProperties[tileIndex]
+                      <img
+                        src={parkingIcon}
+                        alt="Free Parking"
+                        className="corner-icon"
+                      />
+                    </div>
+
+                    <div
+                      className="corner robbank"
+                      onClick={() => handleTileClick(18)}
+                      style={{
+                        ...(isCornerDimmed
+                          ? {
+                            backdropFilter: "grayscale(100%) brightness(0.8)",
+                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
+                            pointerEvents: "none",
+                            transition: "backdrop-filter 0.3s",
+                          }
+                          : { transition: "backdrop-filter 0.3s" }),
+                        cursor: devMode && devTapToMove ? "pointer" : "default",
+                      }}
+                      title={
+                        devMode && devTapToMove
+                          ? "🎯 Dev: Tap to move to ROB BANK (18)"
+                          : undefined
+                      }
+                    >
+                      <span className="rob-text">ROB</span>
+                      <img
+                        src={robBankIcon}
+                        alt="Rob Bank"
+                        className="corner-icon-center"
+                      />
+                      <span className="bank-text">BANK</span>
+                    </div>
+
+                    <div
+                      className="corner jail"
+                      onClick={() => handleTileClick(28)}
+                      style={{
+                        ...(isCornerDimmed
+                          ? {
+                            backdropFilter: "grayscale(100%) brightness(0.8)",
+                            WebkitBackdropFilter: "grayscale(100%) brightness(0.8)",
+                            pointerEvents: "none",
+                            transition: "backdrop-filter 0.3s",
+                          }
+                          : { transition: "backdrop-filter 0.3s" }),
+                        cursor: devMode && devTapToMove ? "pointer" : "default",
+                      }}
+                      title={
+                        devMode && devTapToMove
+                          ? "🎯 Dev: Tap to move to JAIL (28)"
+                          : undefined
+                      }
+                    >
+                      <span className="jail-text">JAIL</span>
+                      <img src={jailIcon} alt="Jail" className="corner-icon-center" />
+                    </div>
+                  </>
+                );
+              })()}
+
+              {/* Bottom Row */}
+              {bottomRow.map((tile, index) => {
+                const tileIndex = index + 1;
+                const ownerStyle = getOwnerStyle(tileIndex);
+                const auctionStyle = getAuctionSelectionStyle(tileIndex);
+                const dealStyle = getDealSelectionStyle(tileIndex);
+                const buildStyle = getBuildSelectionStyle(tileIndex);
+                const sellStyle = getSellSelectionStyle(tileIndex);
+                const swapStyle = getSwapSelectionStyle(tileIndex);
+                const warStyle = getWarSelectionStyle(tileIndex);
+                const trainStyle = getTrainTargetStyle(tileIndex);
+                const grayed = isTileGrayed(tileIndex);
+                const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
+                const swapGiveSelected = swapGiveTile === tileIndex;
+                const swapReceiveSelected = swapReceiveTile === tileIndex;
+                const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
+                const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
+                const currentTier =
+                  buildMode && buildPreviewLevels[tileIndex] !== undefined
+                    ? buildPreviewLevels[tileIndex]
+                    : sellMode && sellPreviewLevels[tileIndex] !== undefined
+                      ? sellPreviewLevels[tileIndex]
+                      : propertyLevels[tileIndex] || 0;
+                const hasUpgrades = currentTier > 0;
+                const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
+                const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
+                const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
+                const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
+                const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
+                const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
+                return (
+                  <div
+                    key={tile.id}
+                    className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
+                    style={{
+                      ...getTileStyle(index, "bottom", tile.color),
+                      ...auctionStyle,
+                      ...dealStyle,
+                      ...buildStyle,
+                      ...sellStyle,
+                      ...swapStyle,
+                      ...warStyle,
+                      ...trainStyle,
+                    }}
+                    onClick={() => handleTileClick(tileIndex)}
+                  >
+                    {grayed && <span className="tile-grayscale-overlay" />}
+                    {renderUpgrades(tileIndex, "bottom")}
+                    <span className="tile-name">{tile.name}</span>
+                    {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
+                      <span className="tile-icon">
+                        <BoardIcon type={tile.icon} size={32} />
+                      </span>
+                    )}
+                    {tile.price && (
+                      <span
+                        className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
+                        style={
+                          mortgagedProperties[tileIndex]
+                            ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
+                            : (ownerStyle || {})
+                        }
+                      >
+                        {mortgagedProperties[tileIndex]
                           ? "MORTG"
-                          : calculateRent(tileIndex)
-                        : tile.price}
-                    </span>
-                  )}
-                  {/* Deal Selection Indicator (circular badge) */}
-                  {renderDealIndicator(tileIndex)}
-                  {/* Bank Mortgage/Redeem Indicator (circular badge) */}
-                  {renderBankIndicator(tileIndex)}
-                  {/* Train Destination Indicator */}
-                  {renderTrainIndicator(tileIndex)}
-                  {/* Swap selection indicators on board tiles */}
-                  {renderSwapIndicator(tileIndex)}
-                </div>
-              );
-            })}
+                          : ownerStyle
+                            ? calculateRent(tileIndex)
+                            : tile.price}
+                      </span>
+                    )}
+                    {/* Deal Selection Indicator (circular badge) */}
+                    {renderDealIndicator(tileIndex)}
+                    {/* Bank Mortgage/Redeem Indicator (circular badge) */}
+                    {renderBankIndicator(tileIndex)}
+                    {/* Train Destination Indicator */}
+                    {renderTrainIndicator(tileIndex)}
+                    {/* Swap selection indicators on board tiles */}
+                    {renderSwapIndicator(tileIndex)}
+                  </div>
+                );
+              })}
 
-            {/* Top Row */}
-            {topRow.map((tile, index) => {
-              const tileIndex = index + 19;
-              const ownerStyle = getOwnerStyle(tileIndex);
-              const auctionStyle = getAuctionSelectionStyle(tileIndex);
-              const dealStyle = getDealSelectionStyle(tileIndex);
-              const buildStyle = getBuildSelectionStyle(tileIndex);
-              const sellStyle = getSellSelectionStyle(tileIndex);
-              const swapStyle = getSwapSelectionStyle(tileIndex);
-              const warStyle = getWarSelectionStyle(tileIndex);
-              const trainStyle = getTrainTargetStyle(tileIndex);
-              const grayed = isTileGrayed(tileIndex);
-              const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
-              const swapGiveSelected = swapGiveTile === tileIndex;
-              const swapReceiveSelected = swapReceiveTile === tileIndex;
-              const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
-              const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
-              const currentTier =
-                buildMode && buildPreviewLevels[tileIndex] !== undefined
-                  ? buildPreviewLevels[tileIndex]
-                  : sellMode && sellPreviewLevels[tileIndex] !== undefined
-                    ? sellPreviewLevels[tileIndex]
-                    : propertyLevels[tileIndex] || 0;
-              const hasUpgrades = currentTier > 0;
-              const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
-              const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
-              const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
-              const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
-              const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
-              const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
-              return (
-                <div
-                  key={tile.id}
-                  className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
-                  style={{
-                    ...getTileStyle(index, "top", tile.color),
-                    ...auctionStyle,
-                    ...dealStyle,
-                    ...buildStyle,
-                    ...sellStyle,
-                    ...swapStyle,
-                    ...warStyle,
-                    ...trainStyle,
-                  }}
-                  onClick={() => handleTileClick(tileIndex)}
-                >
-                  {grayed && <span className="tile-grayscale-overlay" />}
-                  {renderUpgrades(tileIndex, "top")}
-                  <span className="tile-name">{tile.name}</span>
-                  {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
-                    <span className="tile-icon">
-                      <BoardIcon type={tile.icon} size={32} />
-                    </span>
-                  )}
-                  {tile.price && (
-                    <span
-                      className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
-                      style={
-                        mortgagedProperties[tileIndex]
-                          ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
-                          : (ownerStyle || {})
-                      }
-                    >
-                      {mortgagedProperties[tileIndex]
-                        ? "MORTG"
-                        : ownerStyle
-                          ? calculateRent(tileIndex)
-                          : tile.price}
-                    </span>
-                  )}
-                  {/* Deal Selection Indicator (circular badge) */}
-                  {renderDealIndicator(tileIndex)}
-                  {/* Bank Mortgage/Redeem Indicator (circular badge) */}
-                  {renderBankIndicator(tileIndex)}
-                  {/* Train Destination Indicator */}
-                  {renderTrainIndicator(tileIndex)}
-                  {/* Swap selection indicators on board tiles */}
-                  {renderSwapIndicator(tileIndex)}
-                </div>
-              );
-            })}
-
-            {/* Right Column */}
-            {rightColumn.map((tile, index) => {
-              const tileIndex = index + 29;
-              const ownerStyle = getOwnerStyle(tileIndex);
-              const auctionStyle = getAuctionSelectionStyle(tileIndex);
-              const dealStyle = getDealSelectionStyle(tileIndex);
-              const buildStyle = getBuildSelectionStyle(tileIndex);
-              const sellStyle = getSellSelectionStyle(tileIndex);
-              const swapStyle = getSwapSelectionStyle(tileIndex);
-              const warStyle = getWarSelectionStyle(tileIndex);
-              const trainStyle = getTrainTargetStyle(tileIndex);
-              const grayed = isTileGrayed(tileIndex);
-              const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
-              const swapGiveSelected = swapGiveTile === tileIndex;
-              const swapReceiveSelected = swapReceiveTile === tileIndex;
-              const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
-              const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
-              const currentTier =
-                buildMode && buildPreviewLevels[tileIndex] !== undefined
-                  ? buildPreviewLevels[tileIndex]
-                  : sellMode && sellPreviewLevels[tileIndex] !== undefined
-                    ? sellPreviewLevels[tileIndex]
-                    : propertyLevels[tileIndex] || 0;
-              const hasUpgrades = currentTier > 0;
-              const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
-              const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
-              const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
-              const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
-              const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
-              const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
-              return (
-                <div
-                  key={tile.id}
-                  className={`tile vertical right ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
-                  style={{
-                    ...getTileStyle(index, "right", tile.color),
-                    ...auctionStyle,
-                    ...dealStyle,
-                    ...buildStyle,
-                    ...sellStyle,
-                    ...swapStyle,
-                    ...warStyle,
-                    ...trainStyle,
-                  }}
-                  onClick={() => handleTileClick(tileIndex)}
-                >
-                  {grayed && <span className="tile-grayscale-overlay" />}
-                  {renderUpgrades(tileIndex, "right")}
-                  <span className="tile-name">{tile.name}</span>
-                  {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
-                    <span className="tile-icon">
-                      <BoardIcon type={tile.icon} size={32} />
-                    </span>
-                  )}
-                  {tile.price && (
-                    <span
-                      className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
-                      style={
-                        mortgagedProperties[tileIndex]
-                          ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
-                          : (ownerStyle || {})
-                      }
-                    >
-                      {ownerStyle
-                        ? mortgagedProperties[tileIndex]
-                          ? "MORTG"
-                          : calculateRent(tileIndex)
-                        : tile.price}
-                    </span>
-                  )}
-                  {/* Deal Selection Indicator (circular badge) */}
-                  {renderDealIndicator(tileIndex)}
-                  {/* Bank Mortgage/Redeem Indicator (circular badge) */}
-                  {renderBankIndicator(tileIndex)}
-                  {/* Train Destination Indicator */}
-                  {renderTrainIndicator(tileIndex)}
-                  {/* Swap selection indicators on board tiles */}
-                  {renderSwapIndicator(tileIndex)}
-                </div>
-              );
-            })}
-
-            {/* Center Area with Authentic Reference Artwork */}
-            <div className="board-center">
-
-
-              {/* Jail Arrest Modal (Placed in local center scope) */}
-              {/* Jail Arrest Modal (Placed in local center scope) */}
-              {showArrestModal && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 50,
-                    pointerEvents: "none", // Allow clicks to pass through wrapper
-                  }}
-                >
+              {/* Left Column */}
+              {leftColumn.map((tile, index) => {
+                const tileIndex = index + 11;
+                const ownerStyle = getOwnerStyle(tileIndex);
+                const auctionStyle = getAuctionSelectionStyle(tileIndex);
+                const dealStyle = getDealSelectionStyle(tileIndex);
+                const buildStyle = getBuildSelectionStyle(tileIndex);
+                const sellStyle = getSellSelectionStyle(tileIndex);
+                const swapStyle = getSwapSelectionStyle(tileIndex);
+                const warStyle = getWarSelectionStyle(tileIndex);
+                const trainStyle = getTrainTargetStyle(tileIndex);
+                const grayed = isTileGrayed(tileIndex);
+                const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
+                const swapGiveSelected = swapGiveTile === tileIndex;
+                const swapReceiveSelected = swapReceiveTile === tileIndex;
+                const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
+                const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
+                const currentTier =
+                  buildMode && buildPreviewLevels[tileIndex] !== undefined
+                    ? buildPreviewLevels[tileIndex]
+                    : sellMode && sellPreviewLevels[tileIndex] !== undefined
+                      ? sellPreviewLevels[tileIndex]
+                      : propertyLevels[tileIndex] || 0;
+                const hasUpgrades = currentTier > 0;
+                const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
+                const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
+                const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
+                const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
+                const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
+                const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
+                return (
                   <div
-                    className="buy-modal"
+                    key={tile.id}
+                    className={`tile vertical left ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
                     style={{
-                      border: "4px solid #D32F2F",
-                      maxWidth: "300px",
-                      boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-                      pointerEvents: "auto", // Re-enable clicks
-                      position: "relative",
+                      ...getTileStyle(index, "left", tile.color),
+                      ...auctionStyle,
+                      ...dealStyle,
+                      ...buildStyle,
+                      ...sellStyle,
+                      ...swapStyle,
+                      ...warStyle,
+                      ...trainStyle,
+                    }}
+                    onClick={() => handleTileClick(tileIndex)}
+                  >
+                    {grayed && <span className="tile-grayscale-overlay" />}
+                    {renderUpgrades(tileIndex, "left")}
+                    <span className="tile-name">{tile.name}</span>
+                    {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
+                      <span className="tile-icon">
+                        <BoardIcon type={tile.icon} size={32} />
+                      </span>
+                    )}
+                    {tile.price && (
+                      <span
+                        className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
+                        style={
+                          mortgagedProperties[tileIndex]
+                            ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
+                            : (ownerStyle || {})
+                        }
+                      >
+                        {ownerStyle
+                          ? mortgagedProperties[tileIndex]
+                            ? "MORTG"
+                            : calculateRent(tileIndex)
+                          : tile.price}
+                      </span>
+                    )}
+                    {/* Deal Selection Indicator (circular badge) */}
+                    {renderDealIndicator(tileIndex)}
+                    {/* Bank Mortgage/Redeem Indicator (circular badge) */}
+                    {renderBankIndicator(tileIndex)}
+                    {/* Train Destination Indicator */}
+                    {renderTrainIndicator(tileIndex)}
+                    {/* Swap selection indicators on board tiles */}
+                    {renderSwapIndicator(tileIndex)}
+                  </div>
+                );
+              })}
+
+              {/* Top Row */}
+              {topRow.map((tile, index) => {
+                const tileIndex = index + 19;
+                const ownerStyle = getOwnerStyle(tileIndex);
+                const auctionStyle = getAuctionSelectionStyle(tileIndex);
+                const dealStyle = getDealSelectionStyle(tileIndex);
+                const buildStyle = getBuildSelectionStyle(tileIndex);
+                const sellStyle = getSellSelectionStyle(tileIndex);
+                const swapStyle = getSwapSelectionStyle(tileIndex);
+                const warStyle = getWarSelectionStyle(tileIndex);
+                const trainStyle = getTrainTargetStyle(tileIndex);
+                const grayed = isTileGrayed(tileIndex);
+                const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
+                const swapGiveSelected = swapGiveTile === tileIndex;
+                const swapReceiveSelected = swapReceiveTile === tileIndex;
+                const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
+                const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
+                const currentTier =
+                  buildMode && buildPreviewLevels[tileIndex] !== undefined
+                    ? buildPreviewLevels[tileIndex]
+                    : sellMode && sellPreviewLevels[tileIndex] !== undefined
+                      ? sellPreviewLevels[tileIndex]
+                      : propertyLevels[tileIndex] || 0;
+                const hasUpgrades = currentTier > 0;
+                const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
+                const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
+                const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
+                const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
+                const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
+                const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
+                return (
+                  <div
+                    key={tile.id}
+                    className={`tile horizontal ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
+                    style={{
+                      ...getTileStyle(index, "top", tile.color),
+                      ...auctionStyle,
+                      ...dealStyle,
+                      ...buildStyle,
+                      ...sellStyle,
+                      ...swapStyle,
+                      ...warStyle,
+                      ...trainStyle,
+                    }}
+                    onClick={() => handleTileClick(tileIndex)}
+                  >
+                    {grayed && <span className="tile-grayscale-overlay" />}
+                    {renderUpgrades(tileIndex, "top")}
+                    <span className="tile-name">{tile.name}</span>
+                    {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
+                      <span className="tile-icon">
+                        <BoardIcon type={tile.icon} size={32} />
+                      </span>
+                    )}
+                    {tile.price && (
+                      <span
+                        className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
+                        style={
+                          mortgagedProperties[tileIndex]
+                            ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
+                            : (ownerStyle || {})
+                        }
+                      >
+                        {mortgagedProperties[tileIndex]
+                          ? "MORTG"
+                          : ownerStyle
+                            ? calculateRent(tileIndex)
+                            : tile.price}
+                      </span>
+                    )}
+                    {/* Deal Selection Indicator (circular badge) */}
+                    {renderDealIndicator(tileIndex)}
+                    {/* Bank Mortgage/Redeem Indicator (circular badge) */}
+                    {renderBankIndicator(tileIndex)}
+                    {/* Train Destination Indicator */}
+                    {renderTrainIndicator(tileIndex)}
+                    {/* Swap selection indicators on board tiles */}
+                    {renderSwapIndicator(tileIndex)}
+                  </div>
+                );
+              })}
+
+              {/* Right Column */}
+              {rightColumn.map((tile, index) => {
+                const tileIndex = index + 29;
+                const ownerStyle = getOwnerStyle(tileIndex);
+                const auctionStyle = getAuctionSelectionStyle(tileIndex);
+                const dealStyle = getDealSelectionStyle(tileIndex);
+                const buildStyle = getBuildSelectionStyle(tileIndex);
+                const sellStyle = getSellSelectionStyle(tileIndex);
+                const swapStyle = getSwapSelectionStyle(tileIndex);
+                const warStyle = getWarSelectionStyle(tileIndex);
+                const trainStyle = getTrainTargetStyle(tileIndex);
+                const grayed = isTileGrayed(tileIndex);
+                const dealSelected = dealGiveProperties.includes(tileIndex) || dealReceiveProperties.includes(tileIndex);
+                const swapGiveSelected = swapGiveTile === tileIndex;
+                const swapReceiveSelected = swapReceiveTile === tileIndex;
+                const buildSelected = buildPreviewLevels[tileIndex] !== undefined && buildPreviewLevels[tileIndex] > 0;
+                const sellSelected = sellPreviewLevels[tileIndex] !== undefined && sellPreviewLevels[tileIndex] > 0;
+                const currentTier =
+                  buildMode && buildPreviewLevels[tileIndex] !== undefined
+                    ? buildPreviewLevels[tileIndex]
+                    : sellMode && sellPreviewLevels[tileIndex] !== undefined
+                      ? sellPreviewLevels[tileIndex]
+                      : propertyLevels[tileIndex] || 0;
+                const hasUpgrades = currentTier > 0;
+                const isTrainSelected = (showTrainTravelModal || travelMode) && selectedTrainTile === tileIndex;
+                const isTrainSelectable = (showTrainTravelModal || travelMode) && TRAIN_TILES.includes(tileIndex) && propertyOwnership[tileIndex] === currentPlayer && tileIndex !== (travelSourceIndex ?? playerPositions[currentPlayer]) && selectedTrainTile !== tileIndex;
+                const isMortgageSelected = showBankModal && bankPhase === "mortgage" && selectedMortgageTiles.includes(tileIndex);
+                const isMortgageSelectable = showBankModal && bankPhase === "mortgage" && canMortgageProperty(tileIndex, currentPlayer) && !isMortgageSelected;
+                const isRedeemSelected = showBankModal && bankPhase === "redeem" && selectedRedeemTiles.includes(tileIndex);
+                const isRedeemSelectable = showBankModal && bankPhase === "redeem" && propertyOwnership[tileIndex] === currentPlayer && mortgagedProperties[tileIndex] && !isRedeemSelected;
+                return (
+                  <div
+                    key={tile.id}
+                    className={`tile vertical right ${tile.type} ${getTileThemeClass(tile.color)} ${hasUpgrades ? "has-upgrades" : ""} ${justLandedTile === tileIndex ? "landed-pulse" : ""} ${isTrainSelected ? "train-selected-dest" : ""} ${isTrainSelectable ? "train-selectable-dest" : ""} ${isMortgageSelected ? "mortgage-selected" : ""} ${isMortgageSelectable ? "mortgage-selectable" : ""} ${isRedeemSelected ? "redeem-selected" : ""} ${isRedeemSelectable ? "redeem-selectable" : ""}`}
+                    style={{
+                      ...getTileStyle(index, "right", tile.color),
+                      ...auctionStyle,
+                      ...dealStyle,
+                      ...buildStyle,
+                      ...sellStyle,
+                      ...swapStyle,
+                      ...warStyle,
+                      ...trainStyle,
+                    }}
+                    onClick={() => handleTileClick(tileIndex)}
+                  >
+                    {grayed && <span className="tile-grayscale-overlay" />}
+                    {renderUpgrades(tileIndex, "right")}
+                    <span className="tile-name">{tile.name}</span>
+                    {tile.icon && ["property_swap", "audit", "property_war", "forced_auction"].includes(tile.icon) && (
+                      <span className="tile-icon">
+                        <BoardIcon type={tile.icon} size={32} />
+                      </span>
+                    )}
+                    {tile.price && (
+                      <span
+                        className={`tile-price ${ownerStyle ? "owned" : ""} ${mortgagedProperties[tileIndex] ? "mortgaged" : ""}`}
+                        style={
+                          mortgagedProperties[tileIndex]
+                            ? { background: "#d32f2f", backgroundColor: "#d32f2f", color: "#ffffff", borderColor: "#b71c1c" }
+                            : (ownerStyle || {})
+                        }
+                      >
+                        {ownerStyle
+                          ? mortgagedProperties[tileIndex]
+                            ? "MORTG"
+                            : calculateRent(tileIndex)
+                          : tile.price}
+                      </span>
+                    )}
+                    {/* Deal Selection Indicator (circular badge) */}
+                    {renderDealIndicator(tileIndex)}
+                    {/* Bank Mortgage/Redeem Indicator (circular badge) */}
+                    {renderBankIndicator(tileIndex)}
+                    {/* Train Destination Indicator */}
+                    {renderTrainIndicator(tileIndex)}
+                    {/* Swap selection indicators on board tiles */}
+                    {renderSwapIndicator(tileIndex)}
+                  </div>
+                );
+              })}
+
+              {/* Center Area with Authentic Reference Artwork */}
+              <div className="board-center">
+
+
+                {/* Jail Arrest Modal (Placed in local center scope) */}
+                {/* Jail Arrest Modal (Placed in local center scope) */}
+                {showArrestModal && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 50,
+                      pointerEvents: "none", // Allow clicks to pass through wrapper
                     }}
                   >
                     <div
-                      className="modal-heading"
-                      style={{ background: "#D32F2F" }}
+                      className="buy-modal"
+                      style={{
+                        border: "4px solid #D32F2F",
+                        maxWidth: "300px",
+                        boxShadow: "0 0 20px rgba(0,0,0,0.5)",
+                        pointerEvents: "auto", // Re-enable clicks
+                        position: "relative",
+                      }}
                     >
-                      <span className="modal-heading-text">ARRESTED!</span>
-                    </div>
-                    <div className="modal-body">
-                      <div style={{ textAlign: "center", margin: "15px 0" }}>
-                        <div style={{ fontSize: "16px", marginBottom: "10px" }}>
-                          You have been arrested for{" "}
-                          <span
+                      <div
+                        className="modal-heading"
+                        style={{ background: "#D32F2F" }}
+                      >
+                        <span className="modal-heading-text">ARRESTED!</span>
+                      </div>
+                      <div className="modal-body">
+                        <div style={{ textAlign: "center", margin: "15px 0" }}>
+                          <div style={{ fontSize: "16px", marginBottom: "10px" }}>
+                            You have been arrested for{" "}
+                            <span
+                              style={{
+                                fontWeight: "bold",
+                                color: "#D32F2F",
+                                fontSize: "18px",
+                              }}
+                            >
+                              {arrestDuration}
+                            </span>{" "}
+                            turns.
+                          </div>
+                          <div style={{ margin: "12px 0", textAlign: "center" }}>
+                            <BustedJailIcon size={52} />
+                          </div>
+                          <div
                             style={{
-                              fontWeight: "bold",
-                              color: "#D32F2F",
-                              fontSize: "18px",
+                              fontSize: "13px",
+                              color: "#5D4037",
+                              marginTop: "10px",
                             }}
                           >
-                            {arrestDuration}
-                          </span>{" "}
-                          turns.
+                            You won't collect rent until jailed time is served.
+                          </div>
                         </div>
-                        <div style={{ margin: "12px 0", textAlign: "center" }}>
-                          <BustedJailIcon size={52} />
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "13px",
-                            color: "#5D4037",
-                            marginTop: "10px",
-                          }}
-                        >
-                          You won't collect rent until jailed time is served.
-                        </div>
-                      </div>
 
-                      <div className="modal-buttons">
-                        <button
-                          className="modal-btn buy"
-                          style={{ background: "#D32F2F", width: "100%" }}
-                          onClick={() => {
-                            setShowArrestModal(false);
-                            setJailStatus((prev) => ({
-                              ...prev,
-                              [currentPlayer]: arrestDuration || 3,
-                            }));
-                            setIsProcessingTurn(false);
-                            setTurnFinished(false);
-                            handleEndTurn();
-                          }}
-                        >
-                          I UNDERSTAND
-                        </button>
+                        <div className="modal-buttons">
+                          <button
+                            className="modal-btn buy"
+                            style={{ background: "#D32F2F", width: "100%" }}
+                            onClick={() => {
+                              setShowArrestModal(false);
+                              setJailStatus((prev) => ({
+                                ...prev,
+                                [currentPlayer]: arrestDuration || 3,
+                              }));
+                              setIsProcessingTurn(false);
+                              setTurnFinished(false);
+                              handleEndTurn();
+                            }}
+                          >
+                            I UNDERSTAND
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Jail Action Modal (Bail / Skip) */}
-              {showJailActionModal && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 60,
-                    pointerEvents: "none",
-                  }}
-                >
+                {/* Jail Action Modal (Bail / Skip) */}
+                {showJailActionModal && (
                   <div
-                    className="buy-modal"
                     style={{
-                      border: "4px solid #2196F3",
-                      maxWidth: "300px",
-                      boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-                      pointerEvents: "auto",
-                      position: "relative",
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 60,
+                      pointerEvents: "none",
                     }}
                   >
                     <div
-                      className="modal-heading"
+                      className="buy-modal"
                       style={{
-                        background: "linear-gradient(180deg, #FFB74D, #FF9800)",
+                        border: "4px solid #2196F3",
+                        maxWidth: "300px",
+                        boxShadow: "0 0 20px rgba(0,0,0,0.5)",
+                        pointerEvents: "auto",
+                        position: "relative",
                       }}
                     >
-                      <span className="modal-heading-text">JAIL OPTIONS</span>
-                    </div>
-                    <div className="modal-body">
-                      <div style={{ textAlign: "center", margin: "15px 0" }}>
-                        <div style={{ fontSize: "16px", marginBottom: "10px" }}>
-                          Turns in Jail:{" "}
-                          <span
-                            style={{ fontWeight: "bold", fontSize: "18px" }}
-                          >
-                            {jailStatus[currentPlayer]}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: "13px", color: "#5D4037" }}>
-                          Pay bail to leave now, or skip turn to serve time.
-                        </div>
-                      </div>
-
                       <div
-                        className="modal-buttons"
-                        style={{ display: "flex", gap: "10px" }}
+                        className="modal-heading"
+                        style={{
+                          background: "linear-gradient(180deg, #FFB74D, #FF9800)",
+                        }}
                       >
-                        <button
-                          className="modal-btn"
-                          style={{
-                            background: "#D32F2F",
-                            flex: 1,
-                            color: "white",
-                          }}
-                          onClick={handleJailSkip}
+                        <span className="modal-heading-text">JAIL OPTIONS</span>
+                      </div>
+                      <div className="modal-body">
+                        <div style={{ textAlign: "center", margin: "15px 0" }}>
+                          <div style={{ fontSize: "16px", marginBottom: "10px" }}>
+                            Turns in Jail:{" "}
+                            <span
+                              style={{ fontWeight: "bold", fontSize: "18px" }}
+                            >
+                              {jailStatus[currentPlayer]}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "13px", color: "#5D4037" }}>
+                            Pay bail to leave now, or skip turn to serve time.
+                          </div>
+                        </div>
+
+                        <div
+                          className="modal-buttons"
+                          style={{ display: "flex", gap: "10px" }}
                         >
-                          SKIP TURN
-                        </button>
-                        <button
-                          className="modal-btn"
-                          style={{
-                            background: "#4CAF50",
-                            flex: 1,
-                            color: "white",
-                          }}
-                          onClick={handleJailPay}
-                        >
-                          GO OUT ($
-                          {jailStatus[currentPlayer] === 3
-                            ? 1000
-                            : jailStatus[currentPlayer] === 2
-                              ? 500
-                              : 200}
-                          )
-                        </button>
+                          <button
+                            className="modal-btn"
+                            style={{
+                              background: "#D32F2F",
+                              flex: 1,
+                              color: "white",
+                            }}
+                            onClick={handleJailSkip}
+                          >
+                            SKIP TURN
+                          </button>
+                          <button
+                            className="modal-btn"
+                            style={{
+                              background: "#4CAF50",
+                              flex: 1,
+                              color: "white",
+                            }}
+                            onClick={handleJailPay}
+                          >
+                            GO OUT ($
+                            {jailStatus[currentPlayer] === 3
+                              ? 1000
+                              : jailStatus[currentPlayer] === 2
+                                ? 500
+                                : 200}
+                            )
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Dice Area and Action Buttons - hidden when in Build or Sell mode so modal fits cleanly */}
-              {!buildMode && !sellMode && (
-                <>
-                  <div className="dice-area">
-                    <div
-                      className="dice-container"
-                      style={{
-                        display: "flex",
-                        gap: "8px",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <AnimatedDie
-                        value={diceValues[0]}
-                        isRolling={isRolling}
-                        size={68}
-                        stagger={0}
-                      />
-                      <AnimatedDie
-                        value={diceValues[1]}
-                        isRolling={isRolling}
-                        size={68}
-                        stagger={2}
-                      />
-                    </div>
+                {/* Dice Area and Action Buttons - hidden when in Build or Sell mode so modal fits cleanly */}
+                {!buildMode && !sellMode && (
+                  <>
+                    <div className="dice-area">
+                      <div
+                        className="dice-container"
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <AnimatedDie
+                          value={diceValues[0]}
+                          isRolling={isRolling}
+                          size={68}
+                          stagger={0}
+                        />
+                        <AnimatedDie
+                          value={diceValues[1]}
+                          isRolling={isRolling}
+                          size={68}
+                          stagger={2}
+                        />
+                      </div>
 
-                    <div className="button-group">
-                      {/* Hide human buttons on bot turns */}
-                      {gamePlayers[currentPlayer]?.isBot ? (
-                        <div
-                          style={{
-                            gridColumn: "1 / -1",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "6px 14px",
-                            background: "rgba(10, 20, 36, 0.45)",
-                            backdropFilter: "blur(8px)",
-                            WebkitBackdropFilter: "blur(8px)",
-                            borderRadius: "18px",
-                            border: "1.5px solid rgba(59, 130, 246, 0.45)",
-                            color: "#93c5fd",
-                            fontFamily: "'Junegull', 'Fredoka One', sans-serif",
-                            fontSize: "12.5px",
-                            letterSpacing: "0.5px",
-                            boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
-                            pointerEvents: "none",
-                            userSelect: "none",
-                          }}
-                        >
-                          🤖 {gamePlayers[currentPlayer]?.name}'s Turn...
-                        </div>
-                      ) : (networkMode === "offline" ||
+                      <div className="button-group">
+                        {/* Hide human buttons on bot turns */}
+                        {gamePlayers[currentPlayer]?.isBot ? (
+                          <div
+                            style={{
+                              gridColumn: "1 / -1",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: "6px 14px",
+                              background: "rgba(10, 20, 36, 0.45)",
+                              backdropFilter: "blur(8px)",
+                              WebkitBackdropFilter: "blur(8px)",
+                              borderRadius: "18px",
+                              border: "1.5px solid rgba(59, 130, 246, 0.45)",
+                              color: "#93c5fd",
+                              fontFamily: "'Junegull', 'Fredoka One', sans-serif",
+                              fontSize: "12.5px",
+                              letterSpacing: "0.5px",
+                              boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
+                              pointerEvents: "none",
+                              userSelect: "none",
+                            }}
+                          >
+                            🤖 {gamePlayers[currentPlayer]?.name}'s Turn...
+                          </div>
+                        ) : (networkMode === "offline" ||
                           myPlayerIndex === currentPlayer) ? (
                           <>
-                          {/* Jail Controls */}
-                          {jailStatus[currentPlayer] > 0 ? (
-                            <>
-                              <button
-                                className="buy-button"
-                                onClick={handleJailPay}
-                                disabled={isRolling || isProcessingTurn}
-                                style={{
-                                  background: "#2196F3",
-                                  gridColumn: 1,
-                                  fontFamily: "'Lato', sans-serif",
-                                  fontWeight: "bold",
-                                  fontSize: "13px",
-                                }}
-                              >
-                                GO OUT ($
-                                {jailStatus[currentPlayer] === 3
-                                  ? 1000
-                                  : jailStatus[currentPlayer] === 2
-                                    ? 500
-                                    : 200}
-                                )
-                              </button>
-                              <button
-                                className="roll-button"
-                                onClick={handleJailRoll}
-                                disabled={isRolling || isProcessingTurn}
-                                style={{
-                                  background: "#4CAF50",
-                                  gridColumn: 2,
-                                  fontFamily: "'Lato', sans-serif",
-                                  fontWeight: "bold",
-                                  fontSize: "14px",
-                                }}
-                              >
-                                ROLL
-                              </button>
-                            </>
-                          ) : (
-                            /* Normal Controls */
-                            (() => {
-                              const currentPos = playerPositions[currentPlayer];
-                              const isAtOwnedTrain =
-                                TRAIN_TILES.includes(currentPos) &&
-                                propertyOwnership[currentPos] === currentPlayer;
-                              const ownedTrainsCount = TRAIN_TILES.filter(
-                                (t) => propertyOwnership[t] === currentPlayer,
-                              ).length;
-                              const canFastTravel =
-                                fastTravelAvailableThisTurn &&
-                                isAtOwnedTrain &&
-                                ownedTrainsCount > 1;
-                              const showTravelBtn =
-                                canFastTravel &&
-                                !showTrainTravelModal &&
-                                !travelMode &&
-                                (turnFinished ||
-                                  (buyingProperty && buyingProperty.isTravelOffer));
+                            {/* Jail Controls */}
+                            {jailStatus[currentPlayer] > 0 ? (
+                              <>
+                                <button
+                                  className="buy-button"
+                                  onClick={handleJailPay}
+                                  disabled={isRolling || isProcessingTurn}
+                                  style={{
+                                    background: "#2196F3",
+                                    gridColumn: 1,
+                                    fontFamily: "'Lato', sans-serif",
+                                    fontWeight: "bold",
+                                    fontSize: "13px",
+                                  }}
+                                >
+                                  GO OUT ($
+                                  {jailStatus[currentPlayer] === 3
+                                    ? 1000
+                                    : jailStatus[currentPlayer] === 2
+                                      ? 500
+                                      : 200}
+                                  )
+                                </button>
+                                <button
+                                  className="roll-button"
+                                  onClick={handleJailRoll}
+                                  disabled={isRolling || isProcessingTurn}
+                                  style={{
+                                    background: "#4CAF50",
+                                    gridColumn: 2,
+                                    fontFamily: "'Lato', sans-serif",
+                                    fontWeight: "bold",
+                                    fontSize: "14px",
+                                  }}
+                                >
+                                  ROLL
+                                </button>
+                              </>
+                            ) : (
+                              /* Normal Controls */
+                              (() => {
+                                const currentPos = playerPositions[currentPlayer];
+                                const isAtOwnedTrain =
+                                  TRAIN_TILES.includes(currentPos) &&
+                                  propertyOwnership[currentPos] === currentPlayer;
+                                const ownedTrainsCount = TRAIN_TILES.filter(
+                                  (t) => propertyOwnership[t] === currentPlayer,
+                                ).length;
+                                const canFastTravel =
+                                  fastTravelAvailableThisTurn &&
+                                  isAtOwnedTrain &&
+                                  ownedTrainsCount > 1;
+                                const showTravelBtn =
+                                  canFastTravel &&
+                                  !showTrainTravelModal &&
+                                  !travelMode &&
+                                  (turnFinished ||
+                                    (buyingProperty && buyingProperty.isTravelOffer));
 
-                              return (
-                                <>
-                                  {/* Show buy button only when player can afford the property */}
-                                  {buyingProperty &&
-                                    !showBuyModal &&
-                                    !buyingProperty.isTravelOffer &&
-                                    (playerMoney[currentPlayer] >=
-                                    buyingProperty.price ? (
+                                return (
+                                  <>
+                                    {/* Show buy button only when player can afford the property */}
+                                    {buyingProperty &&
+                                      !showBuyModal &&
+                                      !buyingProperty.isTravelOffer &&
+                                      (playerMoney[currentPlayer] >=
+                                        buyingProperty.price ? (
+                                        <button
+                                          className="buy-button"
+                                          onClick={() => setShowBuyModal(true)}
+                                        >
+                                          <img
+                                            src={buyIcon}
+                                            alt="Buy"
+                                            className="btn-inline-icon"
+                                          />
+                                          <span>BUY</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className="buy-button"
+                                          style={{ opacity: 0.5 }}
+                                          onClick={() =>
+                                            showToast(
+                                              `Not enough money! Need $${buyingProperty.price.toLocaleString()}`,
+                                            )
+                                          }
+                                        >
+                                          <img
+                                            src={buyIcon}
+                                            alt="Buy"
+                                            className="btn-inline-icon"
+                                          />
+                                          <span>BUY</span>
+                                        </button>
+                                      ))}
+
+                                    {showTravelBtn && (
                                       <button
                                         className="buy-button"
-                                        onClick={() => setShowBuyModal(true)}
+                                        onClick={handleTravelStart}
+                                        style={{
+                                          background:
+                                            "linear-gradient(to bottom, #2196F3, #1976D2)",
+                                        }}
                                       >
-                                        <img
-                                          src={buyIcon}
-                                          alt="Buy"
-                                          className="btn-inline-icon"
-                                        />
-                                        <span>BUY</span>
+                                        TRAVEL
                                       </button>
-                                    ) : (
-                                      <button
-                                        className="buy-button"
-                                        style={{ opacity: 0.5 }}
-                                        onClick={() =>
-                                          showToast(
-                                            `Not enough money! Need $${buyingProperty.price.toLocaleString()}`,
-                                          )
-                                        }
-                                      >
-                                        <img
-                                          src={buyIcon}
-                                          alt="Buy"
-                                          className="btn-inline-icon"
-                                        />
-                                        <span>BUY</span>
-                                      </button>
-                                    ))}
-
-                                  {showTravelBtn && (
+                                    )}
                                     <button
-                                      className="buy-button"
-                                      onClick={handleTravelStart}
-                                      style={{
-                                        background:
-                                          "linear-gradient(to bottom, #2196F3, #1976D2)",
-                                      }}
-                                    >
-                                      TRAVEL
-                                    </button>
-                                  )}
-                                  <button
-                                    className={`roll-button ${turnFinished ? "done" : ""} ${(!buyingProperty || showBuyModal) && !showTravelBtn ? "solo" : ""}`}
-                                    onClick={() => {
-                                      if (
-                                        turnFinished ||
-                                        skippedTurns[currentPlayer]
-                                      ) {
-                                        // If balance is negative, show bankruptcy modal instead of ending turn
-                                        if (playerMoney[currentPlayer] < 0) {
-                                          setShowBankruptcyModal(true);
+                                      className={`roll-button ${turnFinished ? "done" : ""} ${(!buyingProperty || showBuyModal) && !showTravelBtn ? "solo" : ""}`}
+                                      onClick={() => {
+                                        if (
+                                          turnFinished ||
+                                          skippedTurns[currentPlayer]
+                                        ) {
+                                          // If balance is negative, show bankruptcy modal instead of ending turn
+                                          if (playerMoney[currentPlayer] < 0) {
+                                            setShowBankruptcyModal(true);
+                                          } else {
+                                            handleEndTurn();
+                                          }
                                         } else {
-                                          handleEndTurn();
+                                          rollDice();
                                         }
-                                      } else {
-                                        rollDice();
+                                      }}
+                                      tabIndex="-1"
+                                      disabled={
+                                        gamePlayers[currentPlayer]?.isBot ||
+                                        isLocalMoving ||
+                                        (!turnFinished &&
+                                          !skippedTurns[currentPlayer] &&
+                                          (isRolling || isProcessingTurn))
                                       }
-                                    }}
-                                    tabIndex="-1"
-                                    disabled={
-                                      gamePlayers[currentPlayer]?.isBot ||
-                                      isLocalMoving ||
-                                      (!turnFinished &&
-                                        !skippedTurns[currentPlayer] &&
-                                        (isRolling || isProcessingTurn))
-                                    }
-                                  >
-                                    {!turnFinished &&
-                                      !gamePlayers[currentPlayer]?.isBot &&
-                                      !isLocalMoving &&
-                                      !skippedTurns[currentPlayer] && (
-                                        <img
-                                          src={rollDiceIcon}
-                                          alt="Roll"
-                                          className="btn-inline-icon"
-                                        />
-                                      )}
-                                    <span>
-                                      {gamePlayers[currentPlayer]?.isBot
-                                        ? isRolling || isLocalMoving
-                                          ? "MOVING..."
-                                          : turnFinished
-                                            ? "BOT DONE..."
-                                            : "BOT'S TURN..."
-                                        : isLocalMoving
-                                          ? "MOVING..."
-                                          : skippedTurns[currentPlayer]
-                                            ? "SKIP TURN"
+                                    >
+                                      {!turnFinished &&
+                                        !gamePlayers[currentPlayer]?.isBot &&
+                                        !isLocalMoving &&
+                                        !skippedTurns[currentPlayer] && (
+                                          <img
+                                            src={rollDiceIcon}
+                                            alt="Roll"
+                                            className="btn-inline-icon"
+                                          />
+                                        )}
+                                      <span>
+                                        {gamePlayers[currentPlayer]?.isBot
+                                          ? isRolling || isLocalMoving
+                                            ? "MOVING..."
                                             : turnFinished
-                                              ? "DONE"
-                                              : "ROLL"}
-                                    </span>
-                                  </button>
-                                </>
-                              );
-                            })()
-                          )}
-                        </>
-                      ) : null}
+                                              ? "BOT DONE..."
+                                              : "BOT'S TURN..."
+                                          : isLocalMoving
+                                            ? "MOVING..."
+                                            : skippedTurns[currentPlayer]
+                                              ? "SKIP TURN"
+                                              : turnFinished
+                                                ? "DONE"
+                                                : "ROLL"}
+                                      </span>
+                                    </button>
+                                  </>
+                                );
+                              })()
+                            )}
+                          </>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Action Buttons - Always visible so players with negative balance can take loans or sell properties */}
-                  <div className="action-buttons">
-                    <button className="action-btn build" onClick={handleBuild}>
-                      <img
-                        src={buildIcon}
-                        alt="Build"
-                        className="btn-icon-img"
-                      />
-                    </button>
-                    <button className="action-btn sell" onClick={handleSell}>
-                      <img src={sellIcon} alt="Sell" className="btn-icon-img" />
-                    </button>
-                    <button className="action-btn bank" onClick={handleBank}>
-                      <img src={bankIcon} alt="Bank" className="btn-icon-img" />
-                    </button>
-                    <button className="action-btn deal" onClick={handleDeal}>
-                      <img src={dealIcon} alt="Deal" className="btn-icon-img" />
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {/* Property Swap Modal */}
-              {showSwapModal && (
-                <div className="ref-modal-overlay">
-                  <div className="ref-golden-card ref-swap-card">
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">Property Swap</span>
-                      <button
-                        className="ref-close-btn"
-                        onClick={() => {
-                          setShowSwapModal(false);
-                          setSwapGiveTile(null);
-                          setSwapReceiveTile(null);
-                          setIsProcessingTurn(false);
-                          setTurnFinished(false);
-                          handleEndTurn();
-                        }}
-                        aria-label="Close"
-                      >
-                        <div className="x-mark" />
+                    {/* Action Buttons - Always visible so players with negative balance can take loans or sell properties */}
+                    <div className="action-buttons">
+                      <button className="action-btn build" onClick={handleBuild}>
+                        <img
+                          src={buildIcon}
+                          alt="Build"
+                          className="btn-icon-img"
+                        />
+                      </button>
+                      <button className="action-btn sell" onClick={handleSell}>
+                        <img src={sellIcon} alt="Sell" className="btn-icon-img" />
+                      </button>
+                      <button className="action-btn bank" onClick={handleBank}>
+                        <img src={bankIcon} alt="Bank" className="btn-icon-img" />
+                      </button>
+                      <button className="action-btn deal" onClick={handleDeal}>
+                        <img src={dealIcon} alt="Deal" className="btn-icon-img" />
                       </button>
                     </div>
-                    <div className="ref-modal-body ref-swap-body">
-                      <div className="ref-swap-desc">
-                        Fee: $2,000 • Tap tiles on the board to swap
-                      </div>
-                      <div className="ref-deal-upper">
-                        {/* Left: You Give */}
-                        <div className="ref-deal-player-card">
-                          <div className="ref-deal-player-header">
-                            <img
-                              src={gamePlayers[currentPlayer]?.avatar}
-                              alt=""
-                              className="ref-deal-player-avatar"
-                            />
-                            <span className="ref-deal-player-name">You Give</span>
-                          </div>
-                          <div className="ref-deal-props-list ref-deal-compartment">
-                            {swapGiveTile !== null && (() => {
-                              const prop = getPropertyByTileIndex(swapGiveTile);
-                              if (!prop) return null;
-                              const firstLetter = prop.name
-                                ? prop.name.trim().charAt(0).toUpperCase()
-                                : "";
-                              return (
-                                <div
-                                  key={swapGiveTile}
-                                  className="deal-tile-square-box"
-                                  onClick={() => setSwapGiveTile(null)}
-                                  title={`${prop.name} ($${prop.price || 0})`}
-                                  style={{ background: prop.color || "#888" }}
-                                >
-                                  <span className="deal-tile-square-letter">
-                                    {firstLetter}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
+                  </>
+                )}
 
-                        {/* Center Exchange Arrows */}
-                        <div className="ref-deal-arrows">⇄</div>
-
-                        {/* Right: You Get */}
-                        <div className="ref-deal-player-card">
-                          <div className="ref-deal-player-header">
-                            {swapReceiveTile !== null && propertyOwnership[swapReceiveTile] !== undefined ? (
-                              <img
-                                src={gamePlayers[propertyOwnership[swapReceiveTile]]?.avatar}
-                                alt=""
-                                className="ref-deal-player-avatar"
-                              />
-                            ) : (
-                              <span style={{ width: 18, height: 18 }} />
-                            )}
-                            <span className="ref-deal-player-name">You Get</span>
-                          </div>
-                          <div className="ref-deal-props-list ref-deal-compartment">
-                            {swapReceiveTile !== null && (() => {
-                              const prop = getPropertyByTileIndex(swapReceiveTile);
-                              if (!prop) return null;
-                              const firstLetter = prop.name
-                                ? prop.name.trim().charAt(0).toUpperCase()
-                                : "";
-                              return (
-                                <div
-                                  key={swapReceiveTile}
-                                  className="deal-tile-square-box"
-                                  onClick={() => setSwapReceiveTile(null)}
-                                  title={`${prop.name} ($${prop.price || 0})`}
-                                  style={{ background: prop.color || "#888" }}
-                                >
-                                  <span className="deal-tile-square-letter">
-                                    {firstLetter}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="ref-swap-bottom">
+                {/* Property Swap Modal */}
+                {showSwapModal && (
+                  <div className="ref-modal-overlay">
+                    <div className="ref-golden-card ref-swap-card">
+                      <div className="ref-deal-header">
+                        <span className="ref-deal-title">Property Swap</span>
                         <button
-                          className="ref-pill-btn ref-pill-red"
-                          style={{ flex: 1, height: "30px", fontSize: "12px" }}
+                          className="ref-close-btn"
                           onClick={() => {
                             setShowSwapModal(false);
                             setSwapGiveTile(null);
@@ -9160,103 +9062,17 @@ function App() {
                             setTurnFinished(false);
                             handleEndTurn();
                           }}
+                          aria-label="Close"
                         >
-                          SKIP
-                        </button>
-                        <button
-                          className={`ref-pill-btn ref-pill-green ${swapGiveTile === null || swapReceiveTile === null ? "ref-btn-disabled" : ""}`}
-                          style={{
-                            flex: 1,
-                            height: "30px",
-                            fontSize: "12px",
-                            opacity:
-                              swapGiveTile === null || swapReceiveTile === null
-                                ? 0.5
-                                : 1,
-                          }}
-                          disabled={
-                            swapGiveTile === null || swapReceiveTile === null
-                          }
-                          onClick={handleExecutePropertySwap}
-                        >
-                          SWAP ($2,000)
+                          <div className="x-mark" />
                         </button>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Deal Modal */}
-              {showDealModal && (
-                <div className="ref-modal-overlay">
-                  <div className="ref-golden-card">
-                    {/* Header */}
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">
-                        {dealPhase === "select" ? "Choose Player" : "Deal"}
-                      </span>
-                      <button
-                        className="ref-close-btn"
-                        onClick={handleDealCancel}
-                        aria-label="Close"
-                      >
-                        <div className="x-mark" />
-                      </button>
-                    </div>
-
-                    <div className="ref-modal-body ref-deal-body">
-                      {dealPhase === "select" ? (
-                        /* Player Selection Phase - Compact & Responsive */
-                        <>
-                          <div className="ref-deal-select-grid">
-                            {gamePlayers.map((player, idx) => {
-                              if (idx === currentPlayer || bankruptPlayers[idx])
-                                return null;
-                              const propsCount = Object.keys(
-                                propertyOwnership,
-                              ).filter((t) => propertyOwnership[t] === idx).length;
-                              return (
-                                <div
-                                  key={idx}
-                                  className="ref-deal-select-card"
-                                  onClick={() => handleDealPlayerSelect(idx)}
-                                >
-                                  <img
-                                    src={player.avatar}
-                                    alt={player.name}
-                                    className="ref-deal-select-avatar"
-                                  />
-                                  <span className="ref-deal-select-name">
-                                    {player.name}
-                                  </span>
-                                  <div className="ref-deal-select-stats">
-                                    <span className="ref-deal-select-money">
-                                      ${(playerMoney[idx] || 0).toLocaleString()}
-                                    </span>
-                                    <span className="ref-deal-select-props">
-                                      🏠 {propsCount}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div style={{ marginTop: "4px", display: "flex", justifyContent: "center" }}>
-                            <button
-                              className="ref-pill-btn ref-pill-red"
-                              style={{ width: "100%", maxWidth: "160px", height: "30px", fontSize: "12px" }}
-                              onClick={handleDealCancel}
-                            >
-                              CANCEL
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                      /* Configuration Phase - Exact Match to Screenshot 1 */
-                      <>
+                      <div className="ref-modal-body ref-swap-body">
+                        <div className="ref-swap-desc">
+                          Fee: $2,000 • Tap tiles on the board to swap
+                        </div>
                         <div className="ref-deal-upper">
-                          {/* Left Column - Active Player (Giving) */}
+                          {/* Left: You Give */}
                           <div className="ref-deal-player-card">
                             <div className="ref-deal-player-header">
                               <img
@@ -9264,1744 +9080,1452 @@ function App() {
                                 alt=""
                                 className="ref-deal-player-avatar"
                               />
-                              <span className="ref-deal-player-name">
-                                {gamePlayers[currentPlayer]?.name}
-                              </span>
+                              <span className="ref-deal-player-name">You Give</span>
                             </div>
                             <div className="ref-deal-props-list ref-deal-compartment">
-                              {dealGiveProperties.map((tIdx) => {
-                                const prop = getPropertyByTileIndex(tIdx);
+                              {swapGiveTile !== null && (() => {
+                                const prop = getPropertyByTileIndex(swapGiveTile);
                                 if (!prop) return null;
                                 const firstLetter = prop.name
                                   ? prop.name.trim().charAt(0).toUpperCase()
                                   : "";
                                 return (
                                   <div
-                                    key={tIdx}
+                                    key={swapGiveTile}
                                     className="deal-tile-square-box"
-                                    onClick={() => {
-                                      setDealGiveProperties((prev) =>
-                                        prev.filter((t) => t !== tIdx),
-                                      );
-                                    }}
+                                    onClick={() => setSwapGiveTile(null)}
                                     title={`${prop.name} ($${prop.price || 0})`}
-                                    style={{
-                                      background: prop.color || "#888",
-                                    }}
+                                    style={{ background: prop.color || "#888" }}
                                   >
                                     <span className="deal-tile-square-letter">
                                       {firstLetter}
                                     </span>
                                   </div>
                                 );
-                              })}
-                            </div>
-                            <div className="ref-deal-player-footer">
-                              <span>Value:</span>
-                              <span>
-                                $
-                                {dealGiveProperties
-                                  .reduce((sum, t) => {
-                                    const p = getPropertyByTileIndex(t);
-                                    return sum + (p?.price || 0);
-                                  }, 0)
-                                  .toLocaleString()}
-                              </span>
+                              })()}
                             </div>
                           </div>
 
                           {/* Center Exchange Arrows */}
                           <div className="ref-deal-arrows">⇄</div>
 
-                          {/* Right Column - Target Player (Receiving) */}
+                          {/* Right: You Get */}
                           <div className="ref-deal-player-card">
                             <div className="ref-deal-player-header">
-                              <img
-                                src={
-                                  gamePlayers[selectedDealPlayer]?.avatar
-                                }
-                                alt=""
-                                className="ref-deal-player-avatar"
-                              />
-                              <span className="ref-deal-player-name">
-                                {gamePlayers[selectedDealPlayer]?.name}
-                              </span>
+                              {swapReceiveTile !== null && propertyOwnership[swapReceiveTile] !== undefined ? (
+                                <img
+                                  src={gamePlayers[propertyOwnership[swapReceiveTile]]?.avatar}
+                                  alt=""
+                                  className="ref-deal-player-avatar"
+                                />
+                              ) : (
+                                <span style={{ width: 18, height: 18 }} />
+                              )}
+                              <span className="ref-deal-player-name">You Get</span>
                             </div>
                             <div className="ref-deal-props-list ref-deal-compartment">
-                              {dealReceiveProperties.map((tIdx) => {
-                                const prop = getPropertyByTileIndex(tIdx);
+                              {swapReceiveTile !== null && (() => {
+                                const prop = getPropertyByTileIndex(swapReceiveTile);
                                 if (!prop) return null;
                                 const firstLetter = prop.name
                                   ? prop.name.trim().charAt(0).toUpperCase()
                                   : "";
                                 return (
                                   <div
-                                    key={tIdx}
+                                    key={swapReceiveTile}
                                     className="deal-tile-square-box"
-                                    onClick={() => {
-                                      setDealReceiveProperties((prev) =>
-                                        prev.filter((t) => t !== tIdx),
-                                      );
-                                    }}
+                                    onClick={() => setSwapReceiveTile(null)}
                                     title={`${prop.name} ($${prop.price || 0})`}
-                                    style={{
-                                      background: prop.color || "#888",
-                                    }}
+                                    style={{ background: prop.color || "#888" }}
                                   >
                                     <span className="deal-tile-square-letter">
                                       {firstLetter}
                                     </span>
                                   </div>
                                 );
-                              })}
-                            </div>
-                            <div className="ref-deal-player-footer">
-                              <span>Value:</span>
-                              <span>
-                                $
-                                {dealReceiveProperties
-                                  .reduce((sum, t) => {
-                                    const p = getPropertyByTileIndex(t);
-                                    return sum + (p?.price || 0);
-                                  }, 0)
-                                  .toLocaleString()}
-                              </span>
+                              })()}
                             </div>
                           </div>
                         </div>
 
-                        {/* Cash Adjustment Controls */}
-                        <div className="ref-deal-adjustment">
-                          <div className="ref-deal-slider-row">
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
-                              onClick={() =>
-                                setDealMoneyOffer((prev) =>
-                                  Math.max(
-                                    -(playerMoney[selectedDealPlayer] || 0),
-                                    prev - 100,
-                                  ),
-                                )
-                              }
-                            >
-                              -100
-                            </button>
-                            <input
-                              type="range"
-                              min={-(playerMoney[selectedDealPlayer] || 0)}
-                              max={playerMoney[currentPlayer] || 0}
-                              step="100"
-                              value={dealMoneyOffer}
-                              onChange={(e) =>
-                                setDealMoneyOffer(
-                                  parseInt(e.target.value) || 0,
-                                )
-                              }
-                              className="ref-golden-slider"
-                            />
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
-                              onClick={() =>
-                                setDealMoneyOffer((prev) =>
-                                  Math.min(
-                                    playerMoney[currentPlayer] || 0,
-                                    prev + 100,
-                                  ),
-                                )
-                              }
-                            >
-                              +100
-                            </button>
-                          </div>
-                          <div className="ref-deal-chips-row">
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-deal-chip-btn"
-                              onClick={() =>
-                                setDealMoneyOffer((prev) =>
-                                  Math.max(
-                                    -(playerMoney[selectedDealPlayer] || 0),
-                                    prev - 500,
-                                  ),
-                                )
-                              }
-                            >
-                              -500
-                            </button>
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-deal-chip-btn"
-                              onClick={() => setDealMoneyOffer(0)}
-                            >
-                              $0
-                            </button>
-                            <button
-                              className="ref-pill-btn ref-pill-yellow ref-deal-chip-btn"
-                              onClick={() => {
-                                const giveVal = dealGiveProperties.reduce(
-                                  (sum, t) =>
-                                    sum +
-                                    (getPropertyByTileIndex(t)?.price || 0),
-                                  0,
-                                );
-                                const getVal = dealReceiveProperties.reduce(
-                                  (sum, t) =>
-                                    sum +
-                                    (getPropertyByTileIndex(t)?.price || 0),
-                                  0,
-                                );
-                                const diff = getVal - giveVal;
-                                const maxGive =
-                                  playerMoney[currentPlayer] || 0;
-                                const maxGet =
-                                  playerMoney[selectedDealPlayer] || 0;
-                                const balanced = Math.max(
-                                  -maxGet,
-                                  Math.min(maxGive, diff),
-                                );
-                                setDealMoneyOffer(balanced);
-                              }}
-                            >
-                              BALANCE
-                            </button>
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-deal-chip-btn"
-                              onClick={() =>
-                                setDealMoneyOffer((prev) =>
-                                  Math.min(
-                                    playerMoney[currentPlayer] || 0,
-                                    prev + 500,
-                                  ),
-                                )
-                              }
-                            >
-                              +500
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Bottom Bar: CANCEL | Deal balance | OFFER */}
-                        <div className="ref-deal-bottom">
+                        <div className="ref-swap-bottom">
                           <button
-                            className="ref-pill-btn ref-pill-red ref-deal-action-btn"
-                            onClick={handleDealCancel}
-                          >
-                            CANCEL
-                          </button>
-                          <div className="ref-deal-balance-box">
-                            Deal balance{" "}
-                            {dealMoneyOffer === 0
-                              ? "0"
-                              : dealMoneyOffer > 0
-                                ? `-$${dealMoneyOffer.toLocaleString()}`
-                                : `+$${Math.abs(dealMoneyOffer).toLocaleString()}`}
-                          </div>
-                          <button
-                            className={`ref-pill-btn ${
-                              dealGiveProperties.length === 0 &&
-                              dealReceiveProperties.length === 0 &&
-                              dealMoneyOffer === 0
-                                ? "ref-pill-gray"
-                                : "ref-pill-green"
-                            } ref-deal-action-btn`}
-                            onClick={handleDealOffer}
-                            disabled={
-                              dealGiveProperties.length === 0 &&
-                              dealReceiveProperties.length === 0 &&
-                              dealMoneyOffer === 0
-                            }
-                          >
-                            OFFER
-                          </button>
-                        </div>
-                      </>
-                    )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Deal Review Modal (for recipient) */}
-              {showDealReviewModal && incomingDeal && !gamePlayers[incomingDeal.recipient]?.isBot && (
-                <div className="ref-modal-overlay">
-                  <div className="ref-golden-card" style={{ maxWidth: "380px" }}>
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">Deal Offer</span>
-                      <button
-                        className="ref-close-btn"
-                        onClick={handleDealDeny}
-                        aria-label="Close"
-                      >
-                        <div className="x-mark" />
-                      </button>
-                    </div>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "6px 10px 8px", boxSizing: "border-box", overflow: "hidden", justifyContent: "space-between" }}>
-                      <div
-                        style={{
-                          textAlign: "center",
-                          fontFamily: "'Baloo 2', cursive, sans-serif",
-                          fontSize: "13px",
-                          fontWeight: "800",
-                          color: "#7c3b1c",
-                          margin: "1px 0 4px",
-                          textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
-                        }}
-                      >
-                        {gamePlayers[incomingDeal.proposer]?.name} offers a trade!
-                      </div>
-
-                      <div className="ref-deal-upper" style={{ minHeight: "80px", maxHeight: "115px" }}>
-                        {/* What you give */}
-                        <div className="ref-deal-player-card">
-                          <div className="ref-deal-player-header">
-                            <span className="ref-deal-player-name" style={{ color: "#c62828" }}>
-                              You Give
-                            </span>
-                          </div>
-                          <div className="ref-deal-props-list ref-deal-compartment">
-                            {(incomingDeal.receiveProperties || []).map((tIdx) => {
-                              const prop = getPropertyByTileIndex(tIdx);
-                              if (!prop) return null;
-                              const firstLetter = prop.name ? prop.name.trim().charAt(0).toUpperCase() : "";
-                              return (
-                                <div
-                                  key={tIdx}
-                                  className="deal-tile-square-box"
-                                  title={`${prop.name} ($${prop.price || 0})`}
-                                  style={{ background: prop.color || "#888" }}
-                                >
-                                  <span className="deal-tile-square-letter">{firstLetter}</span>
-                                </div>
-                              );
-                            })}
-                            {incomingDeal.moneyOffer < 0 && (
-                              <div style={{ width: "100%", textAlign: "center", color: "#c62828", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "800", fontSize: "11px", marginTop: "2px" }}>
-                                Cash: ${Math.abs(incomingDeal.moneyOffer).toLocaleString()}
-                              </div>
-                            )}
-                            {(incomingDeal.receiveProperties || []).length === 0 && incomingDeal.moneyOffer >= 0 && (
-                              <div style={{ color: "#7c3b1c", opacity: 0.7, fontSize: "10px", margin: "auto", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "700" }}>
-                                Nothing requested
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="ref-deal-arrows">⇄</div>
-
-                        {/* What you receive */}
-                        <div className="ref-deal-player-card">
-                          <div className="ref-deal-player-header">
-                            <span className="ref-deal-player-name" style={{ color: "#2e7d32" }}>
-                              You Get
-                            </span>
-                          </div>
-                          <div className="ref-deal-props-list ref-deal-compartment">
-                            {(incomingDeal.giveProperties || []).map((tIdx) => {
-                              const prop = getPropertyByTileIndex(tIdx);
-                              if (!prop) return null;
-                              const firstLetter = prop.name ? prop.name.trim().charAt(0).toUpperCase() : "";
-                              return (
-                                <div
-                                  key={tIdx}
-                                  className="deal-tile-square-box"
-                                  title={`${prop.name} ($${prop.price || 0})`}
-                                  style={{ background: prop.color || "#888" }}
-                                >
-                                  <span className="deal-tile-square-letter">{firstLetter}</span>
-                                </div>
-                              );
-                            })}
-                            {incomingDeal.moneyOffer > 0 && (
-                              <div style={{ width: "100%", textAlign: "center", color: "#2e7d32", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "800", fontSize: "11px", marginTop: "2px" }}>
-                                Cash: +${incomingDeal.moneyOffer.toLocaleString()}
-                              </div>
-                            )}
-                            {(incomingDeal.giveProperties || []).length === 0 && incomingDeal.moneyOffer <= 0 && (
-                              <div style={{ color: "#7c3b1c", opacity: 0.7, fontSize: "10px", margin: "auto", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "700" }}>
-                                Nothing offered
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-                        <button
-                          className="ref-pill-btn ref-pill-red"
-                          style={{ flex: 1, height: "32px", fontSize: "13px" }}
-                          onClick={handleDealDeny}
-                        >
-                          DECLINE
-                        </button>
-                        <button
-                          className="ref-pill-btn ref-pill-green"
-                          style={{ flex: 1, height: "32px", fontSize: "13px" }}
-                          onClick={handleDealAccept}
-                        >
-                          ACCEPT
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Deal Result Modal */}
-              {showDealResultModal && (
-                <div className="ref-modal-overlay">
-                  <div className="ref-golden-card" style={{ maxWidth: "260px", maxHeight: "170px" }}>
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">Deal Result</span>
-                      <button
-                        className="ref-close-btn"
-                        onClick={() => {
-                          setShowDealResultModal(false);
-                          setDealResultMessage("");
-                        }}
-                        aria-label="Close"
-                      >
-                        <div className="x-mark" />
-                      </button>
-                    </div>
-                    <div
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "10px 14px",
-                        boxSizing: "border-box",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontFamily: "'Baloo 2', cursive, sans-serif",
-                          fontSize: "15px",
-                          fontWeight: "800",
-                          color: "#7c3b1c",
-                          textAlign: "center",
-                          marginTop: "6px",
-                          textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
-                        }}
-                      >
-                        {dealResultMessage}
-                      </div>
-                      <button
-                        className="ref-pill-btn ref-pill-green"
-                        style={{ width: "120px", height: "32px", marginTop: "6px" }}
-                        onClick={() => {
-                          setShowDealResultModal(false);
-                          setDealResultMessage("");
-                        }}
-                      >
-                        OK
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Bank Modal - Exact Match to Buy Modal */}
-              {showBankModal && (
-                <div className="ref-modal-overlay">
-                  <div className="ref-golden-card ref-bank-card">
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">
-                        {bankPhase === "mortgage"
-                          ? "MORTGAGE"
-                          : bankPhase === "redeem"
-                            ? "REDEEM"
-                            : bankPhase === "credit" || bankPhase === "loan"
-                              ? "CREDIT"
-                              : "BANK"}
-                      </span>
-                      <button
-                        className="ref-close-btn"
-                        onClick={() => {
-                          if (bankPhase !== "entry") {
-                            setBankPhase("entry");
-                          } else if (openedFromWar) {
-                            setShowBankModal(false);
-                            setOpenedFromWar(false);
-                            setShowWarModal(true);
-                          } else {
-                            setShowBankModal(false);
-                          }
-                        }}
-                        aria-label="Close"
-                      >
-                        <div className="x-mark" />
-                      </button>
-                    </div>
-
-                    <div className="ref-bank-body">
-                      {bankPhase === "entry" ? (
-                        /* Main View: Vault + 2x2 Grid */
-                        <>
-                          <img
-                            src="/modal_ui/safe_door.png"
-                            alt="Bank Vault"
-                            className="ref-bank-vault-img"
-                          />
-
-                          {playerLoans[currentPlayer] && (
-                            <div className="ref-bank-debt-badge">
-                              <span>
-                                Debt: ${playerLoans[currentPlayer].repayAmount.toLocaleString()}
-                              </span>
-                              <span style={{ color: "#ca8a04" }}>
-                                {playerLoans[currentPlayer].lapsRemaining} laps left
-                              </span>
-                            </div>
-                          )}
-
-                          {/* 2x2 Grid of Actions */}
-                          <div className="ref-bank-grid">
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-bank-btn"
-                              onClick={() => {
-                                setSelectedMortgageTiles([]);
-                                setBankPhase("mortgage");
-                              }}
-                            >
-                              <img src="/modal_ui/mortgage_icon.png" alt="" />
-                              <span>MORTGAGE</span>
-                            </button>
-                            {playerLoans[currentPlayer] ? (
-                              <button
-                                className="ref-pill-btn ref-pill-green ref-bank-btn"
-                                onClick={handleRepayLoanManual}
-                              >
-                                <img src="/modal_ui/coin_stack.png" alt="" />
-                                <span>REPAY</span>
-                              </button>
-                            ) : (
-                              <button
-                                className="ref-pill-btn ref-pill-green ref-bank-btn"
-                                onClick={() => {
-                                  setLoanSliderValue(1000);
-                                  setBankPhase("credit");
-                                }}
-                              >
-                                <img src="/modal_ui/bank_icon.png" alt="" />
-                                <span>TAKE CREDIT</span>
-                              </button>
-                            )}
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-bank-btn"
-                              onClick={() => {
-                                setSelectedRedeemTiles([]);
-                                setBankPhase("redeem");
-                              }}
-                            >
-                              <img src="/modal_ui/piggy_bank.png" alt="" />
-                              <span>REDEEM</span>
-                            </button>
-                            <button
-                              className="ref-pill-btn ref-pill-red ref-bank-btn"
-                              onClick={() => {
-                                setShowBankModal(false);
-                                if (openedFromWar) {
-                                  setOpenedFromWar(false);
-                                  setShowWarModal(true);
-                                }
-                              }}
-                            >
-                              <span>BACK</span>
-                            </button>
-                          </div>
-                        </>
-                      ) : bankPhase === "credit" || bankPhase === "loan" ? (
-                        /* Credit / Loan Phase with Golden Slider */
-                        <>
-                          <div className="ref-bank-info-box">
-                            <div className="ref-bank-info-row">
-                              <span className="ref-bank-info-label">Credit Term:</span>
-                              <span className="ref-bank-info-val">3 Laps</span>
-                            </div>
-                            <div className="ref-bank-info-row">
-                              <span className="ref-bank-info-label">Interest Rate:</span>
-                              <span className="ref-bank-info-val">30%</span>
-                            </div>
-                            <div className="ref-bank-info-row">
-                              <span className="ref-bank-info-label">Your Credit:</span>
-                              <span className="ref-bank-info-val highlight">
-                                ${loanSliderValue.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="ref-bank-info-row">
-                              <span className="ref-bank-info-label">Debt:</span>
-                              <span className="ref-bank-info-val danger">
-                                ${Math.round(loanSliderValue * 1.3).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Preset Chips */}
-                          <div
-                            className="ref-deal-chips-row"
-                            style={{ width: "100%", margin: "2px 0" }}
-                          >
-                            {[500, 1000, 2000, 3000].map((amt) => (
-                              <button
-                                key={amt}
-                                className={`ref-pill-btn ${loanSliderValue === amt ? "ref-pill-yellow" : "ref-pill-blue"} ref-deal-chip-btn`}
-                                onClick={() => setLoanSliderValue(amt)}
-                              >
-                                ${amt.toLocaleString()}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Range Slider with - and + */}
-                          <div
-                            className="ref-deal-slider-row"
-                            style={{ width: "100%", margin: "1px 0 4px" }}
-                          >
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
-                              onClick={() =>
-                                setLoanSliderValue((prev) =>
-                                  Math.max(0, prev - 100),
-                                )
-                              }
-                            >
-                              -100
-                            </button>
-                            <input
-                              type="range"
-                              min="0"
-                              max="3000"
-                              step="100"
-                              value={loanSliderValue}
-                              onChange={(e) =>
-                                setLoanSliderValue(
-                                  parseInt(e.target.value) || 0,
-                                )
-                              }
-                              className="ref-golden-slider"
-                            />
-                            <button
-                              className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
-                              onClick={() =>
-                                setLoanSliderValue((prev) =>
-                                  Math.min(3000, prev + 100),
-                                )
-                              }
-                            >
-                              +100
-                            </button>
-                          </div>
-
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "8px",
-                              width: "100%",
+                            className="ref-pill-btn ref-pill-red"
+                            style={{ flex: 1, height: "30px", fontSize: "12px" }}
+                            onClick={() => {
+                              setShowSwapModal(false);
+                              setSwapGiveTile(null);
+                              setSwapReceiveTile(null);
+                              setIsProcessingTurn(false);
+                              setTurnFinished(false);
+                              handleEndTurn();
                             }}
                           >
-                            <button
-                              className="ref-pill-btn ref-pill-red"
-                              style={{ flex: 1, height: "32px", fontSize: "12px" }}
-                              onClick={() => {
-                                if (openedFromWar) {
-                                  setShowBankModal(false);
-                                  setOpenedFromWar(false);
-                                  setShowWarModal(true);
-                                } else {
-                                  setBankPhase("entry");
-                                }
-                              }}
-                            >
-                              {openedFromWar ? "CANCEL" : "BACK"}
-                            </button>
-                            <button
-                              className="ref-pill-btn ref-pill-green"
-                              style={{ flex: 1, height: "32px", fontSize: "12px" }}
-                              onClick={handleConfirmLoan}
-                              disabled={loanSliderValue <= 0}
-                            >
-                              TAKE
-                            </button>
-                          </div>
-                        </>
-                      ) : bankPhase === "mortgage" ? (
-                        /* Mortgage Sub-view */
-                        <>
-                          {(() => {
-                            const eligibleMortgageProps = Object.keys(
-                              propertyOwnership,
-                            )
-                              .map(Number)
-                              .filter(
-                                (tIdx) => canMortgageProperty(tIdx, currentPlayer),
-                              );
-                            const mortgageTotalGained =
-                              selectedMortgageTiles.reduce((sum, tIdx) => {
-                                const prop = getPropertyByTileIndex(tIdx);
-                                return sum + Math.round((prop?.price || 0) / 2);
-                              }, 0);
-
-                            return (
-                              <>
-                                <div className="ref-bank-list-panel">
-                                  {eligibleMortgageProps.length === 0 ? (
-                                    <div
-                                      style={{
-                                        color: "#7c3b1c",
-                                        fontSize: "11px",
-                                        fontWeight: "700",
-                                        textAlign: "center",
-                                        margin: "auto",
-                                        fontFamily: "'Baloo 2', cursive, sans-serif",
-                                      }}
-                                    >
-                                      No eligible properties to mortgage (sell any
-                                      buildings first).
-                                    </div>
-                                  ) : (
-                                    eligibleMortgageProps.map((tIdx) => {
-                                      const prop = getPropertyByTileIndex(tIdx);
-                                      const val = Math.round(
-                                        (prop?.price || 0) / 2,
-                                      );
-                                      const isSelected =
-                                        selectedMortgageTiles.includes(tIdx);
-                                      return (
-                                        <div
-                                          key={tIdx}
-                                          className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
-                                          onClick={() =>
-                                            handleToggleMortgageTile(tIdx)
-                                          }
-                                        >
-                                          <div className="ref-deal-prop-left">
-                                            <span
-                                              className="ref-deal-prop-color"
-                                              style={{
-                                                background:
-                                                  prop?.color || "#888",
-                                              }}
-                                            />
-                                            <span className="ref-deal-prop-name">
-                                              {prop?.name}
-                                            </span>
-                                          </div>
-                                          <span
-                                            style={{
-                                              color: "#2e7d32",
-                                              fontWeight: "800",
-                                            }}
-                                          >
-                                            +${val.toLocaleString()}
-                                          </span>
-                                        </div>
-                                      );
-                                    })
-                                  )}
-                                </div>
-
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    width: "100%",
-                                    padding: "2px 4px",
-                                    fontSize: "12px",
-                                    color: "#7c3b1c",
-                                    fontFamily: "'Baloo 2', cursive, sans-serif",
-                                    fontWeight: "800",
-                                  }}
-                                >
-                                  <span>Total Mortgage:</span>
-                                  <span style={{ color: "#2e7d32" }}>
-                                    +${mortgageTotalGained.toLocaleString()}
-                                  </span>
-                                </div>
-
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: "8px",
-                                    width: "100%",
-                                  }}
-                                >
-                                  <button
-                                    className="ref-pill-btn ref-pill-red"
-                                    style={{ flex: 1, height: "32px", fontSize: "12px" }}
-                                    onClick={() => setBankPhase("entry")}
-                                  >
-                                    BACK
-                                  </button>
-                                  <button
-                                    className="ref-pill-btn ref-pill-green"
-                                    style={{ flex: 1, height: "32px", fontSize: "12px" }}
-                                    onClick={handleConfirmMortgage}
-                                    disabled={
-                                      selectedMortgageTiles.length === 0
-                                    }
-                                  >
-                                    MORTGAGE
-                                  </button>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </>
-                      ) : bankPhase === "redeem" ? (
-                        /* Redeem Sub-view */
-                        <>
-                          {(() => {
-                            const mortgagedOwnedProps = Object.keys(
-                              propertyOwnership,
-                            )
-                              .map(Number)
-                              .filter(
-                                (tIdx) =>
-                                  propertyOwnership[tIdx] === currentPlayer &&
-                                  !!mortgagedProperties[tIdx],
-                              );
-                            const redeemTotalCost =
-                              selectedRedeemTiles.reduce((sum, tIdx) => {
-                                const prop = getPropertyByTileIndex(tIdx);
-                                return (
-                                  sum + Math.round((prop?.price || 0) * 0.55)
-                                );
-                              }, 0);
-                            const canAfford =
-                              (playerMoney[currentPlayer] || 0) >=
-                              redeemTotalCost;
-
-                            return (
-                              <>
-                                <div className="ref-bank-list-panel">
-                                  {mortgagedOwnedProps.length === 0 ? (
-                                    <div
-                                      style={{
-                                        color: "#7c3b1c",
-                                        fontSize: "11px",
-                                        fontWeight: "700",
-                                        textAlign: "center",
-                                        margin: "auto",
-                                        fontFamily: "'Baloo 2', cursive, sans-serif",
-                                      }}
-                                    >
-                                      No mortgaged properties to redeem.
-                                    </div>
-                                  ) : (
-                                    mortgagedOwnedProps.map((tIdx) => {
-                                      const prop = getPropertyByTileIndex(tIdx);
-                                      const cost = Math.round(
-                                        (prop?.price || 0) * 0.55,
-                                      );
-                                      const isSelected =
-                                        selectedRedeemTiles.includes(tIdx);
-                                      return (
-                                        <div
-                                          key={tIdx}
-                                          className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
-                                          onClick={() =>
-                                            handleToggleRedeemTile(tIdx)
-                                          }
-                                        >
-                                          <div className="ref-deal-prop-left">
-                                            <span
-                                              className="ref-deal-prop-color"
-                                              style={{
-                                                background:
-                                                  prop?.color || "#888",
-                                              }}
-                                            />
-                                            <span className="ref-deal-prop-name">
-                                              {prop?.name}
-                                            </span>
-                                          </div>
-                                          <span
-                                            style={{
-                                              color: "#c62828",
-                                              fontWeight: "800",
-                                            }}
-                                          >
-                                            -${cost.toLocaleString()}
-                                          </span>
-                                        </div>
-                                      );
-                                    })
-                                  )}
-                                </div>
-
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    width: "100%",
-                                    padding: "2px 4px",
-                                    fontSize: "12px",
-                                    color: "#7c3b1c",
-                                    fontFamily: "'Baloo 2', cursive, sans-serif",
-                                    fontWeight: "800",
-                                  }}
-                                >
-                                  <span>Total Cost:</span>
-                                  <span style={{ color: "#c62828" }}>
-                                    -${redeemTotalCost.toLocaleString()}
-                                  </span>
-                                </div>
-
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: "8px",
-                                    width: "100%",
-                                  }}
-                                >
-                                  <button
-                                    className="ref-pill-btn ref-pill-red"
-                                    style={{ flex: 1, height: "32px", fontSize: "12px" }}
-                                    onClick={() => setBankPhase("entry")}
-                                  >
-                                    BACK
-                                  </button>
-                                  <button
-                                    className="ref-pill-btn ref-pill-green"
-                                    style={{ flex: 1, height: "32px", fontSize: "12px" }}
-                                    onClick={handleConfirmRedeem}
-                                    disabled={
-                                      selectedRedeemTiles.length === 0 ||
-                                      !canAfford
-                                    }
-                                  >
-                                    REDEEM
-                                  </button>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Bank Debit Modal */}
-              {showBankDebitModal && (
-                <div className="ref-modal-overlay">
-                  <div className="ref-golden-card" style={{ maxWidth: "260px", maxHeight: "170px" }}>
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">Bank Alert</span>
-                      <button
-                        className="ref-close-btn"
-                        onClick={() => setShowBankDebitModal(false)}
-                        aria-label="Close"
-                      >
-                        <div className="x-mark" />
-                      </button>
-                    </div>
-                    <div
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "10px 14px",
-                        boxSizing: "border-box",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontFamily: "'Baloo 2', cursive, sans-serif",
-                          fontSize: "15px",
-                          fontWeight: "800",
-                          color: "#7c3b1c",
-                          textAlign: "center",
-                          marginTop: "6px",
-                          textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
-                        }}
-                      >
-                        The bank has debited your loan.
-                      </div>
-                      <button
-                        className="ref-pill-btn ref-pill-green"
-                        style={{ width: "120px", height: "32px", marginTop: "6px" }}
-                        onClick={() => setShowBankDebitModal(false)}
-                      >
-                        OK
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Bankruptcy Modal */}
-              {showBankruptcyModal && (
-                <div className="ref-modal-overlay">
-                  <div
-                    className="ref-golden-card"
-                    style={{ maxWidth: "300px", maxHeight: "230px" }}
-                  >
-                    <div className="ref-deal-header">
-                      <span className="ref-deal-title">⚠️ BANKRUPTCY</span>
-                      <button
-                        className="ref-close-btn"
-                        onClick={() => setShowBankruptcyModal(false)}
-                        aria-label="Close"
-                      >
-                        <div className="x-mark" />
-                      </button>
-                    </div>
-                    <div
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "10px 14px",
-                        boxSizing: "border-box",
-                        textAlign: "center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontFamily: "Junegull, sans-serif",
-                          fontSize: "16px",
-                          color: "#c62828",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Balance is below $0!
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'Baloo 2', cursive, sans-serif",
-                          fontSize: "12px",
-                          color: "#5D4037",
-                          lineHeight: "1.4",
-                          fontWeight: "700",
-                          margin: "6px 0",
-                        }}
-                      >
-                        Take a loan from the Bank or mortgage properties to recover, or declare bankruptcy to forfeit.
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "10px",
-                          width: "100%",
-                          marginTop: "6px",
-                        }}
-                      >
-                        <button
-                          className="ref-pill-btn ref-pill-green"
-                          style={{ flex: 1, height: "34px", fontSize: "13px" }}
-                          onClick={() => setShowBankruptcyModal(false)}
-                        >
-                          CANCEL
-                        </button>
-                        <button
-                          className="ref-pill-btn ref-pill-red"
-                          style={{ flex: 1, height: "34px", fontSize: "13px" }}
-                          onClick={handleBankrupt}
-                        >
-                          BANKRUPT
-                        </button>
+                            SKIP
+                          </button>
+                          <button
+                            className={`ref-pill-btn ref-pill-green ${swapGiveTile === null || swapReceiveTile === null ? "ref-btn-disabled" : ""}`}
+                            style={{
+                              flex: 1,
+                              height: "30px",
+                              fontSize: "12px",
+                              opacity:
+                                swapGiveTile === null || swapReceiveTile === null
+                                  ? 0.5
+                                  : 1,
+                            }}
+                            disabled={
+                              swapGiveTile === null || swapReceiveTile === null
+                            }
+                            onClick={handleExecutePropertySwap}
+                          >
+                            SWAP ($2,000)
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Game Victory / Winning Modal */}
-              {showWinModal && gameWinner && (
-                <div className="game-victory-overlay">
-                  <div className="game-victory-card">
-                    <div className="game-victory-trophy">🏆</div>
-                    <div className="game-victory-title">VICTORY!</div>
-                    <div className="game-victory-subtitle">CHAMPION OF PSEUDOPOLY</div>
-
-                    <div className="game-victory-avatar-wrap">
-                      <div className="game-victory-crown">👑</div>
-                      <img
-                        src={gameWinner.avatar}
-                        alt={gameWinner.name}
-                        className="game-victory-avatar"
-                      />
-                    </div>
-
-                    <div className="game-victory-name">{gameWinner.name}</div>
-
-                    <div className="game-victory-stats">
-                      <div className="game-victory-stat-item">
-                        <span className="stat-label">FINAL CASH</span>
-                        <span className="stat-val">
-                          ${(playerMoney[gameWinner.id] || 0).toLocaleString()}
+                {/* Deal Modal */}
+                {showDealModal && (
+                  <div className="ref-modal-overlay">
+                    <div className="ref-golden-card">
+                      {/* Header */}
+                      <div className="ref-deal-header">
+                        <span className="ref-deal-title">
+                          {dealPhase === "select" ? "Choose Player" : "Deal"}
                         </span>
-                      </div>
-                      <div className="game-victory-stat-divider" />
-                      <div className="game-victory-stat-item">
-                        <span className="stat-label">PROPERTIES</span>
-                        <span className="stat-val">
-                          {Object.values(propertyOwnership).filter((o) => o === gameWinner.id).length}
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      className="game-victory-btn"
-                      onClick={() => {
-                        setShowWinModal(false);
-                        setGameWinner(null);
-                        handleExitGame();
-                      }}
-                    >
-                      BACK TO MAIN MENU
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Build No Monopoly Modal */}
-              {buildNoMonopolyModal && (
-                <div
-                  className="modal-overlay ref-modal-overlay"
-                  style={{ pointerEvents: "auto", background: "transparent" }}
-                  onClick={() => setBuildNoMonopolyModal(false)}
-                >
-                  <div
-                    className="modal-shell buy-modal-replica mini-modal-replica"
-                    style={{ pointerEvents: "auto" }}
-                  >
-                    <div className="title-bar">
-                      <div className="title-text">BUILD</div>
-                      <div className="icon-group">
-                        <div
-                          className="icon-btn close"
-                          onClick={() => setBuildNoMonopolyModal(false)}
+                        <button
+                          className="ref-close-btn"
+                          onClick={handleDealCancel}
+                          aria-label="Close"
                         >
                           <div className="x-mark" />
-                        </div>
+                        </button>
                       </div>
-                    </div>
-                    <div className="build-body-panel" style={{ padding: "10px 14px", gap: "8px" }}>
-                      <div
-                        className="maroon"
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          textAlign: "center",
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        You need to own all properties in a color group to build upgrades!
-                      </div>
-                      <div className="buttons-row" style={{ marginTop: "4px" }}>
-                        <div
-                          className="action-btn btn-cancel"
-                          onClick={() => setBuildNoMonopolyModal(false)}
-                        >
-                          OK
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Build Modal (Main) */}
-              {showBuildModal && (
-                <div
-                  className="modal-overlay ref-modal-overlay"
-                  style={{ pointerEvents: "none", background: "transparent" }}
-                >
-                  <div
-                    className="modal-shell buy-modal-replica build-modal-replica"
-                    style={{ pointerEvents: "auto" }}
-                  >
-                    <div className="title-bar">
-                      <div className="title-text">BUILD</div>
-                      <div className="icon-group">
-                        <div
-                          className="icon-btn help"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Upgrade properties in your monopoly"
-                        >
-                          <span>?</span>
-                        </div>
-                        <div
-                          className="icon-btn close"
-                          onClick={cancelBuildMode}
-                          title="Close"
-                        >
-                          <div className="x-mark" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="build-body-panel">
-                      {!selectedBuildColor ? (
-                        <>
-                          <div className="build-header-title">CHOOSE MONOPOLY</div>
-                          <div className="build-monopoly-list">
-                            {getPlayerMonopolyColors(currentPlayer).map((color) => {
-                              const groupTiles = COLOR_GROUPS[color] || [];
-                              const sampleColor = getTileColor(groupTiles[0]) || color;
-                              return (
-                                <button
-                                  key={color}
-                                  className="build-monopoly-chip"
-                                  onClick={() => setSelectedBuildColor(color)}
-                                >
-                                  <span
-                                    className="chip-dot"
-                                    style={{ background: sampleColor }}
-                                  />
-                                  <span className="chip-name">
-                                    {color.toUpperCase()} MONOPOLY
-                                  </span>
-                                  <span className="chip-count">
-                                    {groupTiles.length} Props
-                                  </span>
-                                  <span className="chip-arrow">➔</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <div className="build-hint-text">
-                            Tap a monopoly or any property on the board
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="build-sub-bar">
-                            <div className="build-group-label">
-                              {getPlayerMonopolyColors(currentPlayer).length > 1 && (
-                                <button
-                                  className="build-switch-btn"
-                                  onClick={() => setSelectedBuildColor(null)}
-                                  title="Switch monopoly"
-                                >
-                                  ◀ ALL
-                                </button>
-                              )}
-                              <span
-                                className="chip-dot"
-                                style={{
-                                  background: getTileColor(
-                                    COLOR_GROUPS[selectedBuildColor]?.[0],
-                                  ),
-                                }}
-                              />
-                              <span className="group-title">
-                                {selectedBuildColor.toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="build-cost-badge">
-                              Cost:{" "}
-                              <span className="cost-val">
-                                ${buildTotalCost.toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Selected color group properties */}
-                          <div className="build-props-container">
-                            {(COLOR_GROUPS[selectedBuildColor] || []).map((tileIdx) => {
-                              const prop = RENT_DATA[tileIdx];
-                              const baseLvl = propertyLevels[tileIdx] || 0;
-                              const currentStaged =
-                                buildPreviewLevels[tileIdx] !== undefined
-                                  ? buildPreviewLevels[tileIdx]
-                                  : baseLvl;
-                              const tileColor = getTileColor(tileIdx);
-                              const cost = getUpgradeCost(tileIdx);
-
-                              return (
-                                <div key={tileIdx} className="build-prop-item">
-                                  <div className="prop-left">
-                                    <div
-                                      className="prop-color-bar"
-                                      style={{ background: tileColor }}
-                                    />
-                                    <div className="prop-text-col">
-                                      <span className="prop-name">
-                                        {prop?.name || `Tile ${tileIdx}`}
-                                      </span>
-                                      <span className="prop-cost-sub">
-                                        +${cost.toLocaleString()} / lvl
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  <div className="prop-right">
-                                    <button
-                                      className="build-circle-btn minus"
-                                      onClick={() => handleBuildStep(tileIdx, -1)}
-                                      disabled={currentStaged <= baseLvl}
-                                      title="Undo upgrade"
-                                    >
-                                      −
-                                    </button>
-
-                                    <div
-                                      className="build-progress-bars"
-                                      onClick={() => handleBuildStep(tileIdx, 1)}
-                                      title="Tap to add upgrade"
-                                    >
-                                      {[1, 2, 3, 4, 5].map((barIdx) => {
-                                        const isFilled = currentStaged >= barIdx;
-                                        const isHotel = currentStaged === 5;
-                                        return (
-                                          <div
-                                            key={barIdx}
-                                            className={`bar ${
-                                              isFilled
-                                                ? isHotel
-                                                  ? "hotel"
-                                                  : "house"
-                                                : "empty"
-                                            }`}
-                                          />
-                                        );
-                                      })}
-                                    </div>
-
-                                    <button
-                                      className="build-circle-btn plus"
-                                      onClick={() => handleBuildStep(tileIdx, 1)}
-                                      disabled={currentStaged >= 5}
-                                      title="Add upgrade"
-                                    >
-                                      +
-                                    </button>
-
-                                    <span
-                                      className={`build-lvl-text ${
-                                        currentStaged === 5
-                                          ? "hotel"
-                                          : currentStaged > 0
-                                            ? "house"
-                                            : "base"
-                                      }`}
-                                    >
-                                      {currentStaged === 0
-                                        ? "Lv 0"
-                                        : currentStaged === 5
-                                          ? "HOTEL"
-                                          : `Lv ${currentStaged}`}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </>
-                      )}
-
-                      <div className="buttons-row">
-                        <div
-                          className="action-btn btn-cancel"
-                          onClick={cancelBuildMode}
-                        >
-                          CANCEL
-                        </div>
-                        <div
-                          className={`action-btn btn-buy ${
-                            !selectedBuildColor || buildTotalCost === 0
-                              ? "disabled"
-                              : ""
-                          }`}
-                          onClick={
-                            selectedBuildColor && buildTotalCost > 0
-                              ? closeBuildMode
-                              : undefined
-                          }
-                        >
-                          BUILD{" "}
-                          {buildTotalCost > 0
-                            ? `($${buildTotalCost.toLocaleString()})`
-                            : ""}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Train Fast Travel Modal */}
-              {showTrainTravelModal && (
-                <div
-                  className="modal-overlay modal-overlay-inline"
-                  style={{
-                    pointerEvents: "auto",
-                    background: "rgba(0, 0, 0, 0.35)",
-                    zIndex: 1100,
-                  }}
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) {
-                      setShowTrainTravelModal(false);
-                      setTravelMode(false);
-                      setBuyingProperty(null);
-                      setSelectedTrainTile(null);
-                      if (networkMode === "online") {
-                        sendGameAction("select_train_destination", {
-                          tileIndex: null,
-                        });
-                      }
-                      setTurnFinished(true);
-                    }
-                  }}
-                >
-                  <div
-                    className="buy-modal"
-                    style={{
-                      pointerEvents: "auto",
-                      maxWidth: "270px",
-                      background: "#FFFDF7",
-                      border: "1.5px solid #1E88E5",
-                      borderRadius: "10px",
-                      boxShadow: "0 8px 30px rgba(0,0,0,0.5)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          "linear-gradient(to bottom, #1E88E5 0%, #1565C0 100%)",
-                        padding: "5px 8px",
-                      }}
-                    >
-                      <span
-                        className="modal-heading-text"
-                        style={{ fontSize: "12px" }}
-                      >
-                        🚅 TRAIN FAST TRAVEL
-                      </span>
-                    </div>
-                    <div
-                      className="modal-body"
-                      style={{
-                        padding: "12px 14px",
-                        background: "#FFFDF7",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      {(() => {
-                        const sortedTrains = [4, 13, 21, 32];
-                        const srcIdx = sortedTrains.indexOf(
-                          travelSourceIndex ?? playerPositions[currentPlayer],
-                        );
-                        const tgtIdx =
-                          selectedTrainTile !== null
-                            ? sortedTrains.indexOf(selectedTrainTile)
-                            : -1;
-                        const stationDist =
-                          tgtIdx >= 0 ? (tgtIdx - srcIdx + 4) % 4 : 0;
-                        const cost = stationDist * 100;
-                        const canAfford = playerMoney[currentPlayer] >= cost;
-
-                        return (
+                      <div className="ref-modal-body ref-deal-body">
+                        {dealPhase === "select" ? (
+                          /* Player Selection Phase - Compact & Responsive */
                           <>
-                            {selectedTrainTile !== null ? (
-                              <div
-                                style={{
-                                  width: "100%",
-                                  padding: "10px 12px",
-                                  background: "#E3F2FD",
-                                  border: "1.5px solid #1E88E5",
-                                  borderRadius: "8px",
-                                  boxSizing: "border-box",
-                                  textAlign: "center",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: "13px",
-                                    fontWeight: "900",
-                                    color: "#0D47A1",
-                                    marginBottom: "4px",
-                                  }}
-                                >
-                                  🚅 {getTileName(selectedTrainTile)}
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: "16px",
-                                    fontWeight: "900",
-                                    color: canAfford ? "#E65100" : "#C62828",
-                                  }}
-                                >
-                                  Fare: ${cost}
-                                </div>
-                              </div>
-                            ) : (
-                              <div
-                                style={{
-                                  fontSize: "11px",
-                                  color: "#546E7A",
-                                  padding: "10px 0",
-                                  textAlign: "center",
-                                }}
-                              >
-                                Tap an owned train station on the board to travel to
-                              </div>
-                            )}
-
-                            {/* Action Buttons */}
-                            <div
-                              className="modal-buttons"
-                              style={{
-                                display: "flex",
-                                gap: "8px",
-                                width: "100%",
-                                marginTop: "4px",
-                              }}
-                            >
+                            <div className="ref-deal-select-grid">
+                              {gamePlayers.map((player, idx) => {
+                                if (idx === currentPlayer || bankruptPlayers[idx])
+                                  return null;
+                                const propsCount = Object.keys(
+                                  propertyOwnership,
+                                ).filter((t) => propertyOwnership[t] === idx).length;
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="ref-deal-select-card"
+                                    onClick={() => handleDealPlayerSelect(idx)}
+                                  >
+                                    <img
+                                      src={player.avatar}
+                                      alt={player.name}
+                                      className="ref-deal-select-avatar"
+                                    />
+                                    <span className="ref-deal-select-name">
+                                      {player.name}
+                                    </span>
+                                    <div className="ref-deal-select-stats">
+                                      <span className="ref-deal-select-money">
+                                        ${(playerMoney[idx] || 0).toLocaleString()}
+                                      </span>
+                                      <span className="ref-deal-select-props">
+                                        🏠 {propsCount}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div style={{ marginTop: "4px", display: "flex", justifyContent: "center" }}>
                               <button
-                                className="modal-btn cancel"
-                                style={{
-                                  height: "28px",
-                                  minHeight: "28px",
-                                  fontSize: "11px",
-                                  padding: "0 10px",
-                                  flex: 1,
-                                  borderRadius: "5px",
-                                }}
-                                onClick={() => {
-                                  setShowTrainTravelModal(false);
-                                  setTravelMode(false);
-                                  setBuyingProperty(null);
-                                  setSelectedTrainTile(null);
-                                  if (networkMode === "online") {
-                                    sendGameAction("select_train_destination", {
-                                      tileIndex: null,
-                                    });
-                                  }
-                                  setTurnFinished(true);
-                                }}
+                                className="ref-pill-btn ref-pill-red"
+                                style={{ width: "100%", maxWidth: "160px", height: "30px", fontSize: "12px" }}
+                                onClick={handleDealCancel}
                               >
                                 CANCEL
                               </button>
-                              <button
-                                className="modal-btn buy"
-                                disabled={selectedTrainTile === null || !canAfford}
-                                style={{
-                                  height: "28px",
-                                  minHeight: "28px",
-                                  fontSize: "11px",
-                                  padding: "0 10px",
-                                  flex: 1,
-                                  borderRadius: "5px",
-                                  opacity:
-                                    selectedTrainTile === null || !canAfford ? 0.5 : 1,
-                                  cursor:
-                                    selectedTrainTile === null || !canAfford
-                                      ? "not-allowed"
-                                      : "pointer",
-                                  background:
-                                    selectedTrainTile !== null && canAfford
-                                      ? "linear-gradient(to bottom, #1E88E5, #1565C0)"
-                                      : "#9E9E9E",
-                                }}
-                                onClick={() => {
-                                  if (selectedTrainTile !== null && canAfford) {
-                                    setShowTrainTravelModal(false);
-                                    handleTravelConfirm(selectedTrainTile, cost);
+                            </div>
+                          </>
+                        ) : (
+                          /* Configuration Phase - Exact Match to Screenshot 1 */
+                          <>
+                            <div className="ref-deal-upper">
+                              {/* Left Column - Active Player (Giving) */}
+                              <div className="ref-deal-player-card">
+                                <div className="ref-deal-player-header">
+                                  <img
+                                    src={gamePlayers[currentPlayer]?.avatar}
+                                    alt=""
+                                    className="ref-deal-player-avatar"
+                                  />
+                                  <span className="ref-deal-player-name">
+                                    {gamePlayers[currentPlayer]?.name}
+                                  </span>
+                                </div>
+                                <div className="ref-deal-props-list ref-deal-compartment">
+                                  {dealGiveProperties.map((tIdx) => {
+                                    const prop = getPropertyByTileIndex(tIdx);
+                                    if (!prop) return null;
+                                    const firstLetter = prop.name
+                                      ? prop.name.trim().charAt(0).toUpperCase()
+                                      : "";
+                                    return (
+                                      <div
+                                        key={tIdx}
+                                        className="deal-tile-square-box"
+                                        onClick={() => {
+                                          setDealGiveProperties((prev) =>
+                                            prev.filter((t) => t !== tIdx),
+                                          );
+                                        }}
+                                        title={`${prop.name} ($${prop.price || 0})`}
+                                        style={{
+                                          background: prop.color || "#888",
+                                        }}
+                                      >
+                                        <span className="deal-tile-square-letter">
+                                          {firstLetter}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <div className="ref-deal-player-footer">
+                                  <span>Value:</span>
+                                  <span>
+                                    $
+                                    {dealGiveProperties
+                                      .reduce((sum, t) => {
+                                        const p = getPropertyByTileIndex(t);
+                                        return sum + (p?.price || 0);
+                                      }, 0)
+                                      .toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Center Exchange Arrows */}
+                              <div className="ref-deal-arrows">⇄</div>
+
+                              {/* Right Column - Target Player (Receiving) */}
+                              <div className="ref-deal-player-card">
+                                <div className="ref-deal-player-header">
+                                  <img
+                                    src={
+                                      gamePlayers[selectedDealPlayer]?.avatar
+                                    }
+                                    alt=""
+                                    className="ref-deal-player-avatar"
+                                  />
+                                  <span className="ref-deal-player-name">
+                                    {gamePlayers[selectedDealPlayer]?.name}
+                                  </span>
+                                </div>
+                                <div className="ref-deal-props-list ref-deal-compartment">
+                                  {dealReceiveProperties.map((tIdx) => {
+                                    const prop = getPropertyByTileIndex(tIdx);
+                                    if (!prop) return null;
+                                    const firstLetter = prop.name
+                                      ? prop.name.trim().charAt(0).toUpperCase()
+                                      : "";
+                                    return (
+                                      <div
+                                        key={tIdx}
+                                        className="deal-tile-square-box"
+                                        onClick={() => {
+                                          setDealReceiveProperties((prev) =>
+                                            prev.filter((t) => t !== tIdx),
+                                          );
+                                        }}
+                                        title={`${prop.name} ($${prop.price || 0})`}
+                                        style={{
+                                          background: prop.color || "#888",
+                                        }}
+                                      >
+                                        <span className="deal-tile-square-letter">
+                                          {firstLetter}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <div className="ref-deal-player-footer">
+                                  <span>Value:</span>
+                                  <span>
+                                    $
+                                    {dealReceiveProperties
+                                      .reduce((sum, t) => {
+                                        const p = getPropertyByTileIndex(t);
+                                        return sum + (p?.price || 0);
+                                      }, 0)
+                                      .toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Cash Adjustment Controls */}
+                            <div className="ref-deal-adjustment">
+                              <div className="ref-deal-slider-row">
+                                <button
+                                  className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
+                                  onClick={() =>
+                                    setDealMoneyOffer((prev) =>
+                                      Math.max(
+                                        -(playerMoney[selectedDealPlayer] || 0),
+                                        prev - 100,
+                                      ),
+                                    )
                                   }
-                                }}
+                                >
+                                  -100
+                                </button>
+                                <input
+                                  type="range"
+                                  min={-(playerMoney[selectedDealPlayer] || 0)}
+                                  max={playerMoney[currentPlayer] || 0}
+                                  step="100"
+                                  value={dealMoneyOffer}
+                                  onChange={(e) =>
+                                    setDealMoneyOffer(
+                                      parseInt(e.target.value) || 0,
+                                    )
+                                  }
+                                  className="ref-golden-slider"
+                                />
+                                <button
+                                  className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
+                                  onClick={() =>
+                                    setDealMoneyOffer((prev) =>
+                                      Math.min(
+                                        playerMoney[currentPlayer] || 0,
+                                        prev + 100,
+                                      ),
+                                    )
+                                  }
+                                >
+                                  +100
+                                </button>
+                              </div>
+                              <div className="ref-deal-chips-row">
+                                <button
+                                  className="ref-pill-btn ref-pill-blue ref-deal-chip-btn"
+                                  onClick={() =>
+                                    setDealMoneyOffer((prev) =>
+                                      Math.max(
+                                        -(playerMoney[selectedDealPlayer] || 0),
+                                        prev - 500,
+                                      ),
+                                    )
+                                  }
+                                >
+                                  -500
+                                </button>
+                                <button
+                                  className="ref-pill-btn ref-pill-blue ref-deal-chip-btn"
+                                  onClick={() => setDealMoneyOffer(0)}
+                                >
+                                  $0
+                                </button>
+                                <button
+                                  className="ref-pill-btn ref-pill-yellow ref-deal-chip-btn"
+                                  onClick={() => {
+                                    const giveVal = dealGiveProperties.reduce(
+                                      (sum, t) =>
+                                        sum +
+                                        (getPropertyByTileIndex(t)?.price || 0),
+                                      0,
+                                    );
+                                    const getVal = dealReceiveProperties.reduce(
+                                      (sum, t) =>
+                                        sum +
+                                        (getPropertyByTileIndex(t)?.price || 0),
+                                      0,
+                                    );
+                                    const diff = getVal - giveVal;
+                                    const maxGive =
+                                      playerMoney[currentPlayer] || 0;
+                                    const maxGet =
+                                      playerMoney[selectedDealPlayer] || 0;
+                                    const balanced = Math.max(
+                                      -maxGet,
+                                      Math.min(maxGive, diff),
+                                    );
+                                    setDealMoneyOffer(balanced);
+                                  }}
+                                >
+                                  BALANCE
+                                </button>
+                                <button
+                                  className="ref-pill-btn ref-pill-blue ref-deal-chip-btn"
+                                  onClick={() =>
+                                    setDealMoneyOffer((prev) =>
+                                      Math.min(
+                                        playerMoney[currentPlayer] || 0,
+                                        prev + 500,
+                                      ),
+                                    )
+                                  }
+                                >
+                                  +500
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Bottom Bar: CANCEL | Deal balance | OFFER */}
+                            <div className="ref-deal-bottom">
+                              <button
+                                className="ref-pill-btn ref-pill-red ref-deal-action-btn"
+                                onClick={handleDealCancel}
                               >
-                                TRAVEL {selectedTrainTile !== null && `($${cost})`}
+                                CANCEL
+                              </button>
+                              <div className="ref-deal-balance-box">
+                                Deal balance{" "}
+                                {dealMoneyOffer === 0
+                                  ? "0"
+                                  : dealMoneyOffer > 0
+                                    ? `-$${dealMoneyOffer.toLocaleString()}`
+                                    : `+$${Math.abs(dealMoneyOffer).toLocaleString()}`}
+                              </div>
+                              <button
+                                className={`ref-pill-btn ${dealGiveProperties.length === 0 &&
+                                  dealReceiveProperties.length === 0 &&
+                                  dealMoneyOffer === 0
+                                  ? "ref-pill-gray"
+                                  : "ref-pill-green"
+                                  } ref-deal-action-btn`}
+                                onClick={handleDealOffer}
+                                disabled={
+                                  dealGiveProperties.length === 0 &&
+                                  dealReceiveProperties.length === 0 &&
+                                  dealMoneyOffer === 0
+                                }
+                              >
+                                OFFER
                               </button>
                             </div>
                           </>
-                        );
-                      })()}
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Sell No Buildings Modal */}
-              {sellNoBuildingsModal && (
-                <div
-                  className="modal-overlay ref-modal-overlay"
-                  style={{ pointerEvents: "auto", background: "transparent" }}
-                  onClick={() => setSellNoBuildingsModal(false)}
-                >
-                  <div
-                    className="modal-shell buy-modal-replica mini-modal-replica"
-                    style={{ pointerEvents: "auto" }}
-                  >
-                    <div className="title-bar">
-                      <div className="title-text">SELL</div>
-                      <div className="icon-group">
-                        <div
-                          className="icon-btn close"
-                          onClick={() => setSellNoBuildingsModal(false)}
+                {/* Deal Review Modal (for recipient) */}
+                {showDealReviewModal && incomingDeal && !gamePlayers[incomingDeal.recipient]?.isBot && (
+                  <div className="ref-modal-overlay">
+                    <div className="ref-golden-card" style={{ maxWidth: "380px" }}>
+                      <div className="ref-deal-header">
+                        <span className="ref-deal-title">Deal Offer</span>
+                        <button
+                          className="ref-close-btn"
+                          onClick={handleDealDeny}
+                          aria-label="Close"
                         >
                           <div className="x-mark" />
+                        </button>
+                      </div>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "6px 10px 8px", boxSizing: "border-box", overflow: "hidden", justifyContent: "space-between" }}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            fontFamily: "'Baloo 2', cursive, sans-serif",
+                            fontSize: "13px",
+                            fontWeight: "800",
+                            color: "#7c3b1c",
+                            margin: "1px 0 4px",
+                            textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
+                          }}
+                        >
+                          {gamePlayers[incomingDeal.proposer]?.name} offers a trade!
+                        </div>
+
+                        <div className="ref-deal-upper" style={{ minHeight: "80px", maxHeight: "115px" }}>
+                          {/* What you give */}
+                          <div className="ref-deal-player-card">
+                            <div className="ref-deal-player-header">
+                              <span className="ref-deal-player-name" style={{ color: "#c62828" }}>
+                                You Give
+                              </span>
+                            </div>
+                            <div className="ref-deal-props-list ref-deal-compartment">
+                              {(incomingDeal.receiveProperties || []).map((tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                if (!prop) return null;
+                                const firstLetter = prop.name ? prop.name.trim().charAt(0).toUpperCase() : "";
+                                return (
+                                  <div
+                                    key={tIdx}
+                                    className="deal-tile-square-box"
+                                    title={`${prop.name} ($${prop.price || 0})`}
+                                    style={{ background: prop.color || "#888" }}
+                                  >
+                                    <span className="deal-tile-square-letter">{firstLetter}</span>
+                                  </div>
+                                );
+                              })}
+                              {incomingDeal.moneyOffer < 0 && (
+                                <div style={{ width: "100%", textAlign: "center", color: "#c62828", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "800", fontSize: "11px", marginTop: "2px" }}>
+                                  Cash: ${Math.abs(incomingDeal.moneyOffer).toLocaleString()}
+                                </div>
+                              )}
+                              {(incomingDeal.receiveProperties || []).length === 0 && incomingDeal.moneyOffer >= 0 && (
+                                <div style={{ color: "#7c3b1c", opacity: 0.7, fontSize: "10px", margin: "auto", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "700" }}>
+                                  Nothing requested
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="ref-deal-arrows">⇄</div>
+
+                          {/* What you receive */}
+                          <div className="ref-deal-player-card">
+                            <div className="ref-deal-player-header">
+                              <span className="ref-deal-player-name" style={{ color: "#2e7d32" }}>
+                                You Get
+                              </span>
+                            </div>
+                            <div className="ref-deal-props-list ref-deal-compartment">
+                              {(incomingDeal.giveProperties || []).map((tIdx) => {
+                                const prop = getPropertyByTileIndex(tIdx);
+                                if (!prop) return null;
+                                const firstLetter = prop.name ? prop.name.trim().charAt(0).toUpperCase() : "";
+                                return (
+                                  <div
+                                    key={tIdx}
+                                    className="deal-tile-square-box"
+                                    title={`${prop.name} ($${prop.price || 0})`}
+                                    style={{ background: prop.color || "#888" }}
+                                  >
+                                    <span className="deal-tile-square-letter">{firstLetter}</span>
+                                  </div>
+                                );
+                              })}
+                              {incomingDeal.moneyOffer > 0 && (
+                                <div style={{ width: "100%", textAlign: "center", color: "#2e7d32", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "800", fontSize: "11px", marginTop: "2px" }}>
+                                  Cash: +${incomingDeal.moneyOffer.toLocaleString()}
+                                </div>
+                              )}
+                              {(incomingDeal.giveProperties || []).length === 0 && incomingDeal.moneyOffer <= 0 && (
+                                <div style={{ color: "#7c3b1c", opacity: 0.7, fontSize: "10px", margin: "auto", fontFamily: "'Baloo 2', cursive, sans-serif", fontWeight: "700" }}>
+                                  Nothing offered
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+                          <button
+                            className="ref-pill-btn ref-pill-red"
+                            style={{ flex: 1, height: "32px", fontSize: "13px" }}
+                            onClick={handleDealDeny}
+                          >
+                            DECLINE
+                          </button>
+                          <button
+                            className="ref-pill-btn ref-pill-green"
+                            style={{ flex: 1, height: "32px", fontSize: "13px" }}
+                            onClick={handleDealAccept}
+                          >
+                            ACCEPT
+                          </button>
                         </div>
                       </div>
                     </div>
-                    <div className="build-body-panel" style={{ padding: "10px 14px", gap: "8px" }}>
+                  </div>
+                )}
+
+                {/* Deal Result Modal */}
+                {showDealResultModal && (
+                  <div className="ref-modal-overlay">
+                    <div className="ref-golden-card" style={{ maxWidth: "260px", maxHeight: "170px" }}>
+                      <div className="ref-deal-header">
+                        <span className="ref-deal-title">Deal Result</span>
+                        <button
+                          className="ref-close-btn"
+                          onClick={() => {
+                            setShowDealResultModal(false);
+                            setDealResultMessage("");
+                          }}
+                          aria-label="Close"
+                        >
+                          <div className="x-mark" />
+                        </button>
+                      </div>
                       <div
-                        className="maroon"
                         style={{
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          textAlign: "center",
-                          lineHeight: 1.35,
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 14px",
+                          boxSizing: "border-box",
                         }}
                       >
-                        You don't have any built upgrades to sell!
-                      </div>
-                      <div className="buttons-row" style={{ marginTop: "4px" }}>
                         <div
-                          className="action-btn btn-cancel"
-                          onClick={() => setSellNoBuildingsModal(false)}
+                          style={{
+                            fontFamily: "'Baloo 2', cursive, sans-serif",
+                            fontSize: "15px",
+                            fontWeight: "800",
+                            color: "#7c3b1c",
+                            textAlign: "center",
+                            marginTop: "6px",
+                            textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
+                          }}
+                        >
+                          {dealResultMessage}
+                        </div>
+                        <button
+                          className="ref-pill-btn ref-pill-green"
+                          style={{ width: "120px", height: "32px", marginTop: "6px" }}
+                          onClick={() => {
+                            setShowDealResultModal(false);
+                            setDealResultMessage("");
+                          }}
                         >
                           OK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bank Modal - Exact Match to Buy Modal */}
+                {showBankModal && (
+                  <div className="ref-modal-overlay">
+                    <div className="ref-golden-card ref-bank-card">
+                      <div className="ref-deal-header">
+                        <span className="ref-deal-title">
+                          {bankPhase === "mortgage"
+                            ? "MORTGAGE"
+                            : bankPhase === "redeem"
+                              ? "REDEEM"
+                              : bankPhase === "credit" || bankPhase === "loan"
+                                ? "CREDIT"
+                                : "BANK"}
+                        </span>
+                        <button
+                          className="ref-close-btn"
+                          onClick={() => {
+                            if (bankPhase !== "entry") {
+                              setBankPhase("entry");
+                            } else if (openedFromWar) {
+                              setShowBankModal(false);
+                              setOpenedFromWar(false);
+                              setShowWarModal(true);
+                            } else {
+                              setShowBankModal(false);
+                            }
+                          }}
+                          aria-label="Close"
+                        >
+                          <div className="x-mark" />
+                        </button>
+                      </div>
+
+                      <div className="ref-bank-body">
+                        {bankPhase === "entry" ? (
+                          /* Main View: Vault + 2x2 Grid */
+                          <>
+                            <img
+                              src="/modal_ui/safe_door.png"
+                              alt="Bank Vault"
+                              className="ref-bank-vault-img"
+                            />
+
+                            {playerLoans[currentPlayer] && (
+                              <div className="ref-bank-debt-badge">
+                                <span>
+                                  Debt: ${playerLoans[currentPlayer].repayAmount.toLocaleString()}
+                                </span>
+                                <span style={{ color: "#ca8a04" }}>
+                                  {playerLoans[currentPlayer].lapsRemaining} laps left
+                                </span>
+                              </div>
+                            )}
+
+                            {/* 2x2 Grid of Actions */}
+                            <div className="ref-bank-grid">
+                              <button
+                                className="ref-pill-btn ref-pill-blue ref-bank-btn"
+                                onClick={() => {
+                                  setSelectedMortgageTiles([]);
+                                  setBankPhase("mortgage");
+                                }}
+                              >
+                                <img src="/modal_ui/mortgage_icon.png" alt="" />
+                                <span>MORTGAGE</span>
+                              </button>
+                              {playerLoans[currentPlayer] ? (
+                                <button
+                                  className="ref-pill-btn ref-pill-green ref-bank-btn"
+                                  onClick={handleRepayLoanManual}
+                                >
+                                  <img src="/modal_ui/coin_stack.png" alt="" />
+                                  <span>REPAY</span>
+                                </button>
+                              ) : (
+                                <button
+                                  className="ref-pill-btn ref-pill-green ref-bank-btn"
+                                  onClick={() => {
+                                    setLoanSliderValue(1000);
+                                    setBankPhase("credit");
+                                  }}
+                                >
+                                  <img src="/modal_ui/bank_icon.png" alt="" />
+                                  <span>TAKE CREDIT</span>
+                                </button>
+                              )}
+                              <button
+                                className="ref-pill-btn ref-pill-blue ref-bank-btn"
+                                onClick={() => {
+                                  setSelectedRedeemTiles([]);
+                                  setBankPhase("redeem");
+                                }}
+                              >
+                                <img src="/modal_ui/piggy_bank.png" alt="" />
+                                <span>REDEEM</span>
+                              </button>
+                              <button
+                                className="ref-pill-btn ref-pill-red ref-bank-btn"
+                                onClick={() => {
+                                  setShowBankModal(false);
+                                  if (openedFromWar) {
+                                    setOpenedFromWar(false);
+                                    setShowWarModal(true);
+                                  }
+                                }}
+                              >
+                                <span>BACK</span>
+                              </button>
+                            </div>
+                          </>
+                        ) : bankPhase === "credit" || bankPhase === "loan" ? (
+                          /* Credit / Loan Phase with Golden Slider */
+                          <>
+                            <div className="ref-bank-info-box">
+                              <div className="ref-bank-info-row">
+                                <span className="ref-bank-info-label">Credit Term:</span>
+                                <span className="ref-bank-info-val">3 Laps</span>
+                              </div>
+                              <div className="ref-bank-info-row">
+                                <span className="ref-bank-info-label">Interest Rate:</span>
+                                <span className="ref-bank-info-val">30%</span>
+                              </div>
+                              <div className="ref-bank-info-row">
+                                <span className="ref-bank-info-label">Your Credit:</span>
+                                <span className="ref-bank-info-val highlight">
+                                  ${loanSliderValue.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="ref-bank-info-row">
+                                <span className="ref-bank-info-label">Debt:</span>
+                                <span className="ref-bank-info-val danger">
+                                  ${Math.round(loanSliderValue * 1.3).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Preset Chips */}
+                            <div
+                              className="ref-deal-chips-row"
+                              style={{ width: "100%", margin: "2px 0" }}
+                            >
+                              {[500, 1000, 2000, 3000].map((amt) => (
+                                <button
+                                  key={amt}
+                                  className={`ref-pill-btn ${loanSliderValue === amt ? "ref-pill-yellow" : "ref-pill-blue"} ref-deal-chip-btn`}
+                                  onClick={() => setLoanSliderValue(amt)}
+                                >
+                                  ${amt.toLocaleString()}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Range Slider with - and + */}
+                            <div
+                              className="ref-deal-slider-row"
+                              style={{ width: "100%", margin: "1px 0 4px" }}
+                            >
+                              <button
+                                className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
+                                onClick={() =>
+                                  setLoanSliderValue((prev) =>
+                                    Math.max(0, prev - 100),
+                                  )
+                                }
+                              >
+                                -100
+                              </button>
+                              <input
+                                type="range"
+                                min="0"
+                                max="3000"
+                                step="100"
+                                value={loanSliderValue}
+                                onChange={(e) =>
+                                  setLoanSliderValue(
+                                    parseInt(e.target.value) || 0,
+                                  )
+                                }
+                                className="ref-golden-slider"
+                              />
+                              <button
+                                className="ref-pill-btn ref-pill-blue ref-deal-step-btn"
+                                onClick={() =>
+                                  setLoanSliderValue((prev) =>
+                                    Math.min(3000, prev + 100),
+                                  )
+                                }
+                              >
+                                +100
+                              </button>
+                            </div>
+
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: "8px",
+                                width: "100%",
+                              }}
+                            >
+                              <button
+                                className="ref-pill-btn ref-pill-red"
+                                style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                onClick={() => {
+                                  if (openedFromWar) {
+                                    setShowBankModal(false);
+                                    setOpenedFromWar(false);
+                                    setShowWarModal(true);
+                                  } else {
+                                    setBankPhase("entry");
+                                  }
+                                }}
+                              >
+                                {openedFromWar ? "CANCEL" : "BACK"}
+                              </button>
+                              <button
+                                className="ref-pill-btn ref-pill-green"
+                                style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                onClick={handleConfirmLoan}
+                                disabled={loanSliderValue <= 0}
+                              >
+                                TAKE
+                              </button>
+                            </div>
+                          </>
+                        ) : bankPhase === "mortgage" ? (
+                          /* Mortgage Sub-view */
+                          <>
+                            {(() => {
+                              const eligibleMortgageProps = Object.keys(
+                                propertyOwnership,
+                              )
+                                .map(Number)
+                                .filter(
+                                  (tIdx) => canMortgageProperty(tIdx, currentPlayer),
+                                );
+                              const mortgageTotalGained =
+                                selectedMortgageTiles.reduce((sum, tIdx) => {
+                                  const prop = getPropertyByTileIndex(tIdx);
+                                  return sum + Math.round((prop?.price || 0) / 2);
+                                }, 0);
+
+                              return (
+                                <>
+                                  <div className="ref-bank-list-panel">
+                                    {eligibleMortgageProps.length === 0 ? (
+                                      <div
+                                        style={{
+                                          color: "#7c3b1c",
+                                          fontSize: "11px",
+                                          fontWeight: "700",
+                                          textAlign: "center",
+                                          margin: "auto",
+                                          fontFamily: "'Baloo 2', cursive, sans-serif",
+                                        }}
+                                      >
+                                        No eligible properties to mortgage (sell any
+                                        buildings first).
+                                      </div>
+                                    ) : (
+                                      eligibleMortgageProps.map((tIdx) => {
+                                        const prop = getPropertyByTileIndex(tIdx);
+                                        const val = Math.round(
+                                          (prop?.price || 0) / 2,
+                                        );
+                                        const isSelected =
+                                          selectedMortgageTiles.includes(tIdx);
+                                        return (
+                                          <div
+                                            key={tIdx}
+                                            className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
+                                            onClick={() =>
+                                              handleToggleMortgageTile(tIdx)
+                                            }
+                                          >
+                                            <div className="ref-deal-prop-left">
+                                              <span
+                                                className="ref-deal-prop-color"
+                                                style={{
+                                                  background:
+                                                    prop?.color || "#888",
+                                                }}
+                                              />
+                                              <span className="ref-deal-prop-name">
+                                                {prop?.name}
+                                              </span>
+                                            </div>
+                                            <span
+                                              style={{
+                                                color: "#2e7d32",
+                                                fontWeight: "800",
+                                              }}
+                                            >
+                                              +${val.toLocaleString()}
+                                            </span>
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      width: "100%",
+                                      padding: "2px 4px",
+                                      fontSize: "12px",
+                                      color: "#7c3b1c",
+                                      fontFamily: "'Baloo 2', cursive, sans-serif",
+                                      fontWeight: "800",
+                                    }}
+                                  >
+                                    <span>Total Mortgage:</span>
+                                    <span style={{ color: "#2e7d32" }}>
+                                      +${mortgageTotalGained.toLocaleString()}
+                                    </span>
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      gap: "8px",
+                                      width: "100%",
+                                    }}
+                                  >
+                                    <button
+                                      className="ref-pill-btn ref-pill-red"
+                                      style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                      onClick={() => setBankPhase("entry")}
+                                    >
+                                      BACK
+                                    </button>
+                                    <button
+                                      className="ref-pill-btn ref-pill-green"
+                                      style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                      onClick={handleConfirmMortgage}
+                                      disabled={
+                                        selectedMortgageTiles.length === 0
+                                      }
+                                    >
+                                      MORTGAGE
+                                    </button>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </>
+                        ) : bankPhase === "redeem" ? (
+                          /* Redeem Sub-view */
+                          <>
+                            {(() => {
+                              const mortgagedOwnedProps = Object.keys(
+                                propertyOwnership,
+                              )
+                                .map(Number)
+                                .filter(
+                                  (tIdx) =>
+                                    propertyOwnership[tIdx] === currentPlayer &&
+                                    !!mortgagedProperties[tIdx],
+                                );
+                              const redeemTotalCost =
+                                selectedRedeemTiles.reduce((sum, tIdx) => {
+                                  const prop = getPropertyByTileIndex(tIdx);
+                                  return (
+                                    sum + Math.round((prop?.price || 0) * 0.55)
+                                  );
+                                }, 0);
+                              const canAfford =
+                                (playerMoney[currentPlayer] || 0) >=
+                                redeemTotalCost;
+
+                              return (
+                                <>
+                                  <div className="ref-bank-list-panel">
+                                    {mortgagedOwnedProps.length === 0 ? (
+                                      <div
+                                        style={{
+                                          color: "#7c3b1c",
+                                          fontSize: "11px",
+                                          fontWeight: "700",
+                                          textAlign: "center",
+                                          margin: "auto",
+                                          fontFamily: "'Baloo 2', cursive, sans-serif",
+                                        }}
+                                      >
+                                        No mortgaged properties to redeem.
+                                      </div>
+                                    ) : (
+                                      mortgagedOwnedProps.map((tIdx) => {
+                                        const prop = getPropertyByTileIndex(tIdx);
+                                        const cost = Math.round(
+                                          (prop?.price || 0) * 0.55,
+                                        );
+                                        const isSelected =
+                                          selectedRedeemTiles.includes(tIdx);
+                                        return (
+                                          <div
+                                            key={tIdx}
+                                            className={`ref-deal-prop-chip ${isSelected ? "selected" : ""}`}
+                                            onClick={() =>
+                                              handleToggleRedeemTile(tIdx)
+                                            }
+                                          >
+                                            <div className="ref-deal-prop-left">
+                                              <span
+                                                className="ref-deal-prop-color"
+                                                style={{
+                                                  background:
+                                                    prop?.color || "#888",
+                                                }}
+                                              />
+                                              <span className="ref-deal-prop-name">
+                                                {prop?.name}
+                                              </span>
+                                            </div>
+                                            <span
+                                              style={{
+                                                color: "#c62828",
+                                                fontWeight: "800",
+                                              }}
+                                            >
+                                              -${cost.toLocaleString()}
+                                            </span>
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      width: "100%",
+                                      padding: "2px 4px",
+                                      fontSize: "12px",
+                                      color: "#7c3b1c",
+                                      fontFamily: "'Baloo 2', cursive, sans-serif",
+                                      fontWeight: "800",
+                                    }}
+                                  >
+                                    <span>Total Cost:</span>
+                                    <span style={{ color: "#c62828" }}>
+                                      -${redeemTotalCost.toLocaleString()}
+                                    </span>
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      gap: "8px",
+                                      width: "100%",
+                                    }}
+                                  >
+                                    <button
+                                      className="ref-pill-btn ref-pill-red"
+                                      style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                      onClick={() => setBankPhase("entry")}
+                                    >
+                                      BACK
+                                    </button>
+                                    <button
+                                      className="ref-pill-btn ref-pill-green"
+                                      style={{ flex: 1, height: "32px", fontSize: "12px" }}
+                                      onClick={handleConfirmRedeem}
+                                      disabled={
+                                        selectedRedeemTiles.length === 0 ||
+                                        !canAfford
+                                      }
+                                    >
+                                      REDEEM
+                                    </button>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bank Debit Modal */}
+                {showBankDebitModal && (
+                  <div className="ref-modal-overlay">
+                    <div className="ref-golden-card" style={{ maxWidth: "260px", maxHeight: "170px" }}>
+                      <div className="ref-deal-header">
+                        <span className="ref-deal-title">Bank Alert</span>
+                        <button
+                          className="ref-close-btn"
+                          onClick={() => setShowBankDebitModal(false)}
+                          aria-label="Close"
+                        >
+                          <div className="x-mark" />
+                        </button>
+                      </div>
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 14px",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: "'Baloo 2', cursive, sans-serif",
+                            fontSize: "15px",
+                            fontWeight: "800",
+                            color: "#7c3b1c",
+                            textAlign: "center",
+                            marginTop: "6px",
+                            textShadow: "0 1px 0 rgba(255, 255, 255, 0.4)",
+                          }}
+                        >
+                          The bank has debited your loan.
+                        </div>
+                        <button
+                          className="ref-pill-btn ref-pill-green"
+                          style={{ width: "120px", height: "32px", marginTop: "6px" }}
+                          onClick={() => setShowBankDebitModal(false)}
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bankruptcy Modal */}
+                {showBankruptcyModal && (
+                  <div className="ref-modal-overlay">
+                    <div
+                      className="ref-golden-card"
+                      style={{ maxWidth: "300px", maxHeight: "230px" }}
+                    >
+                      <div className="ref-deal-header">
+                        <span className="ref-deal-title">⚠️ BANKRUPTCY</span>
+                        <button
+                          className="ref-close-btn"
+                          onClick={() => setShowBankruptcyModal(false)}
+                          aria-label="Close"
+                        >
+                          <div className="x-mark" />
+                        </button>
+                      </div>
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 14px",
+                          boxSizing: "border-box",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: "Junegull, sans-serif",
+                            fontSize: "16px",
+                            color: "#c62828",
+                            marginTop: "2px",
+                          }}
+                        >
+                          Balance is below $0!
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: "'Baloo 2', cursive, sans-serif",
+                            fontSize: "12px",
+                            color: "#5D4037",
+                            lineHeight: "1.4",
+                            fontWeight: "700",
+                            margin: "6px 0",
+                          }}
+                        >
+                          Take a loan from the Bank or mortgage properties to recover, or declare bankruptcy to forfeit.
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            width: "100%",
+                            marginTop: "6px",
+                          }}
+                        >
+                          <button
+                            className="ref-pill-btn ref-pill-green"
+                            style={{ flex: 1, height: "34px", fontSize: "13px" }}
+                            onClick={() => setShowBankruptcyModal(false)}
+                          >
+                            CANCEL
+                          </button>
+                          <button
+                            className="ref-pill-btn ref-pill-red"
+                            style={{ flex: 1, height: "34px", fontSize: "13px" }}
+                            onClick={handleBankrupt}
+                          >
+                            BANKRUPT
+                          </button>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Sell Modal (Main) */}
-              {showSellModal && (
-                <div
-                  className="modal-overlay ref-modal-overlay"
-                  style={{ pointerEvents: "none", background: "transparent" }}
-                >
-                  <div
-                    className="modal-shell buy-modal-replica sell-modal-replica"
-                    style={{ pointerEvents: "auto" }}
-                  >
-                    <div className="title-bar">
-                      <div className="title-text">SELL</div>
-                      <div className="icon-group">
-                        <div
-                          className="icon-btn help"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Sell buildings for a 50% refund"
-                        >
-                          <span>?</span>
+                {/* Game Victory / Winning Modal */}
+                {showWinModal && gameWinner && (
+                  <div className="game-victory-overlay">
+                    <div className="game-victory-card">
+                      <div className="game-victory-trophy">🏆</div>
+                      <div className="game-victory-title">VICTORY!</div>
+                      <div className="game-victory-subtitle">CHAMPION OF PSEUDOPOLY</div>
+
+                      <div className="game-victory-avatar-wrap">
+                        <div className="game-victory-crown">👑</div>
+                        <img
+                          src={gameWinner.avatar}
+                          alt={gameWinner.name}
+                          className="game-victory-avatar"
+                        />
+                      </div>
+
+                      <div className="game-victory-name">{gameWinner.name}</div>
+
+                      <div className="game-victory-stats">
+                        <div className="game-victory-stat-item">
+                          <span className="stat-label">FINAL CASH</span>
+                          <span className="stat-val">
+                            ${(playerMoney[gameWinner.id] || 0).toLocaleString()}
+                          </span>
                         </div>
+                        <div className="game-victory-stat-divider" />
+                        <div className="game-victory-stat-item">
+                          <span className="stat-label">PROPERTIES</span>
+                          <span className="stat-val">
+                            {Object.values(propertyOwnership).filter((o) => o === gameWinner.id).length}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        className="game-victory-btn"
+                        onClick={() => {
+                          setShowWinModal(false);
+                          setGameWinner(null);
+                          handleExitGame();
+                        }}
+                      >
+                        BACK TO MAIN MENU
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Build No Monopoly Modal */}
+                {buildNoMonopolyModal && (
+                  <div
+                    className="modal-overlay ref-modal-overlay"
+                    style={{ pointerEvents: "auto", background: "transparent" }}
+                    onClick={() => setBuildNoMonopolyModal(false)}
+                  >
+                    <div
+                      className="modal-shell buy-modal-replica mini-modal-replica"
+                      style={{ pointerEvents: "auto" }}
+                    >
+                      <div className="title-bar">
+                        <div className="title-text">BUILD</div>
+                        <div className="icon-group">
+                          <div
+                            className="icon-btn close"
+                            onClick={() => setBuildNoMonopolyModal(false)}
+                          >
+                            <div className="x-mark" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="build-body-panel" style={{ padding: "10px 14px", gap: "8px" }}>
                         <div
-                          className="icon-btn close"
-                          onClick={cancelSellMode}
-                          title="Close"
+                          className="maroon"
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            textAlign: "center",
+                            lineHeight: 1.35,
+                          }}
                         >
-                          <div className="x-mark" />
+                          You need to own all properties in a color group to build upgrades!
+                        </div>
+                        <div className="buttons-row" style={{ marginTop: "4px" }}>
+                          <div
+                            className="action-btn btn-cancel"
+                            onClick={() => setBuildNoMonopolyModal(false)}
+                          >
+                            OK
+                          </div>
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    <div className="build-body-panel">
-                      {!selectedSellColor ? (
-                        <>
-                          <div className="build-header-title">CHOOSE PROPERTY GROUP</div>
-                          <div className="build-monopoly-list">
-                            {getPlayerColorsWithBuildings(currentPlayer).map((color) => {
-                              const groupTiles = COLOR_GROUPS[color] || [];
-                              const sampleColor = getTileColor(groupTiles[0]) || color;
-                              const bldgCount = groupTiles.reduce((acc, t) => {
-                                return propertyOwnership[t] === currentPlayer ? acc + (propertyLevels[t] || 0) : acc;
-                              }, 0);
-                              return (
-                                <button
-                                  key={color}
-                                  className="build-monopoly-chip"
-                                  onClick={() => setSelectedSellColor(color)}
-                                >
-                                  <span
-                                    className="chip-dot"
-                                    style={{ background: sampleColor }}
-                                  />
-                                  <span className="chip-name">
-                                    {color.toUpperCase()}
-                                  </span>
-                                  <span className="chip-count">
-                                    {bldgCount} Upgrades
-                                  </span>
-                                  <span className="chip-arrow">➔</span>
-                                </button>
-                              );
-                            })}
+                {/* Build Modal (Main) */}
+                {showBuildModal && (
+                  <div
+                    className="modal-overlay ref-modal-overlay"
+                    style={{ pointerEvents: "none", background: "transparent" }}
+                  >
+                    <div
+                      className="modal-shell buy-modal-replica build-modal-replica"
+                      style={{ pointerEvents: "auto" }}
+                    >
+                      <div className="title-bar">
+                        <div className="title-text">BUILD</div>
+                        <div className="icon-group">
+                          <div
+                            className="icon-btn help"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Upgrade properties in your monopoly"
+                          >
+                            <span>?</span>
                           </div>
-                          <div className="build-hint-text">
-                            Tap a group or any built property on the board
+                          <div
+                            className="icon-btn close"
+                            onClick={cancelBuildMode}
+                            title="Close"
+                          >
+                            <div className="x-mark" />
                           </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="build-sub-bar">
-                            <div className="build-group-label">
-                              {getPlayerColorsWithBuildings(currentPlayer).length > 1 && (
-                                <button
-                                  className="build-switch-btn"
-                                  onClick={() => setSelectedSellColor(null)}
-                                  title="Switch group"
-                                >
-                                  ◀ ALL
-                                </button>
-                              )}
-                              <span
-                                className="chip-dot"
-                                style={{
-                                  background: getTileColor(
-                                    COLOR_GROUPS[selectedSellColor]?.[0],
-                                  ),
-                                }}
-                              />
-                              <span className="group-title">
-                                {selectedSellColor.toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="build-cost-badge">
-                              Refund:{" "}
-                              <span className="refund-val">
-                                +${sellTotalRefund.toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
+                        </div>
+                      </div>
 
-                          {/* Properties that belong to current player */}
-                          <div className="build-props-container">
-                            {(COLOR_GROUPS[selectedSellColor] || [])
-                              .filter((idx) => propertyOwnership[idx] === currentPlayer)
-                              .map((tileIdx) => {
+                      <div className="build-body-panel">
+                        {!selectedBuildColor ? (
+                          <>
+                            <div className="build-header-title">CHOOSE MONOPOLY</div>
+                            <div className="build-monopoly-list">
+                              {getPlayerMonopolyColors(currentPlayer).map((color) => {
+                                const groupTiles = COLOR_GROUPS[color] || [];
+                                const sampleColor = getTileColor(groupTiles[0]) || color;
+                                return (
+                                  <button
+                                    key={color}
+                                    className="build-monopoly-chip"
+                                    onClick={() => setSelectedBuildColor(color)}
+                                  >
+                                    <span
+                                      className="chip-dot"
+                                      style={{ background: sampleColor }}
+                                    />
+                                    <span className="chip-name">
+                                      {color.toUpperCase()} MONOPOLY
+                                    </span>
+                                    <span className="chip-count">
+                                      {groupTiles.length} Props
+                                    </span>
+                                    <span className="chip-arrow">➔</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="build-hint-text">
+                              Tap a monopoly or any property on the board
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="build-sub-bar">
+                              <div className="build-group-label">
+                                {getPlayerMonopolyColors(currentPlayer).length > 1 && (
+                                  <button
+                                    className="build-switch-btn"
+                                    onClick={() => setSelectedBuildColor(null)}
+                                    title="Switch monopoly"
+                                  >
+                                    ◀ ALL
+                                  </button>
+                                )}
+                                <span
+                                  className="chip-dot"
+                                  style={{
+                                    background: getTileColor(
+                                      COLOR_GROUPS[selectedBuildColor]?.[0],
+                                    ),
+                                  }}
+                                />
+                                <span className="group-title">
+                                  {selectedBuildColor.toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="build-cost-badge">
+                                Cost:{" "}
+                                <span className="cost-val">
+                                  ${buildTotalCost.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Selected color group properties */}
+                            <div className="build-props-container">
+                              {(COLOR_GROUPS[selectedBuildColor] || []).map((tileIdx) => {
                                 const prop = RENT_DATA[tileIdx];
                                 const baseLvl = propertyLevels[tileIdx] || 0;
                                 const currentStaged =
-                                  sellPreviewLevels[tileIdx] !== undefined
-                                    ? sellPreviewLevels[tileIdx]
+                                  buildPreviewLevels[tileIdx] !== undefined
+                                    ? buildPreviewLevels[tileIdx]
                                     : baseLvl;
                                 const tileColor = getTileColor(tileIdx);
                                 const cost = getUpgradeCost(tileIdx);
-                                const refundPerLevel = Math.round(cost * 0.5);
-                                const canSell = baseLvl > 0;
 
                                 return (
-                                  <div
-                                    key={tileIdx}
-                                    className="build-prop-item"
-                                    style={{ opacity: canSell ? 1 : 0.5 }}
-                                  >
+                                  <div key={tileIdx} className="build-prop-item">
                                     <div className="prop-left">
                                       <div
                                         className="prop-color-bar"
@@ -11011,8 +10535,8 @@ function App() {
                                         <span className="prop-name">
                                           {prop?.name || `Tile ${tileIdx}`}
                                         </span>
-                                        <span className="prop-refund-sub">
-                                          +${refundPerLevel.toLocaleString()} / refund
+                                        <span className="prop-cost-sub">
+                                          +${cost.toLocaleString()} / lvl
                                         </span>
                                       </div>
                                     </div>
@@ -11020,17 +10544,17 @@ function App() {
                                     <div className="prop-right">
                                       <button
                                         className="build-circle-btn minus"
-                                        onClick={() => handleSellStep(tileIdx, -1)}
-                                        disabled={currentStaged <= 0}
-                                        title="Sell 1 upgrade"
+                                        onClick={() => handleBuildStep(tileIdx, -1)}
+                                        disabled={currentStaged <= baseLvl}
+                                        title="Undo upgrade"
                                       >
                                         −
                                       </button>
 
                                       <div
                                         className="build-progress-bars"
-                                        onClick={() => canSell && handleSellStep(tileIdx, -1)}
-                                        title="Tap to sell upgrade"
+                                        onClick={() => handleBuildStep(tileIdx, 1)}
+                                        title="Tap to add upgrade"
                                       >
                                         {[1, 2, 3, 4, 5].map((barIdx) => {
                                           const isFilled = currentStaged >= barIdx;
@@ -11038,13 +10562,12 @@ function App() {
                                           return (
                                             <div
                                               key={barIdx}
-                                              className={`bar ${
-                                                isFilled
-                                                  ? isHotel
-                                                    ? "hotel"
-                                                    : "house"
-                                                  : "empty"
-                                              }`}
+                                              className={`bar ${isFilled
+                                                ? isHotel
+                                                  ? "hotel"
+                                                  : "house"
+                                                : "empty"
+                                                }`}
                                             />
                                           );
                                         })}
@@ -11052,21 +10575,20 @@ function App() {
 
                                       <button
                                         className="build-circle-btn plus"
-                                        onClick={() => handleSellStep(tileIdx, 1)}
-                                        disabled={currentStaged >= baseLvl}
-                                        title="Undo sell"
+                                        onClick={() => handleBuildStep(tileIdx, 1)}
+                                        disabled={currentStaged >= 5}
+                                        title="Add upgrade"
                                       >
                                         +
                                       </button>
 
                                       <span
-                                        className={`build-lvl-text ${
-                                          currentStaged === 5
-                                            ? "hotel"
-                                            : currentStaged > 0
-                                              ? "house"
-                                              : "base"
-                                        }`}
+                                        className={`build-lvl-text ${currentStaged === 5
+                                          ? "hotel"
+                                          : currentStaged > 0
+                                            ? "house"
+                                            : "base"
+                                          }`}
                                       >
                                         {currentStaged === 0
                                           ? "Lv 0"
@@ -11078,878 +10600,1372 @@ function App() {
                                   </div>
                                 );
                               })}
-                          </div>
-                        </>
-                      )}
+                            </div>
+                          </>
+                        )}
 
-                      <div className="buttons-row">
-                        <div
-                          className="action-btn btn-cancel"
-                          onClick={cancelSellMode}
-                        >
-                          CANCEL
-                        </div>
-                        <div
-                          className={`action-btn btn-sell ${
-                            !selectedSellColor || sellTotalRefund === 0
+                        <div className="buttons-row">
+                          <div
+                            className="action-btn btn-cancel"
+                            onClick={cancelBuildMode}
+                          >
+                            CANCEL
+                          </div>
+                          <div
+                            className={`action-btn btn-buy ${!selectedBuildColor || buildTotalCost === 0
                               ? "disabled"
                               : ""
-                          }`}
-                          onClick={
-                            selectedSellColor && sellTotalRefund > 0
-                              ? closeSellMode
-                              : undefined
-                          }
-                        >
-                          SELL{" "}
-                          {sellTotalRefund > 0
-                            ? `(+$${sellTotalRefund.toLocaleString()})`
-                            : ""}
+                              }`}
+                            onClick={
+                              selectedBuildColor && buildTotalCost > 0
+                                ? closeBuildMode
+                                : undefined
+                            }
+                          >
+                            BUILD{" "}
+                            {buildTotalCost > 0
+                              ? `($${buildTotalCost.toLocaleString()})`
+                              : ""}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Menu Modal */}
-              {showMenuModal && (
-                <div
-                  className="modal-overlay menu-modal-overlay"
-                  style={{ zIndex: 1000000 }}
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) closeMenu();
-                  }}
-                >
+                {/* Train Fast Travel Modal */}
+                {showTrainTravelModal && (
                   <div
-                    className="buy-modal deal-modal bank-modal"
+                    className="modal-overlay modal-overlay-inline"
                     style={{
                       pointerEvents: "auto",
-                      marginTop: "15vh",
-                      minWidth: "280px",
+                      background: "rgba(0, 0, 0, 0.35)",
+                      zIndex: 1100,
+                    }}
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) {
+                        setShowTrainTravelModal(false);
+                        setTravelMode(false);
+                        setBuyingProperty(null);
+                        setSelectedTrainTile(null);
+                        if (networkMode === "online") {
+                          sendGameAction("select_train_destination", {
+                            tileIndex: null,
+                          });
+                        }
+                        setTurnFinished(true);
+                      }
                     }}
                   >
-                    <button
-                      className="modal-close-btn"
-                      onClick={closeMenu}
-                      aria-label="Close"
-                    />
-                    <div className="modal-heading">
-                      <span className="modal-heading-text">☰ MENU</span>
-                    </div>
                     <div
-                      className="modal-body"
-                      style={{ textAlign: "center", padding: "20px" }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "12px",
-                        }}
-                      >
-                        <button
-                          className="modal-btn buy"
-                          style={{
-                            width: "100%",
-                            background:
-                              "linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%)",
-                          }}
-                          onClick={closeMenu}
-                        >
-                          ▶️ RESUME
-                        </button>
-                        <button
-                          className="modal-btn"
-                          style={{
-                            width: "100%",
-                            background:
-                              "linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)",
-                            color: "white",
-                          }}
-                          onClick={openSettings}
-                        >
-                          ⚙️ SETTINGS
-                        </button>
-                        <button
-                          className="modal-btn"
-                          style={{
-                            width: "100%",
-                            background:
-                              "linear-gradient(to bottom, #37474F 0%, #263238 100%)",
-                            color: "white",
-                          }}
-                          onClick={() => {
-                            setShowMenuModal(false);
-                            setShowLogModal(true);
-                          }}
-                        >
-                          📋 GAME LOGS
-                        </button>
-                        <button
-                          className="modal-btn cancel"
-                          style={{
-                            width: "100%",
-                            background:
-                              "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
-                            color: "white",
-                          }}
-                          onClick={handleExitGame}
-                        >
-                          🚪 EXIT GAME
-                        </button>
-
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Exit Confirmation Modal */}
-              {showExitConfirm && (
-                <div
-                  className="modal-overlay"
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) setShowExitConfirm(false);
-                  }}
-                >
-                  <div
-                    className="buy-modal deal-modal bank-modal"
-                    style={{ pointerEvents: "auto", marginTop: "20vh" }}
-                  >
-                    <div
-                      className="modal-heading"
+                      className="buy-modal"
                       style={{
-                        background:
-                          "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
+                        pointerEvents: "auto",
+                        maxWidth: "270px",
+                        background: "#FFFDF7",
+                        border: "1.5px solid #1E88E5",
+                        borderRadius: "10px",
+                        boxShadow: "0 8px 30px rgba(0,0,0,0.5)",
+                        overflow: "hidden",
                       }}
                     >
-                      <span className="modal-heading-text">🚪 EXIT TO HOMEPAGE</span>
-                    </div>
-                    <div className="modal-body" style={{ textAlign: "center" }}>
                       <div
+                        className="modal-heading"
                         style={{
-                          fontSize: "14px",
-                          color: "#4a2c18",
-                          marginBottom: "15px",
+                          background:
+                            "linear-gradient(to bottom, #1E88E5 0%, #1565C0 100%)",
+                          padding: "5px 8px",
                         }}
                       >
-                        Exit current game and return to Homepage?
-                        <br />
-                        <span style={{ fontSize: "12px", color: "#5D4037" }}>
-                          Any active game progress will be forfeited.
+                        <span
+                          className="modal-heading-text"
+                          style={{ fontSize: "12px" }}
+                        >
+                          🚅 TRAIN FAST TRAVEL
                         </span>
                       </div>
                       <div
-                        className="modal-buttons"
-                        style={{ justifyContent: "center", gap: "15px" }}
-                      >
-                        <button
-                          className="modal-btn"
-                          style={{
-                            flex: "none",
-                            minWidth: "100px",
-                            background: "#e0e0e0",
-                            color: "#333",
-                          }}
-                          onClick={() => setShowExitConfirm(false)}
-                        >
-                          RESUME
-                        </button>
-                        <button
-                          className="modal-btn cancel"
-                          style={{
-                            flex: "none",
-                            minWidth: "140px",
-                            background:
-                              "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
-                            color: "white",
-                          }}
-                          onClick={handleExitGame}
-                        >
-                          EXIT TO HOMEPAGE
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Buying Modal */}
-              {(showBuyModal || (isModalClosing && closingModal === "buy")) &&
-                buyingProperty &&
-                !gamePlayers[buyingProperty.buyerIndex]?.isBot && (
-                  <BuyModal
-                    property={buyingProperty}
-                    hasDiscount={!!activeEffects[buyingProperty.buyerIndex]?.discount_50}
-                    isClosing={isModalClosing && closingModal === "buy"}
-                    onBuy={handleBuyProperty}
-                    onCancel={handleCancelBuy}
-                  />
-                )}
-
-              {/* Rob Bank Modal */}
-              {(showRobBankModal ||
-                (isModalClosing && closingModal === "robbank")) && (
-                <div
-                  className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
-                >
-                  <div className="buy-modal">
-                    {robStatus === "idle" && (
-                      <button
-                        className="modal-close-btn"
-                        onClick={handleRobBankLeave}
-                        aria-label="Close"
-                      />
-                    )}
-                    {/* Header */}
-                    <div
-                      className={`modal-heading ${robStatus === "caught" ? "danger" : ""}`}
-                    >
-                      <span className="modal-heading-text">
-                        {robStatus === "processing"
-                          ? "ROBBING..."
-                          : robStatus === "success"
-                            ? "SUCCESS!"
-                            : robStatus === "caught"
-                              ? "BUSTED!"
-                              : "ROB BANK"}
-                      </span>
-                    </div>
-
-                    {/* Body */}
-                    <div className="modal-body">
-                      {robStatus === "idle" && (
-                        <>
-                          <img
-                            src="/modal_ui/safe_door.png"
-                            alt="Safe Vault"
-                            style={{
-                              width: "52px",
-                              height: "52px",
-                              margin: "0 auto 4px",
-                              display: "block",
-                              objectFit: "contain",
-                            }}
-                          />
-                          <div className="modal-city-name">RISK IT ALL?</div>
-                          <div className="modal-divider"></div>
-                          <div
-                            className="modal-details"
-                            style={{ textAlign: "center" }}
-                          >
-                            <div
-                              className="modal-row"
-                              style={{
-                                justifyContent: "center",
-                                color: "#2E7D32",
-                              }}
-                            >
-                              <span>WIN $1k - $10k</span>
-                            </div>
-                            <div
-                              className="modal-row"
-                              style={{
-                                justifyContent: "center",
-                                fontSize: "14px",
-                                margin: "5px 0",
-                              }}
-                            >
-                              <span>OR</span>
-                            </div>
-                            <div
-                              className="modal-row"
-                              style={{
-                                justifyContent: "center",
-                                color: "#C62828",
-                              }}
-                            >
-                              <span>GO TO JAIL</span>
-                            </div>
-                          </div>
-
-                          {/* Buttons - Only show for active player */}
-                          {networkMode !== "online" ||
-                          myPlayerIndex === currentPlayer ? (
-                            <div className="modal-buttons">
-                              <button
-                                className="modal-btn cancel"
-                                onClick={handleRobBankLeave}
-                              >
-                                LEAVE
-                              </button>
-                              <button
-                                className="modal-btn buy"
-                                onClick={handleRobBankAttempt}
-                              >
-                                ROB!
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="modal-buttons">
-                              <div
-                                style={{
-                                  color: "#4A2C18",
-                                  fontWeight: "bold",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                Waiting for player...
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {robStatus === "processing" && (
-                        <div
-                          style={{
-                            textAlign: "center",
-                            padding: "10px 0 16px",
-                          }}
-                        >
-                          <div
-                            className="modal-city-name"
-                            style={{ fontSize: "18px", marginBottom: "12px" }}
-                          >
-                            {robStatusText}
-                          </div>
-
-                          <div className="rob-slider-container">
-                            {/* The Three Things / Target Badges */}
-                            <div className="rob-targets-row">
-                              {/* Thing 1: Busted / Jail */}
-                              <div
-                                className={`rob-target-badge target-caught ${robTargetLanded === "caught" || (robSliderPos <= 33 && !robTargetLanded) ? "active" : ""}`}
-                              >
-                                <div className="target-icon">
-                                  <BustedJailIcon size={24} />
-                                </div>
-                                <div className="target-label">BUSTED</div>
-                                <div className="target-sub">GO TO JAIL</div>
-                              </div>
-
-                              {/* Thing 2: Escaped / Alarm ($0) */}
-                              <div
-                                className={`rob-target-badge target-escaped ${robTargetLanded === "escaped" || (robSliderPos > 33 && robSliderPos <= 67 && !robTargetLanded) ? "active" : ""}`}
-                              >
-                                <div className="target-icon">
-                                  <EscapedThiefIcon size={24} />
-                                </div>
-                                <div className="target-label">ESCAPED</div>
-                                <div className="target-sub">EMPTY-HANDED</div>
-                              </div>
-
-                              {/* Thing 3: Robbed Bank ($1k - $10k) */}
-                              <div
-                                className={`rob-target-badge target-jackpot ${robTargetLanded === "success" || (robSliderPos > 67 && !robTargetLanded) ? "active" : ""}`}
-                              >
-                                <div className="target-icon">
-                                  <VaultDiamondIcon size={24} />
-                                </div>
-                                <div className="target-label">ROB BANK</div>
-                                <div className="target-sub">$1K - $10K</div>
-                              </div>
-                            </div>
-
-                            {/* The Slider Track with Moving Needle */}
-                            <div className="rob-track-wrapper">
-                              <div className="rob-slider-track">
-                                <div
-                                  className={`rob-slider-needle ${robTargetLanded ? "settled" : ""}`}
-                                  style={{ left: `${robSliderPos}%` }}
-                                />
-                              </div>
-                              <div className="rob-track-markers">
-                                <div
-                                  className="rob-track-notch"
-                                  style={{ marginLeft: "4%" }}
-                                />
-                                <div className="rob-track-notch" />
-                                <div
-                                  className="rob-track-notch"
-                                  style={{ marginRight: "4%" }}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="rob-status-sub">
-                              {robTargetLanded === "caught"
-                                ? "🚨 POLICE CAUGHT YOU!"
-                                : robTargetLanded === "escaped"
-                                  ? "🏃💨 ESCAPED EMPTY-HANDED!"
-                                  : robTargetLanded === "success"
-                                    ? "💎 BANK VAULT ROBBED!"
-                                    : "DECIDING OUTCOME..."}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {robStatus === "success" && (
-                        <>
-                          <div style={{ textAlign: "center", margin: "4px 0 8px" }}>
-                            <VaultDiamondIcon size={56} />
-                          </div>
-                          <div
-                            className="modal-city-name"
-                            style={{ color: "#2E7D32" }}
-                          >
-                            YOU STOLE
-                          </div>
-                          <div
-                            className="modal-city-name"
-                            style={{
-                              fontSize: "40px",
-                              color: "#2E7D32",
-                              textShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                            }}
-                          >
-                            ${robResult.amount.toLocaleString()}
-                          </div>
-                          <div
-                            className="modal-buttons"
-                            style={{ marginTop: "20px" }}
-                          >
-                            {networkMode !== "online" ||
-                            myPlayerIndex === currentPlayer ? (
-                              <button
-                                className="modal-btn buy"
-                                onClick={handleRobBankComplete}
-                                style={{ width: "100%" }}
-                              >
-                                COLLECT
-                              </button>
-                            ) : (
-                              <div
-                                style={{
-                                  color: "#4A2C18",
-                                  fontWeight: "bold",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                Waiting for player to collect...
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-
-                      {robStatus === "escaped" && (
-                        <>
-                          <div
-                            className="modal-city-name"
-                            style={{ color: "#E65100" }}
-                          >
-                            ALARM TRIGGERED!
-                          </div>
-                          <div
-                            style={{
-                              textAlign: "center",
-                              margin: "8px 0 10px",
-                            }}
-                          >
-                            <EscapedThiefIcon size={56} />
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "13px",
-                              color: "#5D4037",
-                              fontWeight: "bold",
-                              textAlign: "center",
-                              marginBottom: "12px",
-                            }}
-                          >
-                            You escaped the guards, but got away with $0!
-                          </div>
-                          <div
-                            className="modal-buttons"
-                            style={{ marginTop: "16px" }}
-                          >
-                            {networkMode !== "online" ||
-                            myPlayerIndex === currentPlayer ? (
-                              <button
-                                className="modal-btn"
-                                onClick={handleRobBankComplete}
-                                style={{
-                                  width: "100%",
-                                  background:
-                                    "linear-gradient(to bottom, #FF9800 0%, #F57C00 100%)",
-                                  color: "#fff",
-                                  fontWeight: "bold",
-                                }}
-                              >
-                                CONTINUE
-                              </button>
-                            ) : (
-                              <div
-                                style={{
-                                  color: "#4A2C18",
-                                  fontWeight: "bold",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                Waiting for player...
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-
-                      {robStatus === "caught" && (
-                        <>
-                          <div
-                            className="modal-city-name"
-                            style={{ color: "#C62828" }}
-                          >
-                            POLICE CAUGHT YOU!
-                          </div>
-                          <div
-                            style={{
-                              textAlign: "center",
-                              margin: "10px 0 12px",
-                            }}
-                          >
-                            <BustedJailIcon size={56} />
-                          </div>
-                          <div
-                            className="modal-buttons"
-                            style={{ marginTop: "20px" }}
-                          >
-                            {networkMode !== "online" ||
-                            myPlayerIndex === currentPlayer ? (
-                              <button
-                                className="modal-btn cancel"
-                                onClick={handleRobBankComplete}
-                                style={{ width: "100%" }}
-                              >
-                                GO TO JAIL
-                              </button>
-                            ) : (
-                              <div
-                                style={{
-                                  color: "#4A2C18",
-                                  fontWeight: "bold",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                Waiting for player...
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* The Audit Modal (Dice Gamble) */}
-              {(showAuditModal ||
-                (isModalClosing && closingModal === "audit")) && (
-                <div
-                  className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
-                >
-                  <div className="buy-modal">
-                    {/* Header */}
-                    <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          "linear-gradient(to bottom, #5D4037 0%, #3E2723 100%)",
-                      }}
-                    >
-                      <span className="modal-heading-text">🧾 THE AUDIT</span>
-                    </div>
-
-                    {/* Body */}
-                    <div className="modal-body">
-                      <div
-                        className="modal-city-name"
-                        style={{ fontSize: "18px", marginBottom: "15px" }}
-                      >
-                        {gamePlayers[currentPlayer]?.name || "Player"} is being
-                        audited!
-                      </div>
-
-                      {/* Show dice that were rolled */}
-                      <div
+                        className="modal-body"
                         style={{
+                          padding: "12px 14px",
+                          background: "#FFFDF7",
                           display: "flex",
-                          justifyContent: "center",
-                          gap: "16px",
-                          marginBottom: "15px",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "8px",
                         }}
                       >
-                        <AnimatedDie
-                          value={auditDiceValues[0]}
-                          isRolling={isRollingAuditDice}
-                          size={48}
-                          stagger={0}
-                        />
-                        <AnimatedDie
-                          value={auditDiceValues[1]}
-                          isRolling={isRollingAuditDice}
-                          size={48}
-                          stagger={2}
-                        />
-                      </div>
+                        {(() => {
+                          const sortedTrains = [4, 13, 21, 32];
+                          const srcIdx = sortedTrains.indexOf(
+                            travelSourceIndex ?? playerPositions[currentPlayer],
+                          );
+                          const tgtIdx =
+                            selectedTrainTile !== null
+                              ? sortedTrains.indexOf(selectedTrainTile)
+                              : -1;
+                          const stationDist =
+                            tgtIdx >= 0 ? (tgtIdx - srcIdx + 4) % 4 : 0;
+                          const cost = stationDist * 100;
+                          const canAfford = playerMoney[currentPlayer] >= cost;
 
-
-                      <div
-                        style={{
-                          textAlign: "center",
-                          fontSize: "15px",
-                          color: "#4A2C18",
-                          fontWeight: "bold",
-                          marginBottom: "10px",
-                        }}
-                      >
-                        Rolled {auditDiceValues[0] + auditDiceValues[1]} × $300
-                      </div>
-
-                      <div
-                        className="modal-city-name"
-                        style={{
-                          fontSize: "32px",
-                          color: "#C62828",
-                          marginTop: "10px",
-                        }}
-                      >
-                        TAX BILL: ${auditAmount.toLocaleString()}
-                      </div>
-
-                      <div
-                        className="modal-buttons"
-                        style={{ marginTop: "20px" }}
-                      >
-                        {networkMode === "offline" ||
-                        myPlayerIndex === null ||
-                        currentPlayer === myPlayerIndex ? (
-                          <button
-                            className="modal-btn cancel"
-                            onClick={handleAuditComplete}
-                            style={{ width: "100%" }}
-                          >
-                            💸 PAY TAXES
-                          </button>
-                        ) : (
-                          <div
-                            style={{
-                              textAlign: "center",
-                              color: "#4A2C18",
-                              fontWeight: "bold",
-                              fontStyle: "italic",
-                            }}
-                          >
-                            Waiting for{" "}
-                            {gamePlayers[currentPlayer]?.name || "player"} to
-                            pay taxes...
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Property War Modal */}
-              {showWarModal && (
-                <div className="modal-overlay">
-                  <div className="buy-modal war-modal">
-                    {/* Header */}
-                    <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          "linear-gradient(to bottom, #E91E63 0%, #C2185B 100%)",
-                      }}
-                    >
-                      <span className="modal-heading-text">
-                        ⚔️ PROPERTY WAR ⚔️
-                      </span>
-                    </div>
-
-                    {/* Body */}
-                    <div className="modal-body">
-                      {/* Join Phase */}
-                      {warPhase === "join" && (
-                        <>
-                          <div
-                            className="modal-city-name"
-                            style={{ fontSize: "14px", marginBottom: "2px" }}
-                          >
-                            {warMode === "A"
-                              ? "🏠 STANDARD WAR"
-                              : "💰 CASH BATTLE"}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "10.5px",
-                              marginBottom: "4px",
-                              color: "#5D4037",
-                              fontWeight: "bold",
-                              textAlign: "center",
-                              lineHeight: "1.2",
-                            }}
-                          >
-                            {warMode === "A"
-                              ? "Pay $1,000 to compete for a random property!"
-                              : "All properties sold! Pay $1,000 to compete for the Pot!"}
-                          </div>
-
-                          {/* Player Join List */}
-                          <div className="war-join-list">
-                            {gamePlayers.map((player, idx) => {
-                              if (bankruptPlayers[idx]) return null;
-                              const isJoined = warParticipants.includes(idx);
-                              const fee = 1000;
-                              const hasCash = playerMoney[idx] >= fee;
-                              const canTakeLoan = !playerLoans[idx];
-                              const isMyAction =
-                                networkMode !== "online" ||
-                                idx === myPlayerIndex;
-
-                              return (
+                          return (
+                            <>
+                              {selectedTrainTile !== null ? (
                                 <div
-                                  key={idx}
                                   style={{
-                                    display: "flex",
-                                    flexDirection: "row",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    padding: "0px 3px",
-                                    minHeight: "18px",
-                                    background: isJoined
-                                      ? "#E8F5E9"
-                                      : "#F5F5F5",
-                                    borderRadius: "3px",
-                                    border: isJoined
-                                      ? "1px solid #4CAF50"
-                                      : "1px solid #ddd",
+                                    width: "100%",
+                                    padding: "10px 12px",
+                                    background: "#E3F2FD",
+                                    border: "1.5px solid #1E88E5",
+                                    borderRadius: "8px",
                                     boxSizing: "border-box",
+                                    textAlign: "center",
                                   }}
                                 >
                                   <div
                                     style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "3px",
-                                      minWidth: 0,
-                                      flex: 1,
-                                      overflow: "hidden",
+                                      fontSize: "13px",
+                                      fontWeight: "900",
+                                      color: "#0D47A1",
+                                      marginBottom: "4px",
                                     }}
                                   >
-                                    <img
-                                      src={player.avatar}
-                                      alt={player.name}
-                                      style={{
-                                        width: "13px",
-                                        height: "13px",
-                                        borderRadius: "50%",
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                    <span
-                                      style={{
-                                        fontWeight: "bold",
-                                        fontSize: "8.5px",
-                                        color: "#212121",
-                                        whiteSpace: "nowrap",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        maxWidth: "75px",
-                                        lineHeight: "1.1",
-                                      }}
-                                    >
-                                      {player.name}
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontSize: "8px",
-                                        color:
-                                          playerMoney[idx] < fee
-                                            ? "#D32F2F"
-                                            : "#2E7D32",
-                                        fontWeight: 700,
-                                        lineHeight: "1",
-                                        whiteSpace: "nowrap",
-                                      }}
-                                    >
-                                      ({playerMoney[idx] >= 1000
-                                        ? `$${(playerMoney[idx] / 1000).toFixed(playerMoney[idx] % 1000 === 0 ? 0 : 1)}k`
-                                        : `$${playerMoney[idx]}`})
-                                    </span>
+                                    🚅 {getTileName(selectedTrainTile)}
                                   </div>
-
                                   <div
                                     style={{
-                                      display: "flex",
-                                      gap: "2px",
-                                      flexShrink: 0,
-                                      marginLeft: "4px",
+                                      fontSize: "16px",
+                                      fontWeight: "900",
+                                      color: canAfford ? "#E65100" : "#C62828",
                                     }}
                                   >
-                                    {isJoined ? (
-                                      isMyAction ? (
-                                        <button
-                                          className="modal-btn cancel"
-                                          style={{
-                                            flex: "none",
-                                            width: "auto",
-                                            whiteSpace: "nowrap",
-                                            padding: "0 5px",
-                                            fontSize: "8px",
-                                            height: "19px",
-                                            minHeight: "19px",
-                                            lineHeight: "19px",
-                                            borderRadius: "3px",
-                                          }}
-                                          onClick={() => handleWarWithdraw(idx)}
-                                        >
-                                          LEAVE
-                                        </button>
-                                      ) : (
-                                        <span
-                                          style={{
-                                            fontSize: "8.5px",
-                                            color: "#2E7D32",
-                                            fontWeight: "bold",
-                                            whiteSpace: "nowrap",
-                                          }}
-                                        >
-                                          ✓ Joined
-                                        </span>
-                                      )
-                                    ) : isMyAction ? (
-                                      hasCash ? (
-                                        <button
-                                          className="modal-btn buy"
-                                          style={{
-                                            flex: "none",
-                                            width: "auto",
-                                            whiteSpace: "nowrap",
-                                            padding: "0 6px",
-                                            fontSize: "8.5px",
-                                            height: "19px",
-                                            minHeight: "19px",
-                                            lineHeight: "19px",
-                                            borderRadius: "3px",
-                                          }}
-                                          onClick={() => handleWarJoin(idx)}
-                                        >
-                                          JOIN
-                                        </button>
-                                      ) : (
+                                    Fare: ${cost}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "#546E7A",
+                                    padding: "10px 0",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  Tap an owned train station on the board to travel to
+                                </div>
+                              )}
+
+                              {/* Action Buttons */}
+                              <div
+                                className="modal-buttons"
+                                style={{
+                                  display: "flex",
+                                  gap: "8px",
+                                  width: "100%",
+                                  marginTop: "4px",
+                                }}
+                              >
+                                <button
+                                  className="modal-btn cancel"
+                                  style={{
+                                    height: "28px",
+                                    minHeight: "28px",
+                                    fontSize: "11px",
+                                    padding: "0 10px",
+                                    flex: 1,
+                                    borderRadius: "5px",
+                                  }}
+                                  onClick={() => {
+                                    setShowTrainTravelModal(false);
+                                    setTravelMode(false);
+                                    setBuyingProperty(null);
+                                    setSelectedTrainTile(null);
+                                    if (networkMode === "online") {
+                                      sendGameAction("select_train_destination", {
+                                        tileIndex: null,
+                                      });
+                                    }
+                                    setTurnFinished(true);
+                                  }}
+                                >
+                                  CANCEL
+                                </button>
+                                <button
+                                  className="modal-btn buy"
+                                  disabled={selectedTrainTile === null || !canAfford}
+                                  style={{
+                                    height: "28px",
+                                    minHeight: "28px",
+                                    fontSize: "11px",
+                                    padding: "0 10px",
+                                    flex: 1,
+                                    borderRadius: "5px",
+                                    opacity:
+                                      selectedTrainTile === null || !canAfford ? 0.5 : 1,
+                                    cursor:
+                                      selectedTrainTile === null || !canAfford
+                                        ? "not-allowed"
+                                        : "pointer",
+                                    background:
+                                      selectedTrainTile !== null && canAfford
+                                        ? "linear-gradient(to bottom, #1E88E5, #1565C0)"
+                                        : "#9E9E9E",
+                                  }}
+                                  onClick={() => {
+                                    if (selectedTrainTile !== null && canAfford) {
+                                      setShowTrainTravelModal(false);
+                                      handleTravelConfirm(selectedTrainTile, cost);
+                                    }
+                                  }}
+                                >
+                                  TRAVEL {selectedTrainTile !== null && `($${cost})`}
+                                </button>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sell No Buildings Modal */}
+                {sellNoBuildingsModal && (
+                  <div
+                    className="modal-overlay ref-modal-overlay"
+                    style={{ pointerEvents: "auto", background: "transparent" }}
+                    onClick={() => setSellNoBuildingsModal(false)}
+                  >
+                    <div
+                      className="modal-shell buy-modal-replica mini-modal-replica"
+                      style={{ pointerEvents: "auto" }}
+                    >
+                      <div className="title-bar">
+                        <div className="title-text">SELL</div>
+                        <div className="icon-group">
+                          <div
+                            className="icon-btn close"
+                            onClick={() => setSellNoBuildingsModal(false)}
+                          >
+                            <div className="x-mark" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="build-body-panel" style={{ padding: "10px 14px", gap: "8px" }}>
+                        <div
+                          className="maroon"
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            textAlign: "center",
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          You don't have any built upgrades to sell!
+                        </div>
+                        <div className="buttons-row" style={{ marginTop: "4px" }}>
+                          <div
+                            className="action-btn btn-cancel"
+                            onClick={() => setSellNoBuildingsModal(false)}
+                          >
+                            OK
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sell Modal (Main) */}
+                {showSellModal && (
+                  <div
+                    className="modal-overlay ref-modal-overlay"
+                    style={{ pointerEvents: "none", background: "transparent" }}
+                  >
+                    <div
+                      className="modal-shell buy-modal-replica sell-modal-replica"
+                      style={{ pointerEvents: "auto" }}
+                    >
+                      <div className="title-bar">
+                        <div className="title-text">SELL</div>
+                        <div className="icon-group">
+                          <div
+                            className="icon-btn help"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Sell buildings for a 50% refund"
+                          >
+                            <span>?</span>
+                          </div>
+                          <div
+                            className="icon-btn close"
+                            onClick={cancelSellMode}
+                            title="Close"
+                          >
+                            <div className="x-mark" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="build-body-panel">
+                        {!selectedSellColor ? (
+                          <>
+                            <div className="build-header-title">CHOOSE PROPERTY GROUP</div>
+                            <div className="build-monopoly-list">
+                              {getPlayerColorsWithBuildings(currentPlayer).map((color) => {
+                                const groupTiles = COLOR_GROUPS[color] || [];
+                                const sampleColor = getTileColor(groupTiles[0]) || color;
+                                const bldgCount = groupTiles.reduce((acc, t) => {
+                                  return propertyOwnership[t] === currentPlayer ? acc + (propertyLevels[t] || 0) : acc;
+                                }, 0);
+                                return (
+                                  <button
+                                    key={color}
+                                    className="build-monopoly-chip"
+                                    onClick={() => setSelectedSellColor(color)}
+                                  >
+                                    <span
+                                      className="chip-dot"
+                                      style={{ background: sampleColor }}
+                                    />
+                                    <span className="chip-name">
+                                      {color.toUpperCase()}
+                                    </span>
+                                    <span className="chip-count">
+                                      {bldgCount} Upgrades
+                                    </span>
+                                    <span className="chip-arrow">➔</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="build-hint-text">
+                              Tap a group or any built property on the board
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="build-sub-bar">
+                              <div className="build-group-label">
+                                {getPlayerColorsWithBuildings(currentPlayer).length > 1 && (
+                                  <button
+                                    className="build-switch-btn"
+                                    onClick={() => setSelectedSellColor(null)}
+                                    title="Switch group"
+                                  >
+                                    ◀ ALL
+                                  </button>
+                                )}
+                                <span
+                                  className="chip-dot"
+                                  style={{
+                                    background: getTileColor(
+                                      COLOR_GROUPS[selectedSellColor]?.[0],
+                                    ),
+                                  }}
+                                />
+                                <span className="group-title">
+                                  {selectedSellColor.toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="build-cost-badge">
+                                Refund:{" "}
+                                <span className="refund-val">
+                                  +${sellTotalRefund.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Properties that belong to current player */}
+                            <div className="build-props-container">
+                              {(COLOR_GROUPS[selectedSellColor] || [])
+                                .filter((idx) => propertyOwnership[idx] === currentPlayer)
+                                .map((tileIdx) => {
+                                  const prop = RENT_DATA[tileIdx];
+                                  const baseLvl = propertyLevels[tileIdx] || 0;
+                                  const currentStaged =
+                                    sellPreviewLevels[tileIdx] !== undefined
+                                      ? sellPreviewLevels[tileIdx]
+                                      : baseLvl;
+                                  const tileColor = getTileColor(tileIdx);
+                                  const cost = getUpgradeCost(tileIdx);
+                                  const refundPerLevel = Math.round(cost * 0.5);
+                                  const canSell = baseLvl > 0;
+
+                                  return (
+                                    <div
+                                      key={tileIdx}
+                                      className="build-prop-item"
+                                      style={{ opacity: canSell ? 1 : 0.5 }}
+                                    >
+                                      <div className="prop-left">
                                         <div
-                                          style={{
-                                            display: "flex",
-                                            gap: "2px",
-                                          }}
+                                          className="prop-color-bar"
+                                          style={{ background: tileColor }}
+                                        />
+                                        <div className="prop-text-col">
+                                          <span className="prop-name">
+                                            {prop?.name || `Tile ${tileIdx}`}
+                                          </span>
+                                          <span className="prop-refund-sub">
+                                            +${refundPerLevel.toLocaleString()} / refund
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="prop-right">
+                                        <button
+                                          className="build-circle-btn minus"
+                                          onClick={() => handleSellStep(tileIdx, -1)}
+                                          disabled={currentStaged <= 0}
+                                          title="Sell 1 upgrade"
                                         >
-                                          {canTakeLoan && (
+                                          −
+                                        </button>
+
+                                        <div
+                                          className="build-progress-bars"
+                                          onClick={() => canSell && handleSellStep(tileIdx, -1)}
+                                          title="Tap to sell upgrade"
+                                        >
+                                          {[1, 2, 3, 4, 5].map((barIdx) => {
+                                            const isFilled = currentStaged >= barIdx;
+                                            const isHotel = currentStaged === 5;
+                                            return (
+                                              <div
+                                                key={barIdx}
+                                                className={`bar ${isFilled
+                                                  ? isHotel
+                                                    ? "hotel"
+                                                    : "house"
+                                                  : "empty"
+                                                  }`}
+                                              />
+                                            );
+                                          })}
+                                        </div>
+
+                                        <button
+                                          className="build-circle-btn plus"
+                                          onClick={() => handleSellStep(tileIdx, 1)}
+                                          disabled={currentStaged >= baseLvl}
+                                          title="Undo sell"
+                                        >
+                                          +
+                                        </button>
+
+                                        <span
+                                          className={`build-lvl-text ${currentStaged === 5
+                                            ? "hotel"
+                                            : currentStaged > 0
+                                              ? "house"
+                                              : "base"
+                                            }`}
+                                        >
+                                          {currentStaged === 0
+                                            ? "Lv 0"
+                                            : currentStaged === 5
+                                              ? "HOTEL"
+                                              : `Lv ${currentStaged}`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </>
+                        )}
+
+                        <div className="buttons-row">
+                          <div
+                            className="action-btn btn-cancel"
+                            onClick={cancelSellMode}
+                          >
+                            CANCEL
+                          </div>
+                          <div
+                            className={`action-btn btn-sell ${!selectedSellColor || sellTotalRefund === 0
+                              ? "disabled"
+                              : ""
+                              }`}
+                            onClick={
+                              selectedSellColor && sellTotalRefund > 0
+                                ? closeSellMode
+                                : undefined
+                            }
+                          >
+                            SELL{" "}
+                            {sellTotalRefund > 0
+                              ? `(+$${sellTotalRefund.toLocaleString()})`
+                              : ""}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Menu Modal */}
+                {showMenuModal && (
+                  <div
+                    className="modal-overlay menu-modal-overlay"
+                    style={{ zIndex: 1000000 }}
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) closeMenu();
+                    }}
+                  >
+                    <div
+                      className="buy-modal deal-modal bank-modal"
+                      style={{
+                        pointerEvents: "auto",
+                        marginTop: "15vh",
+                        minWidth: "280px",
+                      }}
+                    >
+                      <button
+                        className="modal-close-btn"
+                        onClick={closeMenu}
+                        aria-label="Close"
+                      />
+                      <div className="modal-heading">
+                        <span className="modal-heading-text">☰ MENU</span>
+                      </div>
+                      <div
+                        className="modal-body"
+                        style={{ textAlign: "center", padding: "20px" }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "12px",
+                          }}
+                        >
+                          <button
+                            className="modal-btn buy"
+                            style={{
+                              width: "100%",
+                              background:
+                                "linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%)",
+                            }}
+                            onClick={closeMenu}
+                          >
+                            ▶️ RESUME
+                          </button>
+                          <button
+                            className="modal-btn"
+                            style={{
+                              width: "100%",
+                              background:
+                                "linear-gradient(to bottom, #2196F3 0%, #1565C0 100%)",
+                              color: "white",
+                            }}
+                            onClick={openSettings}
+                          >
+                            ⚙️ SETTINGS
+                          </button>
+                          <button
+                            className="modal-btn"
+                            style={{
+                              width: "100%",
+                              background:
+                                "linear-gradient(to bottom, #37474F 0%, #263238 100%)",
+                              color: "white",
+                            }}
+                            onClick={() => {
+                              setShowMenuModal(false);
+                              setShowLogModal(true);
+                            }}
+                          >
+                            📋 GAME LOGS
+                          </button>
+                          <button
+                            className="modal-btn cancel"
+                            style={{
+                              width: "100%",
+                              background:
+                                "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
+                              color: "white",
+                            }}
+                            onClick={handleExitGame}
+                          >
+                            🚪 EXIT GAME
+                          </button>
+
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Exit Confirmation Modal */}
+                {showExitConfirm && (
+                  <div
+                    className="modal-overlay"
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) setShowExitConfirm(false);
+                    }}
+                  >
+                    <div
+                      className="buy-modal deal-modal bank-modal"
+                      style={{ pointerEvents: "auto", marginTop: "20vh" }}
+                    >
+                      <div
+                        className="modal-heading"
+                        style={{
+                          background:
+                            "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
+                        }}
+                      >
+                        <span className="modal-heading-text">🚪 EXIT TO HOMEPAGE</span>
+                      </div>
+                      <div className="modal-body" style={{ textAlign: "center" }}>
+                        <div
+                          style={{
+                            fontSize: "14px",
+                            color: "#4a2c18",
+                            marginBottom: "15px",
+                          }}
+                        >
+                          Exit current game and return to Homepage?
+                          <br />
+                          <span style={{ fontSize: "12px", color: "#5D4037" }}>
+                            Any active game progress will be forfeited.
+                          </span>
+                        </div>
+                        <div
+                          className="modal-buttons"
+                          style={{ justifyContent: "center", gap: "15px" }}
+                        >
+                          <button
+                            className="modal-btn"
+                            style={{
+                              flex: "none",
+                              minWidth: "100px",
+                              background: "#e0e0e0",
+                              color: "#333",
+                            }}
+                            onClick={() => setShowExitConfirm(false)}
+                          >
+                            RESUME
+                          </button>
+                          <button
+                            className="modal-btn cancel"
+                            style={{
+                              flex: "none",
+                              minWidth: "140px",
+                              background:
+                                "linear-gradient(to bottom, #f44336 0%, #c62828 100%)",
+                              color: "white",
+                            }}
+                            onClick={handleExitGame}
+                          >
+                            EXIT TO HOMEPAGE
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Buying Modal */}
+                {(showBuyModal || (isModalClosing && closingModal === "buy")) &&
+                  buyingProperty &&
+                  !gamePlayers[buyingProperty.buyerIndex]?.isBot && (
+                    <BuyModal
+                      property={buyingProperty}
+                      hasDiscount={!!activeEffects[buyingProperty.buyerIndex]?.discount_50}
+                      isClosing={isModalClosing && closingModal === "buy"}
+                      onBuy={handleBuyProperty}
+                      onCancel={handleCancelBuy}
+                    />
+                  )}
+
+                {/* Rob Bank Modal */}
+                {(showRobBankModal ||
+                  (isModalClosing && closingModal === "robbank")) && (
+                    <div
+                      className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
+                    >
+                      <div className="buy-modal">
+                        {robStatus === "idle" && (
+                          <button
+                            className="modal-close-btn"
+                            onClick={handleRobBankLeave}
+                            aria-label="Close"
+                          />
+                        )}
+                        {/* Header */}
+                        <div
+                          className={`modal-heading ${robStatus === "caught" ? "danger" : ""}`}
+                        >
+                          <span className="modal-heading-text">
+                            {robStatus === "processing"
+                              ? "ROBBING..."
+                              : robStatus === "success"
+                                ? "SUCCESS!"
+                                : robStatus === "caught"
+                                  ? "BUSTED!"
+                                  : "ROB BANK"}
+                          </span>
+                        </div>
+
+                        {/* Body */}
+                        <div className="modal-body">
+                          {robStatus === "idle" && (
+                            <>
+                              <img
+                                src="/modal_ui/safe_door.png"
+                                alt="Safe Vault"
+                                style={{
+                                  width: "52px",
+                                  height: "52px",
+                                  margin: "0 auto 4px",
+                                  display: "block",
+                                  objectFit: "contain",
+                                }}
+                              />
+                              <div className="modal-city-name">RISK IT ALL?</div>
+                              <div className="modal-divider"></div>
+                              <div
+                                className="modal-details"
+                                style={{ textAlign: "center" }}
+                              >
+                                <div
+                                  className="modal-row"
+                                  style={{
+                                    justifyContent: "center",
+                                    color: "#2E7D32",
+                                  }}
+                                >
+                                  <span>WIN $1k - $10k</span>
+                                </div>
+                                <div
+                                  className="modal-row"
+                                  style={{
+                                    justifyContent: "center",
+                                    fontSize: "14px",
+                                    margin: "5px 0",
+                                  }}
+                                >
+                                  <span>OR</span>
+                                </div>
+                                <div
+                                  className="modal-row"
+                                  style={{
+                                    justifyContent: "center",
+                                    color: "#C62828",
+                                  }}
+                                >
+                                  <span>GO TO JAIL</span>
+                                </div>
+                              </div>
+
+                              {/* Buttons - Only show for active player */}
+                              {networkMode !== "online" ||
+                                myPlayerIndex === currentPlayer ? (
+                                <div className="modal-buttons">
+                                  <button
+                                    className="modal-btn cancel"
+                                    onClick={handleRobBankLeave}
+                                  >
+                                    LEAVE
+                                  </button>
+                                  <button
+                                    className="modal-btn buy"
+                                    onClick={handleRobBankAttempt}
+                                  >
+                                    ROB!
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="modal-buttons">
+                                  <div
+                                    style={{
+                                      color: "#4A2C18",
+                                      fontWeight: "bold",
+                                      fontStyle: "italic",
+                                    }}
+                                  >
+                                    Waiting for player...
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {robStatus === "processing" && (
+                            <div
+                              style={{
+                                textAlign: "center",
+                                padding: "10px 0 16px",
+                              }}
+                            >
+                              <div
+                                className="modal-city-name"
+                                style={{ fontSize: "18px", marginBottom: "12px" }}
+                              >
+                                {robStatusText}
+                              </div>
+
+                              <div className="rob-slider-container">
+                                {/* The Three Things / Target Badges */}
+                                <div className="rob-targets-row">
+                                  {/* Thing 1: Busted / Jail */}
+                                  <div
+                                    className={`rob-target-badge target-caught ${robTargetLanded === "caught" || (robSliderPos <= 33 && !robTargetLanded) ? "active" : ""}`}
+                                  >
+                                    <div className="target-icon">
+                                      <BustedJailIcon size={24} />
+                                    </div>
+                                    <div className="target-label">BUSTED</div>
+                                    <div className="target-sub">GO TO JAIL</div>
+                                  </div>
+
+                                  {/* Thing 2: Escaped / Alarm ($0) */}
+                                  <div
+                                    className={`rob-target-badge target-escaped ${robTargetLanded === "escaped" || (robSliderPos > 33 && robSliderPos <= 67 && !robTargetLanded) ? "active" : ""}`}
+                                  >
+                                    <div className="target-icon">
+                                      <EscapedThiefIcon size={24} />
+                                    </div>
+                                    <div className="target-label">ESCAPED</div>
+                                    <div className="target-sub">EMPTY-HANDED</div>
+                                  </div>
+
+                                  {/* Thing 3: Robbed Bank ($1k - $10k) */}
+                                  <div
+                                    className={`rob-target-badge target-jackpot ${robTargetLanded === "success" || (robSliderPos > 67 && !robTargetLanded) ? "active" : ""}`}
+                                  >
+                                    <div className="target-icon">
+                                      <VaultDiamondIcon size={24} />
+                                    </div>
+                                    <div className="target-label">ROB BANK</div>
+                                    <div className="target-sub">$1K - $10K</div>
+                                  </div>
+                                </div>
+
+                                {/* The Slider Track with Moving Needle */}
+                                <div className="rob-track-wrapper">
+                                  <div className="rob-slider-track">
+                                    <div
+                                      className={`rob-slider-needle ${robTargetLanded ? "settled" : ""}`}
+                                      style={{ left: `${robSliderPos}%` }}
+                                    />
+                                  </div>
+                                  <div className="rob-track-markers">
+                                    <div
+                                      className="rob-track-notch"
+                                      style={{ marginLeft: "4%" }}
+                                    />
+                                    <div className="rob-track-notch" />
+                                    <div
+                                      className="rob-track-notch"
+                                      style={{ marginRight: "4%" }}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="rob-status-sub">
+                                  {robTargetLanded === "caught"
+                                    ? "🚨 POLICE CAUGHT YOU!"
+                                    : robTargetLanded === "escaped"
+                                      ? "🏃💨 ESCAPED EMPTY-HANDED!"
+                                      : robTargetLanded === "success"
+                                        ? "💎 BANK VAULT ROBBED!"
+                                        : "DECIDING OUTCOME..."}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {robStatus === "success" && (
+                            <>
+                              <div style={{ textAlign: "center", margin: "4px 0 8px" }}>
+                                <VaultDiamondIcon size={56} />
+                              </div>
+                              <div
+                                className="modal-city-name"
+                                style={{ color: "#2E7D32" }}
+                              >
+                                YOU STOLE
+                              </div>
+                              <div
+                                className="modal-city-name"
+                                style={{
+                                  fontSize: "40px",
+                                  color: "#2E7D32",
+                                  textShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                                }}
+                              >
+                                ${robResult.amount.toLocaleString()}
+                              </div>
+                              <div
+                                className="modal-buttons"
+                                style={{ marginTop: "20px" }}
+                              >
+                                {networkMode !== "online" ||
+                                  myPlayerIndex === currentPlayer ? (
+                                  <button
+                                    className="modal-btn buy"
+                                    onClick={handleRobBankComplete}
+                                    style={{ width: "100%" }}
+                                  >
+                                    COLLECT
+                                  </button>
+                                ) : (
+                                  <div
+                                    style={{
+                                      color: "#4A2C18",
+                                      fontWeight: "bold",
+                                      fontStyle: "italic",
+                                    }}
+                                  >
+                                    Waiting for player to collect...
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {robStatus === "escaped" && (
+                            <>
+                              <div
+                                className="modal-city-name"
+                                style={{ color: "#E65100" }}
+                              >
+                                ALARM TRIGGERED!
+                              </div>
+                              <div
+                                style={{
+                                  textAlign: "center",
+                                  margin: "8px 0 10px",
+                                }}
+                              >
+                                <EscapedThiefIcon size={56} />
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: "13px",
+                                  color: "#5D4037",
+                                  fontWeight: "bold",
+                                  textAlign: "center",
+                                  marginBottom: "12px",
+                                }}
+                              >
+                                You escaped the guards, but got away with $0!
+                              </div>
+                              <div
+                                className="modal-buttons"
+                                style={{ marginTop: "16px" }}
+                              >
+                                {networkMode !== "online" ||
+                                  myPlayerIndex === currentPlayer ? (
+                                  <button
+                                    className="modal-btn"
+                                    onClick={handleRobBankComplete}
+                                    style={{
+                                      width: "100%",
+                                      background:
+                                        "linear-gradient(to bottom, #FF9800 0%, #F57C00 100%)",
+                                      color: "#fff",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
+                                    CONTINUE
+                                  </button>
+                                ) : (
+                                  <div
+                                    style={{
+                                      color: "#4A2C18",
+                                      fontWeight: "bold",
+                                      fontStyle: "italic",
+                                    }}
+                                  >
+                                    Waiting for player...
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {robStatus === "caught" && (
+                            <>
+                              <div
+                                className="modal-city-name"
+                                style={{ color: "#C62828" }}
+                              >
+                                POLICE CAUGHT YOU!
+                              </div>
+                              <div
+                                style={{
+                                  textAlign: "center",
+                                  margin: "10px 0 12px",
+                                }}
+                              >
+                                <BustedJailIcon size={56} />
+                              </div>
+                              <div
+                                className="modal-buttons"
+                                style={{ marginTop: "20px" }}
+                              >
+                                {networkMode !== "online" ||
+                                  myPlayerIndex === currentPlayer ? (
+                                  <button
+                                    className="modal-btn cancel"
+                                    onClick={handleRobBankComplete}
+                                    style={{ width: "100%" }}
+                                  >
+                                    GO TO JAIL
+                                  </button>
+                                ) : (
+                                  <div
+                                    style={{
+                                      color: "#4A2C18",
+                                      fontWeight: "bold",
+                                      fontStyle: "italic",
+                                    }}
+                                  >
+                                    Waiting for player...
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {/* The Audit Modal (Dice Gamble) */}
+                {(showAuditModal ||
+                  (isModalClosing && closingModal === "audit")) && (
+                    <div
+                      className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
+                    >
+                      <div className="buy-modal">
+                        {/* Header */}
+                        <div
+                          className="modal-heading"
+                          style={{
+                            background:
+                              "linear-gradient(to bottom, #5D4037 0%, #3E2723 100%)",
+                          }}
+                        >
+                          <span className="modal-heading-text">🧾 THE AUDIT</span>
+                        </div>
+
+                        {/* Body */}
+                        <div className="modal-body">
+                          <div
+                            className="modal-city-name"
+                            style={{ fontSize: "18px", marginBottom: "15px" }}
+                          >
+                            {gamePlayers[currentPlayer]?.name || "Player"} is being
+                            audited!
+                          </div>
+
+                          {/* Show dice that were rolled */}
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              gap: "16px",
+                              marginBottom: "15px",
+                            }}
+                          >
+                            <AnimatedDie
+                              value={auditDiceValues[0]}
+                              isRolling={isRollingAuditDice}
+                              size={48}
+                              stagger={0}
+                            />
+                            <AnimatedDie
+                              value={auditDiceValues[1]}
+                              isRolling={isRollingAuditDice}
+                              size={48}
+                              stagger={2}
+                            />
+                          </div>
+
+
+                          <div
+                            style={{
+                              textAlign: "center",
+                              fontSize: "15px",
+                              color: "#4A2C18",
+                              fontWeight: "bold",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            Rolled {auditDiceValues[0] + auditDiceValues[1]} × $300
+                          </div>
+
+                          <div
+                            className="modal-city-name"
+                            style={{
+                              fontSize: "32px",
+                              color: "#C62828",
+                              marginTop: "10px",
+                            }}
+                          >
+                            TAX BILL: ${auditAmount.toLocaleString()}
+                          </div>
+
+                          <div
+                            className="modal-buttons"
+                            style={{ marginTop: "20px" }}
+                          >
+                            {networkMode === "offline" ||
+                              myPlayerIndex === null ||
+                              currentPlayer === myPlayerIndex ? (
+                              <button
+                                className="modal-btn cancel"
+                                onClick={handleAuditComplete}
+                                style={{ width: "100%" }}
+                              >
+                                💸 PAY TAXES
+                              </button>
+                            ) : (
+                              <div
+                                style={{
+                                  textAlign: "center",
+                                  color: "#4A2C18",
+                                  fontWeight: "bold",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Waiting for{" "}
+                                {gamePlayers[currentPlayer]?.name || "player"} to
+                                pay taxes...
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Property War Modal */}
+                {showWarModal && (
+                  <div className="modal-overlay">
+                    <div className="buy-modal war-modal">
+                      {/* Header */}
+                      <div
+                        className="modal-heading"
+                        style={{
+                          background:
+                            "linear-gradient(to bottom, #E91E63 0%, #C2185B 100%)",
+                        }}
+                      >
+                        <span className="modal-heading-text">
+                          ⚔️ PROPERTY WAR ⚔️
+                        </span>
+                      </div>
+
+                      {/* Body */}
+                      <div className="modal-body">
+                        {/* Join Phase */}
+                        {warPhase === "join" && (
+                          <>
+                            <div
+                              className="modal-city-name"
+                              style={{ fontSize: "14px", marginBottom: "2px" }}
+                            >
+                              {warMode === "A"
+                                ? "🏠 STANDARD WAR"
+                                : "💰 CASH BATTLE"}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "10.5px",
+                                marginBottom: "4px",
+                                color: "#5D4037",
+                                fontWeight: "bold",
+                                textAlign: "center",
+                                lineHeight: "1.2",
+                              }}
+                            >
+                              {warMode === "A"
+                                ? "Pay $1,000 to compete for a random property!"
+                                : "All properties sold! Pay $1,000 to compete for the Pot!"}
+                            </div>
+
+                            {/* Player Join List */}
+                            <div className="war-join-list">
+                              {gamePlayers.map((player, idx) => {
+                                if (bankruptPlayers[idx]) return null;
+                                const isJoined = warParticipants.includes(idx);
+                                const fee = 1000;
+                                const hasCash = playerMoney[idx] >= fee;
+                                const canTakeLoan = !playerLoans[idx];
+                                const isMyAction =
+                                  networkMode !== "online" ||
+                                  idx === myPlayerIndex;
+
+                                return (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      display: "flex",
+                                      flexDirection: "row",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      padding: "0px 3px",
+                                      minHeight: "18px",
+                                      background: isJoined
+                                        ? "#E8F5E9"
+                                        : "#F5F5F5",
+                                      borderRadius: "3px",
+                                      border: isJoined
+                                        ? "1px solid #4CAF50"
+                                        : "1px solid #ddd",
+                                      boxSizing: "border-box",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "3px",
+                                        minWidth: 0,
+                                        flex: 1,
+                                        overflow: "hidden",
+                                      }}
+                                    >
+                                      <img
+                                        src={player.avatar}
+                                        alt={player.name}
+                                        style={{
+                                          width: "13px",
+                                          height: "13px",
+                                          borderRadius: "50%",
+                                          flexShrink: 0,
+                                        }}
+                                      />
+                                      <span
+                                        style={{
+                                          fontWeight: "bold",
+                                          fontSize: "8.5px",
+                                          color: "#212121",
+                                          whiteSpace: "nowrap",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          maxWidth: "75px",
+                                          lineHeight: "1.1",
+                                        }}
+                                      >
+                                        {player.name}
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontSize: "8px",
+                                          color:
+                                            playerMoney[idx] < fee
+                                              ? "#D32F2F"
+                                              : "#2E7D32",
+                                          fontWeight: 700,
+                                          lineHeight: "1",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        ({playerMoney[idx] >= 1000
+                                          ? `$${(playerMoney[idx] / 1000).toFixed(playerMoney[idx] % 1000 === 0 ? 0 : 1)}k`
+                                          : `$${playerMoney[idx]}`})
+                                      </span>
+                                    </div>
+
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "2px",
+                                        flexShrink: 0,
+                                        marginLeft: "4px",
+                                      }}
+                                    >
+                                      {isJoined ? (
+                                        isMyAction ? (
+                                          <button
+                                            className="modal-btn cancel"
+                                            style={{
+                                              flex: "none",
+                                              width: "auto",
+                                              whiteSpace: "nowrap",
+                                              padding: "0 5px",
+                                              fontSize: "8px",
+                                              height: "19px",
+                                              minHeight: "19px",
+                                              lineHeight: "19px",
+                                              borderRadius: "3px",
+                                            }}
+                                            onClick={() => handleWarWithdraw(idx)}
+                                          >
+                                            LEAVE
+                                          </button>
+                                        ) : (
+                                          <span
+                                            style={{
+                                              fontSize: "8.5px",
+                                              color: "#2E7D32",
+                                              fontWeight: "bold",
+                                              whiteSpace: "nowrap",
+                                            }}
+                                          >
+                                            ✓ Joined
+                                          </span>
+                                        )
+                                      ) : isMyAction ? (
+                                        hasCash ? (
+                                          <button
+                                            className="modal-btn buy"
+                                            style={{
+                                              flex: "none",
+                                              width: "auto",
+                                              whiteSpace: "nowrap",
+                                              padding: "0 6px",
+                                              fontSize: "8.5px",
+                                              height: "19px",
+                                              minHeight: "19px",
+                                              lineHeight: "19px",
+                                              borderRadius: "3px",
+                                            }}
+                                            onClick={() => handleWarJoin(idx)}
+                                          >
+                                            JOIN
+                                          </button>
+                                        ) : (
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "2px",
+                                            }}
+                                          >
+                                            {canTakeLoan && (
+                                              <button
+                                                className="modal-btn buy"
+                                                style={{
+                                                  flex: "none",
+                                                  width: "auto",
+                                                  whiteSpace: "nowrap",
+                                                  padding: "0 4px",
+                                                  fontSize: "8px",
+                                                  height: "19px",
+                                                  minHeight: "19px",
+                                                  lineHeight: "19px",
+                                                  borderRadius: "3px",
+                                                  background:
+                                                    "linear-gradient(135deg, #FF9800 0%, #F57C00 100%)",
+                                                }}
+                                                onClick={() =>
+                                                  handleWarLoanClick(idx)
+                                                }
+                                                title="Open Bank Loan Slider"
+                                              >
+                                                LOAN
+                                              </button>
+                                            )}
                                             <button
-                                              className="modal-btn buy"
+                                              className="modal-btn"
                                               style={{
                                                 flex: "none",
                                                 width: "auto",
@@ -11960,237 +11976,214 @@ function App() {
                                                 minHeight: "19px",
                                                 lineHeight: "19px",
                                                 borderRadius: "3px",
-                                                background:
-                                                  "linear-gradient(135deg, #FF9800 0%, #F57C00 100%)",
+                                                background: "#9C27B0",
+                                                color: "white",
                                               }}
                                               onClick={() =>
-                                                handleWarLoanClick(idx)
+                                                handleWarDealClick(idx)
                                               }
-                                              title="Open Bank Loan Slider"
+                                              title="Trade properties for cash"
                                             >
-                                              LOAN
+                                              DEAL
                                             </button>
-                                          )}
-                                          <button
-                                            className="modal-btn"
-                                            style={{
-                                              flex: "none",
-                                              width: "auto",
-                                              whiteSpace: "nowrap",
-                                              padding: "0 4px",
-                                              fontSize: "8px",
-                                              height: "19px",
-                                              minHeight: "19px",
-                                              lineHeight: "19px",
-                                              borderRadius: "3px",
-                                              background: "#9C27B0",
-                                              color: "white",
-                                            }}
-                                            onClick={() =>
-                                              handleWarDealClick(idx)
-                                            }
-                                            title="Trade properties for cash"
-                                          >
-                                            DEAL
-                                          </button>
-                                        </div>
-                                      )
-                                    ) : (
-                                      <span
-                                        style={{
-                                          fontSize: "8px",
-                                          color: "#777",
-                                          fontStyle: "italic",
-                                        }}
-                                      >
-                                        Wait
-                                      </span>
-                                    )}
+                                          </div>
+                                        )
+                                      ) : (
+                                        <span
+                                          style={{
+                                            fontSize: "8px",
+                                            color: "#777",
+                                            fontStyle: "italic",
+                                          }}
+                                        >
+                                          Wait
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                );
+                              })}
+                            </div>
 
-                          <div
-                            className="modal-buttons"
-                            style={{ gap: "6px", marginTop: "4px", padding: 0 }}
-                          >
-                            {networkMode !== "online" ||
-                            myPlayerIndex === currentPlayer ? (
-                              <>
-                                <button
-                                  className="modal-btn cancel"
-                                  onClick={handleWarSkip}
-                                  style={{
-                                    flex: 1,
-                                    padding: "0 8px",
-                                    height: "28px",
-                                    minHeight: "28px",
-                                    fontSize: "11px",
-                                  }}
-                                >
-                                  {warParticipants.length === 0
-                                    ? "SKIP WAR"
-                                    : "CANCEL WAR"}
-                                </button>
-                                <button
-                                  className="modal-btn buy"
-                                  onClick={handleWarStartProgress}
-                                  disabled={warParticipants.length < 2}
-                                  style={{
-                                    flex: 1.5,
-                                    padding: "0 8px",
-                                    height: "28px",
-                                    minHeight: "28px",
-                                    fontSize: "11px",
-                                    background:
-                                      warParticipants.length >= 2
-                                        ? "linear-gradient(to bottom, #E91E63 0%, #C2185B 100%)"
-                                        : "#ccc",
-                                  }}
-                                >
-                                  START WAR ({warParticipants.length}/2)
-                                </button>
-                              </>
-                            ) : (
-                              <div
-                                style={{
-                                  color: "#4A2C18",
-                                  fontWeight: "bold",
-                                  fontStyle: "italic",
-                                  textAlign: "center",
-                                  width: "100%",
-                                  fontSize: "11px",
-                                  padding: "4px 0",
-                                }}
-                              >
-                                Waiting for {gamePlayers[currentPlayer]?.name}{" "}
-                                to start...
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-
-                      {/* Progress Phase (Mode A only) */}
-                      {warPhase === "progress" && (
-                        <div style={{ textAlign: "center", padding: "16px 0" }}>
-                          <div
-                            className="modal-city-name"
-                            style={{ fontSize: "18px", marginBottom: "16px" }}
-                          >
-                            SELECTING PROPERTY...
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "16px",
-                              backgroundColor: "#eee",
-                              borderRadius: "8px",
-                              overflow: "hidden",
-                            }}
-                          >
                             <div
-                              className="war-progress-bar"
+                              className="modal-buttons"
+                              style={{ gap: "6px", marginTop: "4px", padding: 0 }}
+                            >
+                              {networkMode !== "online" ||
+                                myPlayerIndex === currentPlayer ? (
+                                <>
+                                  <button
+                                    className="modal-btn cancel"
+                                    onClick={handleWarSkip}
+                                    style={{
+                                      flex: 1,
+                                      padding: "0 8px",
+                                      height: "28px",
+                                      minHeight: "28px",
+                                      fontSize: "11px",
+                                    }}
+                                  >
+                                    {warParticipants.length === 0
+                                      ? "SKIP WAR"
+                                      : "CANCEL WAR"}
+                                  </button>
+                                  <button
+                                    className="modal-btn buy"
+                                    onClick={handleWarStartProgress}
+                                    disabled={warParticipants.length < 2}
+                                    style={{
+                                      flex: 1.5,
+                                      padding: "0 8px",
+                                      height: "28px",
+                                      minHeight: "28px",
+                                      fontSize: "11px",
+                                      background:
+                                        warParticipants.length >= 2
+                                          ? "linear-gradient(to bottom, #E91E63 0%, #C2185B 100%)"
+                                          : "#ccc",
+                                    }}
+                                  >
+                                    START WAR ({warParticipants.length}/2)
+                                  </button>
+                                </>
+                              ) : (
+                                <div
+                                  style={{
+                                    color: "#4A2C18",
+                                    fontWeight: "bold",
+                                    fontStyle: "italic",
+                                    textAlign: "center",
+                                    width: "100%",
+                                    fontSize: "11px",
+                                    padding: "4px 0",
+                                  }}
+                                >
+                                  Waiting for {gamePlayers[currentPlayer]?.name}{" "}
+                                  to start...
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+
+                        {/* Progress Phase (Mode A only) */}
+                        {warPhase === "progress" && (
+                          <div style={{ textAlign: "center", padding: "16px 0" }}>
+                            <div
+                              className="modal-city-name"
+                              style={{ fontSize: "18px", marginBottom: "16px" }}
+                            >
+                              SELECTING PROPERTY...
+                            </div>
+                            <div
                               style={{
-                                width: "0%",
-                                height: "100%",
-                                backgroundColor: "#E91E63",
+                                width: "100%",
+                                height: "16px",
+                                backgroundColor: "#eee",
                                 borderRadius: "8px",
-                                animation:
-                                  "warProgressFill 3s ease-out forwards",
+                                overflow: "hidden",
                               }}
-                            ></div>
-                          </div>
-                          <style>{`
+                            >
+                              <div
+                                className="war-progress-bar"
+                                style={{
+                                  width: "0%",
+                                  height: "100%",
+                                  backgroundColor: "#E91E63",
+                                  borderRadius: "8px",
+                                  animation:
+                                    "warProgressFill 3s ease-out forwards",
+                                }}
+                              ></div>
+                            </div>
+                            <style>{`
                     @keyframes warProgressFill {
                       from { width: 0%; }
                       to { width: 100%; }
                     }
                   `}</style>
-                        </div>
-                      )}
-
-                      {/* Reveal Phase - Box with property color, same as Forced Auction */}
-                      {warPhase === "reveal" && warProperty && (
-                        <div
-                          style={{
-                            textAlign: "center",
-                            padding: "8px 0",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flex: 1,
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: "12px",
-                              color: "#5D4037",
-                              fontWeight: "bold",
-                              marginBottom: "6px",
-                            }}
-                          >
-                            ⚔️ The war is for...
                           </div>
+                        )}
+
+                        {/* Reveal Phase - Box with property color, same as Forced Auction */}
+                        {warPhase === "reveal" && warProperty && (
                           <div
-                            className="modal-city-name"
                             style={{
-                              background: warProperty.color || "#E91E63",
-                              color: "#fff",
-                              textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                              width: "135px",
-                              minHeight: "38px",
+                              textAlign: "center",
+                              padding: "8px 0",
                               display: "flex",
+                              flexDirection: "column",
                               alignItems: "center",
                               justifyContent: "center",
-                              margin: "4px auto",
-                              borderRadius: "6px",
-                              boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-                              border: "2px solid white",
-                              fontSize: "12px",
-                              fontWeight: "bold",
-                              textAlign: "center",
-                              lineHeight: "1.1",
-                              padding: "4px 8px",
-                              boxSizing: "border-box",
+                              flex: 1,
                             }}
                           >
-                            {warProperty.name}
+                            <div
+                              style={{
+                                fontSize: "12px",
+                                color: "#5D4037",
+                                fontWeight: "bold",
+                                marginBottom: "6px",
+                              }}
+                            >
+                              ⚔️ The war is for...
+                            </div>
+                            <div
+                              className="modal-city-name"
+                              style={{
+                                background: warProperty.color || "#E91E63",
+                                color: "#fff",
+                                textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                                width: "135px",
+                                minHeight: "38px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                margin: "4px auto",
+                                borderRadius: "6px",
+                                boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                                border: "2px solid white",
+                                fontSize: "12px",
+                                fontWeight: "bold",
+                                textAlign: "center",
+                                lineHeight: "1.1",
+                                padding: "4px 8px",
+                                boxSizing: "border-box",
+                              }}
+                            >
+                              {warProperty.name}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "12px",
+                                color: "#2E7D32",
+                                fontWeight: "bold",
+                                marginTop: "6px",
+                              }}
+                            >
+                              Worth ${warProperty.price?.toLocaleString()}
+                            </div>
                           </div>
-                          <div
-                            style={{
-                              fontSize: "12px",
-                              color: "#2E7D32",
-                              fontWeight: "bold",
-                              marginTop: "6px",
-                            }}
-                          >
-                            Worth ${warProperty.price?.toLocaleString()}
-                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Tie Phase */}
-                      {warPhase === "tie" && (
-                        <div className="war-tie-container">
-                          <div
-                            style={{ fontSize: "28px", marginBottom: "2px" }}
-                          >
-                            ⚔️
-                          </div>
-                          <div className="war-tie-banner">
-                            {warTieMessage || "IT'S A TIE!"}
-                          </div>
+                        {/* Tie Phase */}
+                        {warPhase === "tie" && (
+                          <div className="war-tie-container">
+                            <div
+                              style={{ fontSize: "28px", marginBottom: "2px" }}
+                            >
+                              ⚔️
+                            </div>
+                            <div className="war-tie-banner">
+                              {warTieMessage || "IT'S A TIE!"}
+                            </div>
 
-                          {/* Highlighted Tied Players Cards */}
-                          {(() => {
-                            const tiedList =
-                              warTiedPlayers && warTiedPlayers.length > 0
-                                ? warTiedPlayers
-                                : (() => {
+                            {/* Highlighted Tied Players Cards */}
+                            {(() => {
+                              const tiedList =
+                                warTiedPlayers && warTiedPlayers.length > 0
+                                  ? warTiedPlayers
+                                  : (() => {
                                     if (
                                       !warRolls ||
                                       Object.keys(warRolls).length === 0
@@ -12203,1102 +12196,980 @@ function App() {
                                       .filter(([_, r]) => r === max)
                                       .map(([p]) => parseInt(p));
                                   })();
-                            return (
-                              <div className="war-tied-players-row">
-                                {tiedList.map((pIdx, index) => {
-                                  const player = gamePlayers[pIdx];
-                                  if (!player) return null;
-                                  const score = warTieRoll || warRolls[pIdx];
-                                  return (
-                                    <div
-                                      key={pIdx}
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "6px",
-                                      }}
-                                    >
-                                      {index > 0 && (
-                                        <span className="war-tie-vs">VS</span>
-                                      )}
-                                      <div className="war-tied-player-card">
-                                        <img
-                                          src={player.avatar}
-                                          alt={player.name}
-                                          className="avatar-ring"
-                                        />
-                                        <span className="player-name">
-                                          {player.name}
-                                        </span>
-                                        {score !== undefined &&
-                                          score !== null && (
-                                            <span className="tied-score">
-                                              🎲 {score}
-                                            </span>
-                                          )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-
-                          <div
-                            className="war-tie-subtitle"
-                            style={{ marginTop: "4px" }}
-                          >
-                            ⚡ Sudden-death rematch starting...
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Roll Phase & Evaluating Phase (Combined) - Single Column & Roll Button at Bottom */}
-                      {(warPhase === "roll" ||
-                        warPhase === "rolling" ||
-                        warPhase === "evaluating") && (
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            height: "100%",
-                            justifyContent: "space-between",
-                            flex: 1,
-                            minHeight: 0,
-                          }}
-                        >
-                          {(() => {
-                            const effectiveRollerIdx =
-                              warCurrentRoller !== null &&
-                              warCurrentRoller < warParticipants.length
-                                ? warCurrentRoller
-                                : 0;
-                            const rollerPlayerIdx =
-                              warParticipants[effectiveRollerIdx];
-                            const rollerPlayer = gamePlayers[rollerPlayerIdx];
-                            const isMyTurn =
-                              networkMode === "online"
-                                ? rollerPlayerIdx === myPlayerIndex
-                                : true;
-
-                            const allRolled =
-                              warParticipants.length > 0 &&
-                              warParticipants.every(
-                                (pIdx) => warRolls[pIdx] !== undefined,
-                              );
-                            const maxRollVal =
-                              Object.keys(warRolls).length > 0
-                                ? Math.max(...Object.values(warRolls))
-                                : null;
-
-                            // Sort participants: completed rolls sorted descending; winner transitions to top
-                            const displayParticipants = [
-                              ...warParticipants,
-                            ].sort((a, b) => {
-                              const rA = warRolls[a];
-                              const rB = warRolls[b];
-                              if (rA !== undefined && rB !== undefined) {
-                                return rB - rA;
-                              }
-                              if (rA !== undefined) return -1;
-                              if (rB !== undefined) return 1;
-                              return 0;
-                            });
-
-                            return (
-                              <>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "center",
-                                    minHeight: 0,
-                                    flex: 1,
-                                    overflow: "hidden",
-                                  }}
-                                >
-                                  <div
-                                    className="war-roller-badge"
-                                    style={{
-                                      fontSize: "10px",
-                                      marginBottom: "1px",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      gap: "4px",
-                                      background: "rgba(233, 30, 99, 0.08)",
-                                      border:
-                                        "1px solid rgba(233, 30, 99, 0.22)",
-                                      padding: "1px 6px",
-                                      borderRadius: "5px",
-                                      flexShrink: 0,
-                                    }}
-                                  >
-                                    {warPhase === "evaluating" ? (
-                                      <span
+                              return (
+                                <div className="war-tied-players-row">
+                                  {tiedList.map((pIdx, index) => {
+                                    const player = gamePlayers[pIdx];
+                                    if (!player) return null;
+                                    const score = warTieRoll || warRolls[pIdx];
+                                    return (
+                                      <div
+                                        key={pIdx}
                                         style={{
-                                          fontWeight: "bold",
-                                          color: "#2E7D32",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "6px",
                                         }}
                                       >
-                                        🏆 Determining winner...
-                                      </span>
-                                    ) : (
-                                      <>
-                                        {rollerPlayer && (
-                                          <img
-                                            src={rollerPlayer.avatar}
-                                            alt=""
-                                            style={{
-                                              width: "13px",
-                                              height: "13px",
-                                              borderRadius: "50%",
-                                            }}
-                                          />
+                                        {index > 0 && (
+                                          <span className="war-tie-vs">VS</span>
                                         )}
-                                        <span
-                                          style={{
-                                            fontWeight: "bold",
-                                            color: "#4A2C18",
-                                          }}
-                                        >
-                                          {rollerPlayer
-                                            ? `${rollerPlayer.name}'s Turn`
-                                            : "🎲 Roll Dice"}
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
+                                        <div className="war-tied-player-card">
+                                          <img
+                                            src={player.avatar}
+                                            alt={player.name}
+                                            className="avatar-ring"
+                                          />
+                                          <span className="player-name">
+                                            {player.name}
+                                          </span>
+                                          {score !== undefined &&
+                                            score !== null && (
+                                              <span className="tied-score">
+                                                🎲 {score}
+                                              </span>
+                                            )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
 
-                                  <div
-                                    className="dice-container"
-                                    style={{
-                                      margin: "1px 0",
-                                      justifyContent: "center",
-                                      flexShrink: 0,
-                                      display: "flex",
-                                      gap: "8px",
-                                      alignItems: "center",
-                                    }}
-                                  >
-                                    <AnimatedDie
-                                      value={warDiceValues[0]}
-                                      isRolling={warIsRolling}
-                                      size={38}
-                                      stagger={0}
-                                    />
-                                    <AnimatedDie
-                                      value={warDiceValues[1]}
-                                      isRolling={warIsRolling}
-                                      size={38}
-                                      stagger={2}
-                                    />
-                                  </div>
+                            <div
+                              className="war-tie-subtitle"
+                              style={{ marginTop: "4px" }}
+                            >
+                              ⚡ Sudden-death rematch starting...
+                            </div>
+                          </div>
+                        )}
 
+                        {/* Roll Phase & Evaluating Phase (Combined) - Single Column & Roll Button at Bottom */}
+                        {(warPhase === "roll" ||
+                          warPhase === "rolling" ||
+                          warPhase === "evaluating") && (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                height: "100%",
+                                justifyContent: "space-between",
+                                flex: 1,
+                                minHeight: 0,
+                              }}
+                            >
+                              {(() => {
+                                const effectiveRollerIdx =
+                                  warCurrentRoller !== null &&
+                                    warCurrentRoller < warParticipants.length
+                                    ? warCurrentRoller
+                                    : 0;
+                                const rollerPlayerIdx =
+                                  warParticipants[effectiveRollerIdx];
+                                const rollerPlayer = gamePlayers[rollerPlayerIdx];
+                                const isMyTurn =
+                                  networkMode === "online"
+                                    ? rollerPlayerIdx === myPlayerIndex
+                                    : true;
 
-                                  {/* Participant Rolls in Single Column with Winner Transition */}
-                                  <div
-                                    className="war-rolling-list"
-                                    style={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "1.5px",
-                                      width: "100%",
-                                      margin: "1px 0",
-                                      overflow: "hidden",
-                                      flexShrink: 0,
-                                    }}
-                                  >
-                                    {displayParticipants.map((pIdx) => {
-                                      const player = gamePlayers[pIdx];
-                                      if (!player) return null;
-                                      const roll = warRolls[pIdx];
-                                      const hasRolled = roll !== undefined;
-                                      const isHighest =
-                                        hasRolled &&
-                                        maxRollVal !== null &&
-                                        roll === maxRollVal;
-                                      const showWinnerHighlight =
-                                        (allRolled ||
-                                          warPhase === "evaluating") &&
-                                        isHighest;
+                                const allRolled =
+                                  warParticipants.length > 0 &&
+                                  warParticipants.every(
+                                    (pIdx) => warRolls[pIdx] !== undefined,
+                                  );
+                                const maxRollVal =
+                                  Object.keys(warRolls).length > 0
+                                    ? Math.max(...Object.values(warRolls))
+                                    : null;
 
-                                      return (
-                                        <div
-                                          key={pIdx}
-                                          className={
-                                            showWinnerHighlight
-                                              ? "winner-item"
-                                              : ""
-                                          }
-                                          style={{
-                                            padding: "0px 3px",
-                                            height: "18px",
-                                            minHeight: "18px",
-                                            background: showWinnerHighlight
-                                              ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
-                                              : hasRolled
-                                                ? "#f0f0f0"
-                                                : "rgba(0,0,0,0.03)",
-                                            color: showWinnerHighlight
-                                              ? "#fff"
-                                              : "#333",
-                                            borderRadius: "3px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "space-between",
-                                            fontWeight: "bold",
-                                            fontSize: "8.5px",
-                                            boxSizing: "border-box",
-                                            border: showWinnerHighlight
-                                              ? "1px solid #FFD700"
-                                              : "1px solid rgba(0,0,0,0.06)",
-                                            transition: "all 0.35s ease",
-                                          }}
-                                        >
-                                          <div
+                                // Sort participants: completed rolls sorted descending; winner transitions to top
+                                const displayParticipants = [
+                                  ...warParticipants,
+                                ].sort((a, b) => {
+                                  const rA = warRolls[a];
+                                  const rB = warRolls[b];
+                                  if (rA !== undefined && rB !== undefined) {
+                                    return rB - rA;
+                                  }
+                                  if (rA !== undefined) return -1;
+                                  if (rB !== undefined) return 1;
+                                  return 0;
+                                });
+
+                                return (
+                                  <>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        minHeight: 0,
+                                        flex: 1,
+                                        overflow: "hidden",
+                                      }}
+                                    >
+                                      <div
+                                        className="war-roller-badge"
+                                        style={{
+                                          fontSize: "10px",
+                                          marginBottom: "1px",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          gap: "4px",
+                                          background: "rgba(233, 30, 99, 0.08)",
+                                          border:
+                                            "1px solid rgba(233, 30, 99, 0.22)",
+                                          padding: "1px 6px",
+                                          borderRadius: "5px",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {warPhase === "evaluating" ? (
+                                          <span
                                             style={{
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: "3px",
-                                              overflow: "hidden",
+                                              fontWeight: "bold",
+                                              color: "#2E7D32",
                                             }}
                                           >
-                                            <img
-                                              src={player.avatar}
-                                              alt=""
-                                              style={{
-                                                width: "13px",
-                                                height: "13px",
-                                                borderRadius: "50%",
-                                                flexShrink: 0,
-                                              }}
-                                            />
+                                            🏆 Determining winner...
+                                          </span>
+                                        ) : (
+                                          <>
+                                            {rollerPlayer && (
+                                              <img
+                                                src={rollerPlayer.avatar}
+                                                alt=""
+                                                style={{
+                                                  width: "13px",
+                                                  height: "13px",
+                                                  borderRadius: "50%",
+                                                }}
+                                              />
+                                            )}
                                             <span
                                               style={{
-                                                whiteSpace: "nowrap",
-                                                overflow: "hidden",
-                                                textOverflow: "ellipsis",
-                                                maxWidth: "80px",
-                                                lineHeight: 1,
+                                                fontWeight: "bold",
+                                                color: "#4A2C18",
                                               }}
                                             >
-                                              {player.name}
+                                              {rollerPlayer
+                                                ? `${rollerPlayer.name}'s Turn`
+                                                : "🎲 Roll Dice"}
                                             </span>
-                                            {showWinnerHighlight && (
-                                              <span
-                                                style={{
-                                                  fontSize: "7.5px",
-                                                  color: "#FFD700",
-                                                  flexShrink: 0,
-                                                }}
-                                              >
-                                                👑 WIN
-                                              </span>
-                                            )}
-                                          </div>
-                                          <span style={{ flexShrink: 0 }}>
-                                            {hasRolled ? (
-                                              <span
-                                                style={{
-                                                  color: showWinnerHighlight
-                                                    ? "#fff"
-                                                    : "#E91E63",
-                                                  fontSize: "8.5px",
-                                                  fontWeight: "bold",
-                                                }}
-                                              >
-                                                🎲 {roll}
-                                              </span>
-                                            ) : (
-                                              <span
-                                                style={{
-                                                  fontSize: "8px",
-                                                  color: "#888",
-                                                  fontStyle: "italic",
-                                                }}
-                                              >
-                                                Wait...
-                                              </span>
-                                            )}
-                                          </span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
+                                          </>
+                                        )}
+                                      </div>
 
-                                {/* Roll Button at the Bottom of the Modal */}
-                                <div
-                                  className="modal-buttons"
-                                  style={{
-                                    marginTop: "auto",
-                                    padding: 0,
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  {warPhase === "evaluating" ? (
-                                    <div
-                                      className="war-evaluating-notice"
-                                      style={{
-                                        width: "100%",
-                                        textAlign: "center",
-                                        padding: "4px 0",
-                                        fontSize: "10.5px",
-                                        fontWeight: "bold",
-                                        color: "#2E7D32",
-                                      }}
-                                    >
-                                      🎉 Transitioning to victory...
+                                      <div
+                                        className="dice-container"
+                                        style={{
+                                          margin: "1px 0",
+                                          justifyContent: "center",
+                                          flexShrink: 0,
+                                          display: "flex",
+                                          gap: "8px",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        <AnimatedDie
+                                          value={warDiceValues[0]}
+                                          isRolling={warIsRolling}
+                                          size={38}
+                                          stagger={0}
+                                        />
+                                        <AnimatedDie
+                                          value={warDiceValues[1]}
+                                          isRolling={warIsRolling}
+                                          size={38}
+                                          stagger={2}
+                                        />
+                                      </div>
+
+
+                                      {/* Participant Rolls in Single Column with Winner Transition */}
+                                      <div
+                                        className="war-rolling-list"
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "1.5px",
+                                          width: "100%",
+                                          margin: "1px 0",
+                                          overflow: "hidden",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {displayParticipants.map((pIdx) => {
+                                          const player = gamePlayers[pIdx];
+                                          if (!player) return null;
+                                          const roll = warRolls[pIdx];
+                                          const hasRolled = roll !== undefined;
+                                          const isHighest =
+                                            hasRolled &&
+                                            maxRollVal !== null &&
+                                            roll === maxRollVal;
+                                          const showWinnerHighlight =
+                                            (allRolled ||
+                                              warPhase === "evaluating") &&
+                                            isHighest;
+
+                                          return (
+                                            <div
+                                              key={pIdx}
+                                              className={
+                                                showWinnerHighlight
+                                                  ? "winner-item"
+                                                  : ""
+                                              }
+                                              style={{
+                                                padding: "0px 3px",
+                                                height: "18px",
+                                                minHeight: "18px",
+                                                background: showWinnerHighlight
+                                                  ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
+                                                  : hasRolled
+                                                    ? "#f0f0f0"
+                                                    : "rgba(0,0,0,0.03)",
+                                                color: showWinnerHighlight
+                                                  ? "#fff"
+                                                  : "#333",
+                                                borderRadius: "3px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                fontWeight: "bold",
+                                                fontSize: "8.5px",
+                                                boxSizing: "border-box",
+                                                border: showWinnerHighlight
+                                                  ? "1px solid #FFD700"
+                                                  : "1px solid rgba(0,0,0,0.06)",
+                                                transition: "all 0.35s ease",
+                                              }}
+                                            >
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: "3px",
+                                                  overflow: "hidden",
+                                                }}
+                                              >
+                                                <img
+                                                  src={player.avatar}
+                                                  alt=""
+                                                  style={{
+                                                    width: "13px",
+                                                    height: "13px",
+                                                    borderRadius: "50%",
+                                                    flexShrink: 0,
+                                                  }}
+                                                />
+                                                <span
+                                                  style={{
+                                                    whiteSpace: "nowrap",
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                    maxWidth: "80px",
+                                                    lineHeight: 1,
+                                                  }}
+                                                >
+                                                  {player.name}
+                                                </span>
+                                                {showWinnerHighlight && (
+                                                  <span
+                                                    style={{
+                                                      fontSize: "7.5px",
+                                                      color: "#FFD700",
+                                                      flexShrink: 0,
+                                                    }}
+                                                  >
+                                                    👑 WIN
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <span style={{ flexShrink: 0 }}>
+                                                {hasRolled ? (
+                                                  <span
+                                                    style={{
+                                                      color: showWinnerHighlight
+                                                        ? "#fff"
+                                                        : "#E91E63",
+                                                      fontSize: "8.5px",
+                                                      fontWeight: "bold",
+                                                    }}
+                                                  >
+                                                    🎲 {roll}
+                                                  </span>
+                                                ) : (
+                                                  <span
+                                                    style={{
+                                                      fontSize: "8px",
+                                                      color: "#888",
+                                                      fontStyle: "italic",
+                                                    }}
+                                                  >
+                                                    Wait...
+                                                  </span>
+                                                )}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
                                     </div>
-                                  ) : (
-                                    <button
-                                      className="modal-btn buy"
-                                      onClick={handleWarDoRoll}
-                                      disabled={
-                                        warIsRolling ||
-                                        (networkMode === "online" && !isMyTurn)
-                                      }
+
+                                    {/* Roll Button at the Bottom of the Modal */}
+                                    <div
+                                      className="modal-buttons"
                                       style={{
-                                        width: "100%",
-                                        height: "28px",
-                                        minHeight: "28px",
-                                        background:
-                                          warIsRolling ||
-                                          (networkMode === "online" &&
-                                            !isMyTurn)
-                                            ? "#ccc"
-                                            : "linear-gradient(to bottom, #E91E63 0%, #C2185B 100%)",
-                                        cursor:
-                                          warIsRolling ||
-                                          (networkMode === "online" &&
-                                            !isMyTurn)
-                                            ? "not-allowed"
-                                            : "pointer",
-                                        padding: "0 10px",
-                                        fontSize: "11px",
-                                        borderRadius: "6px",
+                                        marginTop: "auto",
+                                        padding: 0,
+                                        flexShrink: 0,
                                       }}
                                     >
-                                      {warIsRolling
-                                        ? "ROLLING..."
-                                        : networkMode === "online" && !isMyTurn
-                                          ? `Waiting for ${rollerPlayer?.name || "player"}...`
-                                          : `🎲 ROLL! (${rollerPlayer?.name || "Player"})`}
-                                    </button>
-                                  )}
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
+                                      {warPhase === "evaluating" ? (
+                                        <div
+                                          className="war-evaluating-notice"
+                                          style={{
+                                            width: "100%",
+                                            textAlign: "center",
+                                            padding: "4px 0",
+                                            fontSize: "10.5px",
+                                            fontWeight: "bold",
+                                            color: "#2E7D32",
+                                          }}
+                                        >
+                                          🎉 Transitioning to victory...
+                                        </div>
+                                      ) : (
+                                        <button
+                                          className="modal-btn buy"
+                                          onClick={handleWarDoRoll}
+                                          disabled={
+                                            warIsRolling ||
+                                            (networkMode === "online" && !isMyTurn)
+                                          }
+                                          style={{
+                                            width: "100%",
+                                            height: "28px",
+                                            minHeight: "28px",
+                                            background:
+                                              warIsRolling ||
+                                                (networkMode === "online" &&
+                                                  !isMyTurn)
+                                                ? "#ccc"
+                                                : "linear-gradient(to bottom, #E91E63 0%, #C2185B 100%)",
+                                            cursor:
+                                              warIsRolling ||
+                                                (networkMode === "online" &&
+                                                  !isMyTurn)
+                                                ? "not-allowed"
+                                                : "pointer",
+                                            padding: "0 10px",
+                                            fontSize: "11px",
+                                            borderRadius: "6px",
+                                          }}
+                                        >
+                                          {warIsRolling
+                                            ? "ROLLING..."
+                                            : networkMode === "online" && !isMyTurn
+                                              ? `Waiting for ${rollerPlayer?.name || "player"}...`
+                                              : `🎲 ROLL! (${rollerPlayer?.name || "Player"})`}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          )}
 
-                      {/* Result Phase */}
-                      {warPhase === "result" && (
-                        <div className="war-result-container">
-                          {/* Winner Announcement */}
-                          {(() => {
-                            const calculatedWinner =
-                              warWinner !== null && warWinner !== undefined
-                                ? warWinner
-                                : Object.keys(warRolls).length > 0
-                                  ? parseInt(
+                        {/* Result Phase */}
+                        {warPhase === "result" && (
+                          <div className="war-result-container">
+                            {/* Winner Announcement */}
+                            {(() => {
+                              const calculatedWinner =
+                                warWinner !== null && warWinner !== undefined
+                                  ? warWinner
+                                  : Object.keys(warRolls).length > 0
+                                    ? parseInt(
                                       Object.entries(warRolls).reduce((a, b) =>
                                         b[1] > a[1] ? b : a,
                                       )[0],
                                     )
-                                  : null;
-                            if (
-                              calculatedWinner === null ||
-                              calculatedWinner === undefined ||
-                              !gamePlayers[calculatedWinner]
-                            )
-                              return null;
-                            const winnerPlayer = gamePlayers[calculatedWinner];
-                            return (
-                              <div className="war-winner-section">
-                                <div
-                                  className="modal-city-name"
-                                  style={{
-                                    fontSize: "13px",
-                                    color: "#E91E63",
-                                    marginBottom: "1px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    gap: "4px",
-                                  }}
-                                >
-                                  <img
-                                    src="/modal_ui/win_cup.png"
-                                    alt="Trophy"
-                                    style={{
-                                      width: "16px",
-                                      height: "20px",
-                                      objectFit: "contain",
-                                    }}
-                                  />
-                                  {winnerPlayer.avatar && (
-                                    <img
-                                      src={winnerPlayer.avatar}
-                                      alt={winnerPlayer.name}
-                                      style={{
-                                        width: "18px",
-                                        height: "18px",
-                                        borderRadius: "50%",
-                                        border: "1.5px solid #FFD700",
-                                        boxShadow:
-                                          "0 0 6px rgba(255, 215, 0, 0.7)",
-                                      }}
-                                    />
-                                  )}
-                                  <span>{winnerPlayer.name} WINS!</span>
-                                  <img
-                                    src="/modal_ui/win_cup.png"
-                                    alt="Trophy"
-                                    style={{
-                                      width: "16px",
-                                      height: "20px",
-                                      objectFit: "contain",
-                                    }}
-                                  />
-                                </div>
-                                <div className="war-winner-prize">
-                                  {warMode === "A" && warProperty
-                                    ? `Won "${warProperty.name}"`
-                                    : `Won $${(battlePot || 0).toLocaleString()}`}
-                                </div>
-                              </div>
-                            );
-                          })()}
-
-                          {/* Show all rolls in single column */}
-                          <div className="war-roll-list">
-                            {Object.entries(warRolls).map(
-                              ([playerIdx, roll]) => {
-                                const isWinner =
-                                  roll === Math.max(...Object.values(warRolls));
-                                return (
+                                    : null;
+                              if (
+                                calculatedWinner === null ||
+                                calculatedWinner === undefined ||
+                                !gamePlayers[calculatedWinner]
+                              )
+                                return null;
+                              const winnerPlayer = gamePlayers[calculatedWinner];
+                              return (
+                                <div className="war-winner-section">
                                   <div
-                                    key={playerIdx}
+                                    className="modal-city-name"
                                     style={{
+                                      fontSize: "13px",
+                                      color: "#E91E63",
+                                      marginBottom: "1px",
                                       display: "flex",
-                                      justifyContent: "space-between",
-                                      padding: "0px 3px",
-                                      minHeight: "18px",
-                                      boxSizing: "border-box",
-                                      background: isWinner
-                                        ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
-                                        : "linear-gradient(135deg, #FFB74D 0%, #FF9800 100%)",
-                                      borderRadius: "3px",
-                                      color: "#fff",
-                                      fontWeight: "bold",
-                                      boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
-                                      fontSize: "8.5px",
                                       alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "4px",
                                     }}
                                   >
-                                    <div
+                                    <img
+                                      src="/modal_ui/win_cup.png"
+                                      alt="Trophy"
                                       style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "3px",
+                                        width: "16px",
+                                        height: "20px",
+                                        objectFit: "contain",
                                       }}
-                                    >
+                                    />
+                                    {winnerPlayer.avatar && (
                                       <img
-                                        src={
-                                          gamePlayers[parseInt(playerIdx)]
-                                            ?.avatar
-                                        }
-                                        alt={
-                                          gamePlayers[parseInt(playerIdx)]?.name
-                                        }
+                                        src={winnerPlayer.avatar}
+                                        alt={winnerPlayer.name}
                                         style={{
-                                          width: "13px",
-                                          height: "13px",
+                                          width: "18px",
+                                          height: "18px",
                                           borderRadius: "50%",
+                                          border: "1.5px solid #FFD700",
+                                          boxShadow:
+                                            "0 0 6px rgba(255, 215, 0, 0.7)",
                                         }}
                                       />
-                                      <span>
-                                        {gamePlayers[parseInt(playerIdx)]?.name}
-                                        {isWinner && " 👑"}
-                                      </span>
-                                    </div>
-                                    <span>🎲 {roll}</span>
+                                    )}
+                                    <span>{winnerPlayer.name} WINS!</span>
+                                    <img
+                                      src="/modal_ui/win_cup.png"
+                                      alt="Trophy"
+                                      style={{
+                                        width: "16px",
+                                        height: "20px",
+                                        objectFit: "contain",
+                                      }}
+                                    />
                                   </div>
-                                );
-                              },
-                            )}
-                          </div>
+                                  <div className="war-winner-prize">
+                                    {warMode === "A" && warProperty
+                                      ? `Won "${warProperty.name}"`
+                                      : `Won $${(battlePot || 0).toLocaleString()}`}
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
-                          <div
-                            className="modal-buttons"
-                            style={{ marginTop: "3px", padding: 0 }}
-                          >
-                            <button
-                              className="modal-btn buy"
-                              onClick={handleWarComplete}
-                              style={{
-                                width: "100%",
-                                background: "#4CAF50",
-                                height: "26px",
-                                minHeight: "26px",
-                                padding: "0 10px",
-                                fontSize: "11px",
-                              }}
-                            >
-                              CONFIRM
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Chance Modal */}
-              {(showChanceModal ||
-                (isModalClosing && closingModal === "chance")) &&
-                currentChanceCard && (
-                  <div
-                    className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
-                  >
-                    <div className="buy-modal">
-                      {/* Header */}
-                      <div
-                        className={`modal-heading ${currentChanceCard.action === "MONEY_SUBTRACT" || currentChanceCard.action === "REPAIRS" ? "danger" : ""}`}
-                      >
-                        <span className="modal-heading-text">CHANCE</span>
-                      </div>
-
-                      {/* Body */}
-                      <div className="modal-body">
-                        <img
-                          src={
-                            currentChanceCard.action === "MONEY_SUBTRACT" || currentChanceCard.action === "REPAIRS"
-                              ? "/modal_ui/money_lost.png"
-                              : "/modal_ui/money_take.png"
-                          }
-                          alt="Chance"
-                          style={{
-                            width: "44px",
-                            height: "54px",
-                            margin: "2px auto 6px",
-                            display: "block",
-                            objectFit: "contain",
-                          }}
-                        />
-                        <div
-                          className="modal-city-name"
-                          style={{
-                            fontSize: "16px",
-                            marginBottom: "12px",
-                            minHeight: "36px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            textAlign: "center",
-                            lineHeight: "1.25",
-                          }}
-                        >
-                          {currentChanceCard.text}
-                        </div>
-
-                        <div
-                          className="modal-buttons"
-                          style={{ justifyContent: "center" }}
-                        >
-                          {networkMode !== "online" ||
-                          myPlayerIndex === currentPlayer ? (
-                            <button
-                              className="modal-btn buy"
-                              onClick={() =>
-                                handleChanceCardAction(currentChanceCard)
-                              }
-                              style={{ minWidth: "120px" }}
-                            >
-                              OK
-                            </button>
-                          ) : (
-                            <div
-                              style={{
-                                textAlign: "center",
-                                color: "#4A2C18",
-                                fontWeight: "bold",
-                                fontStyle: "italic",
-                              }}
-                            >
-                              Waiting for{" "}
-                              {gamePlayers[currentPlayer]?.name || "player"}...
+                            {/* Show all rolls in single column */}
+                            <div className="war-roll-list">
+                              {Object.entries(warRolls).map(
+                                ([playerIdx, roll]) => {
+                                  const isWinner =
+                                    roll === Math.max(...Object.values(warRolls));
+                                  return (
+                                    <div
+                                      key={playerIdx}
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        padding: "0px 3px",
+                                        minHeight: "18px",
+                                        boxSizing: "border-box",
+                                        background: isWinner
+                                          ? "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)"
+                                          : "linear-gradient(135deg, #FFB74D 0%, #FF9800 100%)",
+                                        borderRadius: "3px",
+                                        color: "#fff",
+                                        fontWeight: "bold",
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                                        fontSize: "8.5px",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "3px",
+                                        }}
+                                      >
+                                        <img
+                                          src={
+                                            gamePlayers[parseInt(playerIdx)]
+                                              ?.avatar
+                                          }
+                                          alt={
+                                            gamePlayers[parseInt(playerIdx)]?.name
+                                          }
+                                          style={{
+                                            width: "13px",
+                                            height: "13px",
+                                            borderRadius: "50%",
+                                          }}
+                                        />
+                                        <span>
+                                          {gamePlayers[parseInt(playerIdx)]?.name}
+                                          {isWinner && " 👑"}
+                                        </span>
+                                      </div>
+                                      <span>🎲 {roll}</span>
+                                    </div>
+                                  );
+                                },
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
-              {/* Chest Modal */}
-              {(showChestModal ||
-                (isModalClosing && closingModal === "chest")) &&
-                currentChestCard && (
-                  <div
-                    className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
-                  >
-                    <div className="buy-modal">
-                      {/* Header */}
-                      <div
-                        className={`modal-heading ${currentChestCard.action === "MONEY_SUBTRACT" ? "danger" : ""}`}
-                      >
-                        <span className="modal-heading-text">
-                          TREASURE CHEST
-                        </span>
-                      </div>
-
-                      {/* Body */}
-                      <div className="modal-body">
-                        <img
-                          src={
-                            currentChestCard.action === "MONEY_SUBTRACT"
-                              ? "/modal_ui/money_lost.png"
-                              : "/modal_ui/money_take.png"
-                          }
-                          alt="Chest"
-                          style={{
-                            width: "44px",
-                            height: "54px",
-                            margin: "2px auto 6px",
-                            display: "block",
-                            objectFit: "contain",
-                          }}
-                        />
-                        <div
-                          className="modal-city-name"
-                          style={{
-                            fontSize: "16px",
-                            marginBottom: "12px",
-                            minHeight: "36px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            textAlign: "center",
-                            lineHeight: "1.25",
-                          }}
-                        >
-                          {currentChestCard.text}
-                        </div>
-
-                        <div
-                          className="modal-buttons"
-                          style={{ justifyContent: "center" }}
-                        >
-                          {networkMode !== "online" ||
-                          myPlayerIndex === currentPlayer ? (
-                            <button
-                              className="modal-btn buy"
-                              onClick={() =>
-                                handleChestCardAction(currentChestCard)
-                              }
-                              style={{ minWidth: "120px" }}
-                            >
-                              OK
-                            </button>
-                          ) : (
                             <div
-                              style={{
-                                textAlign: "center",
-                                color: "#4A2C18",
-                                fontWeight: "bold",
-                                fontStyle: "italic",
-                              }}
+                              className="modal-buttons"
+                              style={{ marginTop: "3px", padding: 0 }}
                             >
-                              Waiting for{" "}
-                              {gamePlayers[currentPlayer]?.name || "player"}...
+                              <button
+                                className="modal-btn buy"
+                                onClick={handleWarComplete}
+                                style={{
+                                  width: "100%",
+                                  background: "#4CAF50",
+                                  height: "26px",
+                                  minHeight: "26px",
+                                  padding: "0 10px",
+                                  fontSize: "11px",
+                                }}
+                              >
+                                CONFIRM
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              {/* Parking Modal */}
-              {(showParkingModal ||
-                (isModalClosing && closingModal === "parking")) && (
-                <div
-                  className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
-                >
-                  <div className="buy-modal">
-                    <div
-                      className="modal-heading"
-                      style={{ background: "#2196F3" }}
-                    >
-                      <span className="modal-heading-text">FREE PARKING</span>
-                    </div>
-                    <div className="modal-body">
-                      <div
-                        className="modal-city-name"
-                        style={{
-                          fontSize: "20px",
-                          marginBottom: "20px",
-                          textAlign: "center",
-                        }}
-                      >
-                        Take a rest for a turn. Nothing happens.
-                      </div>
-                      <div
-                        className="modal-buttons"
-                        style={{ justifyContent: "center" }}
-                      >
-                        {networkMode !== "online" ||
-                        myPlayerIndex === currentPlayer ? (
-                          <button
-                            className="modal-btn buy"
-                            onClick={handleParkingConfirm}
-                            style={{ width: "120px", background: "#2196F3" }}
-                          >
-                            OK
-                          </button>
-                        ) : (
-                          <div
-                            style={{
-                              textAlign: "center",
-                              color: "#4A2C18",
-                              fontWeight: "bold",
-                              fontStyle: "italic",
-                            }}
-                          >
-                            Waiting for{" "}
-                            {gamePlayers[currentPlayer]?.name || "player"}...
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* 1. Landing Choice Modal */}
-              {showAuctionLandingModal && (
-                <div className="modal-overlay">
-                  <div className="buy-modal auction-modal">
+                {/* Chance Modal */}
+                {(showChanceModal ||
+                  (isModalClosing && closingModal === "chance")) &&
+                  currentChanceCard && (
                     <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          "linear-gradient(to bottom, #FFD700 0%, #FFA500 100%)",
-                        padding: "5px 10px",
-                      }}
+                      className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
                     >
-                      <span
-                        className="modal-heading-text"
-                        style={{ fontSize: "13px" }}
-                      >
-                        OPPORTUNITY
-                      </span>
-                    </div>
-                    <div
-                      className="modal-body"
-                      style={{ padding: "8px 12px", overflow: "hidden" }}
-                    >
-                      <div
-                        style={{
-                          textAlign: "center",
-                          margin: "6px 0",
-                          fontSize: "13px",
-                          lineHeight: "1.3",
-                        }}
-                      >
-                        Opportunity Knocks! Force an opponent to sell a
-                        property? <br />
-                        <span
-                          style={{
-                            fontWeight: "bold",
-                            color: "#D32F2F",
-                            fontSize: "12px",
-                          }}
-                        >
-                          Cost: $2,000
-                        </span>
-                      </div>
-                      <div
-                        className="modal-buttons"
-                        style={{ gap: "6px", marginTop: "4px", padding: 0 }}
-                      >
-                        <button
-                          className="modal-btn cancel"
-                          style={{
-                            height: "28px",
-                            minHeight: "28px",
-                            fontSize: "11px",
-                          }}
-                          onClick={() => {
-                            setShowAuctionLandingModal(false);
-                            // Pass means 'End Turn' for this tile logic
-                            if (networkMode === "online")
-                              sendGameAction("end_turn");
-                            else endTurn(currentPlayer, false);
-                          }}
-                        >
-                          PASS
-                        </button>
-                        <button
-                          className="modal-btn buy"
-                          style={{
-                            height: "28px",
-                            minHeight: "28px",
-                            fontSize: "11px",
-                            background:
-                              "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)",
-                          }}
-                          onClick={() => {
-                            const activeSelector =
-                              networkMode === "online"
-                                ? myPlayerIndex
-                                : currentPlayer;
-                            if ((playerMoney[activeSelector] ?? 0) < 2000) {
-                              showToast(
-                                "Not enough money! You need $2,000 to start an auction.",
-                              );
-                              return;
-                            }
-                            setShowAuctionLandingModal(false);
-                            if (networkMode === "online") {
-                              sendGameAction("auction_start_selection");
-                            }
-                            setIsSelectingAuctionProperty(true);
-                            setShowAuctionInstructionModal(true);
-                          }}
-                        >
-                          START
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 2. Instruction Overlay */}
-              {showAuctionInstructionModal && !pendingAuctionProperty && (
-                <div
-                  className="modal-overlay modal-overlay-inline"
-                  style={{ background: "transparent", pointerEvents: "none" }}
-                >
-                  <div
-                    className="buy-modal auction-modal"
-                    style={{ pointerEvents: "auto", marginTop: "4vh" }}
-                  >
-                    <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #FFC107 0%, #FF9800 100%)",
-                        padding: "5px 10px",
-                      }}
-                    >
-                      <span
-                        className="modal-heading-text"
-                        style={{ fontSize: "13px" }}
-                      >
-                        AUCTION SELECTION
-                      </span>
-                    </div>
-                    <div
-                      className="modal-body"
-                      style={{ padding: "8px 12px", overflow: "hidden" }}
-                    >
-                      <div
-                        style={{
-                          textAlign: "center",
-                          margin: "6px 0",
-                          fontSize: "12px",
-                          lineHeight: "1.3",
-                        }}
-                      >
-                        Tap any single, unbuilt opponent property to auction it!
-                        <br />
-                        <span style={{ fontSize: "10.5px", color: "#666" }}>
-                          (Cannot auction built houses or break monopolies)
-                        </span>
-                      </div>
-                      <div
-                        className="modal-buttons"
-                        style={{ marginTop: "4px", padding: 0 }}
-                      >
-                        <button
-                          className="modal-btn cancel"
-                          style={{
-                            height: "26px",
-                            minHeight: "26px",
-                            fontSize: "11px",
-                            width: "100%",
-                          }}
-                          onClick={() => {
-                            setIsSelectingAuctionProperty(false);
-                            setShowAuctionInstructionModal(false);
-                            if (networkMode === "online") {
-                              sendGameAction("auction_cancel"); // Clear B&W state
-                              sendGameAction("end_turn");
-                            } else {
-                              endTurn(currentPlayer, false);
-                            }
-                          }}
-                        >
-                          CANCEL
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 3. Selection Confirmation Modal */}
-              {pendingAuctionProperty && (
-                <div className="modal-overlay">
-                  <div className="buy-modal auction-modal">
-                    <div
-                      className="modal-heading"
-                      style={{ background: "#D32F2F", padding: "5px 10px" }}
-                    >
-                      <span
-                        className="modal-heading-text"
-                        style={{ fontSize: "13px" }}
-                      >
-                        AUCTION PROPERTY?
-                      </span>
-                    </div>
-                    <div
-                      className="modal-body"
-                      style={{ padding: "6px 10px", overflow: "hidden" }}
-                    >
-                      <div
-                        className="modal-city-name"
-                        style={{
-                          background: pendingAuctionProperty.color,
-                          color: "#fff",
-                          textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                          width: "120px",
-                          height: "38px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          margin: "4px auto",
-                          borderRadius: "6px",
-                          boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
-                          border: "2px solid white",
-                          fontSize: "11px",
-                          textAlign: "center",
-                          lineHeight: "1.1",
-                        }}
-                      >
-                        {pendingAuctionProperty.name}
-                      </div>
-                      <div
-                        style={{
-                          textAlign: "center",
-                          margin: "6px 0",
-                          fontSize: "13px",
-                        }}
-                      >
-                        Force this property into auction? <br />
-                        <span
-                          style={{
-                            fontWeight: "bold",
-                            color: "#D32F2F",
-                            fontSize: "12px",
-                          }}
-                        >
-                          Fee: $2,000
-                        </span>
-                      </div>
-                      <div
-                        className="modal-buttons"
-                        style={{ gap: "6px", marginTop: "4px", padding: 0 }}
-                      >
-                        <button
-                          className="modal-btn cancel"
-                          style={{
-                            height: "28px",
-                            minHeight: "28px",
-                            fontSize: "11px",
-                            flex: 1,
-                          }}
-                          onClick={() => setPendingAuctionProperty(null)}
-                        >
-                          BACK
-                        </button>
-                        <button
-                          className="modal-btn buy"
-                          style={{
-                            background:
-                              "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)",
-                            height: "28px",
-                            minHeight: "28px",
-                            fontSize: "11px",
-                            flex: 1.5,
-                          }}
-                          onClick={handleAuctionConfirm}
-                        >
-                          PAY $2,000
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 3b. Announcement Modal */}
-              {auctionState.status === "announcing" && (
-                <div className="modal-overlay">
-                  <div className="buy-modal auction-modal">
-                    <div
-                      className="modal-heading"
-                      style={{ background: "#FF9800", padding: "5px 10px" }}
-                    >
-                      <span
-                        className="modal-heading-text"
-                        style={{ fontSize: "13px" }}
-                      >
-                        AUCTION STARTING!
-                      </span>
-                    </div>
-                    <div
-                      className="modal-body"
-                      style={{ padding: "6px 10px", overflow: "hidden" }}
-                    >
-                      <div style={{ textAlign: "center", margin: "4px 0" }}>
+                      <div className="buy-modal">
+                        {/* Header */}
                         <div
-                          style={{
-                            fontSize: "12px",
-                            marginBottom: "4px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "5px",
-                          }}
+                          className={`modal-heading ${currentChanceCard.action === "MONEY_SUBTRACT" || currentChanceCard.action === "REPAIRS" ? "danger" : ""}`}
                         >
+                          <span className="modal-heading-text">CHANCE</span>
+                        </div>
+
+                        {/* Body */}
+                        <div className="modal-body">
                           <img
-                            src={gamePlayers[auctionState.initiator]?.avatar}
-                            alt=""
+                            src={
+                              currentChanceCard.action === "MONEY_SUBTRACT" || currentChanceCard.action === "REPAIRS"
+                                ? "/modal_ui/money_lost.png"
+                                : "/modal_ui/money_take.png"
+                            }
+                            alt="Chance"
                             style={{
-                              width: "16px",
-                              height: "16px",
-                              borderRadius: "50%",
+                              width: "44px",
+                              height: "54px",
+                              margin: "2px auto 6px",
+                              display: "block",
+                              objectFit: "contain",
                             }}
                           />
-                          <span style={{ fontWeight: "bold" }}>
-                            {gamePlayers[auctionState.initiator]?.name}
-                          </span>{" "}
-                          chose:
+                          <div
+                            className="modal-city-name"
+                            style={{
+                              fontSize: "16px",
+                              marginBottom: "12px",
+                              minHeight: "36px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              textAlign: "center",
+                              lineHeight: "1.25",
+                            }}
+                          >
+                            {currentChanceCard.text}
+                          </div>
+
+                          <div
+                            className="modal-buttons"
+                            style={{ justifyContent: "center" }}
+                          >
+                            {networkMode !== "online" ||
+                              myPlayerIndex === currentPlayer ? (
+                              <button
+                                className="modal-btn buy"
+                                onClick={() =>
+                                  handleChanceCardAction(currentChanceCard)
+                                }
+                                style={{ minWidth: "120px" }}
+                              >
+                                OK
+                              </button>
+                            ) : (
+                              <div
+                                style={{
+                                  textAlign: "center",
+                                  color: "#4A2C18",
+                                  fontWeight: "bold",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Waiting for{" "}
+                                {gamePlayers[currentPlayer]?.name || "player"}...
+                              </div>
+                            )}
+                          </div>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Chest Modal */}
+                {(showChestModal ||
+                  (isModalClosing && closingModal === "chest")) &&
+                  currentChestCard && (
+                    <div
+                      className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
+                    >
+                      <div className="buy-modal">
+                        {/* Header */}
+                        <div
+                          className={`modal-heading ${currentChestCard.action === "MONEY_SUBTRACT" ? "danger" : ""}`}
+                        >
+                          <span className="modal-heading-text">
+                            TREASURE CHEST
+                          </span>
+                        </div>
+
+                        {/* Body */}
+                        <div className="modal-body">
+                          <img
+                            src={
+                              currentChestCard.action === "MONEY_SUBTRACT"
+                                ? "/modal_ui/money_lost.png"
+                                : "/modal_ui/money_take.png"
+                            }
+                            alt="Chest"
+                            style={{
+                              width: "44px",
+                              height: "54px",
+                              margin: "2px auto 6px",
+                              display: "block",
+                              objectFit: "contain",
+                            }}
+                          />
+                          <div
+                            className="modal-city-name"
+                            style={{
+                              fontSize: "16px",
+                              marginBottom: "12px",
+                              minHeight: "36px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              textAlign: "center",
+                              lineHeight: "1.25",
+                            }}
+                          >
+                            {currentChestCard.text}
+                          </div>
+
+                          <div
+                            className="modal-buttons"
+                            style={{ justifyContent: "center" }}
+                          >
+                            {networkMode !== "online" ||
+                              myPlayerIndex === currentPlayer ? (
+                              <button
+                                className="modal-btn buy"
+                                onClick={() =>
+                                  handleChestCardAction(currentChestCard)
+                                }
+                                style={{ minWidth: "120px" }}
+                              >
+                                OK
+                              </button>
+                            ) : (
+                              <div
+                                style={{
+                                  textAlign: "center",
+                                  color: "#4A2C18",
+                                  fontWeight: "bold",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Waiting for{" "}
+                                {gamePlayers[currentPlayer]?.name || "player"}...
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Parking Modal */}
+                {(showParkingModal ||
+                  (isModalClosing && closingModal === "parking")) && (
+                    <div
+                      className={`modal-overlay ${isModalClosing ? "closing" : ""}`}
+                    >
+                      <div className="buy-modal">
+                        <div
+                          className="modal-heading"
+                          style={{ background: "#2196F3" }}
+                        >
+                          <span className="modal-heading-text">FREE PARKING</span>
+                        </div>
+                        <div className="modal-body">
+                          <div
+                            className="modal-city-name"
+                            style={{
+                              fontSize: "20px",
+                              marginBottom: "20px",
+                              textAlign: "center",
+                            }}
+                          >
+                            Take a rest for a turn. Nothing happens.
+                          </div>
+                          <div
+                            className="modal-buttons"
+                            style={{ justifyContent: "center" }}
+                          >
+                            {networkMode !== "online" ||
+                              myPlayerIndex === currentPlayer ? (
+                              <button
+                                className="modal-btn buy"
+                                onClick={handleParkingConfirm}
+                                style={{ width: "120px", background: "#2196F3" }}
+                              >
+                                OK
+                              </button>
+                            ) : (
+                              <div
+                                style={{
+                                  textAlign: "center",
+                                  color: "#4A2C18",
+                                  fontWeight: "bold",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Waiting for{" "}
+                                {gamePlayers[currentPlayer]?.name || "player"}...
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {/* 1. Landing Choice Modal */}
+                {showAuctionLandingModal && (
+                  <div className="modal-overlay">
+                    <div className="buy-modal auction-modal">
+                      <div
+                        className="modal-heading"
+                        style={{
+                          background:
+                            "linear-gradient(to bottom, #FFD700 0%, #FFA500 100%)",
+                          padding: "5px 10px",
+                        }}
+                      >
+                        <span
+                          className="modal-heading-text"
+                          style={{ fontSize: "13px" }}
+                        >
+                          OPPORTUNITY
+                        </span>
+                      </div>
+                      <div
+                        className="modal-body"
+                        style={{ padding: "8px 12px", overflow: "hidden" }}
+                      >
+                        <div
+                          style={{
+                            textAlign: "center",
+                            margin: "6px 0",
+                            fontSize: "13px",
+                            lineHeight: "1.3",
+                          }}
+                        >
+                          Opportunity Knocks! Force an opponent to sell a
+                          property? <br />
+                          <span
+                            style={{
+                              fontWeight: "bold",
+                              color: "#D32F2F",
+                              fontSize: "12px",
+                            }}
+                          >
+                            Cost: $2,000
+                          </span>
+                        </div>
+                        <div
+                          className="modal-buttons"
+                          style={{ gap: "6px", marginTop: "4px", padding: 0 }}
+                        >
+                          <button
+                            className="modal-btn cancel"
+                            style={{
+                              height: "28px",
+                              minHeight: "28px",
+                              fontSize: "11px",
+                            }}
+                            onClick={() => {
+                              setShowAuctionLandingModal(false);
+                              // Pass means 'End Turn' for this tile logic
+                              if (networkMode === "online")
+                                sendGameAction("end_turn");
+                              else endTurn(currentPlayer, false);
+                            }}
+                          >
+                            PASS
+                          </button>
+                          <button
+                            className="modal-btn buy"
+                            style={{
+                              height: "28px",
+                              minHeight: "28px",
+                              fontSize: "11px",
+                              background:
+                                "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)",
+                            }}
+                            onClick={() => {
+                              const activeSelector =
+                                networkMode === "online"
+                                  ? myPlayerIndex
+                                  : currentPlayer;
+                              if ((playerMoney[activeSelector] ?? 0) < 2000) {
+                                showToast(
+                                  "Not enough money! You need $2,000 to start an auction.",
+                                );
+                                return;
+                              }
+                              setShowAuctionLandingModal(false);
+                              if (networkMode === "online") {
+                                sendGameAction("auction_start_selection");
+                              }
+                              setIsSelectingAuctionProperty(true);
+                              setShowAuctionInstructionModal(true);
+                            }}
+                          >
+                            START
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Instruction Overlay */}
+                {showAuctionInstructionModal && !pendingAuctionProperty && (
+                  <div
+                    className="modal-overlay modal-overlay-inline"
+                    style={{ background: "transparent", pointerEvents: "none" }}
+                  >
+                    <div
+                      className="buy-modal auction-modal"
+                      style={{ pointerEvents: "auto", marginTop: "4vh" }}
+                    >
+                      <div
+                        className="modal-heading"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #FFC107 0%, #FF9800 100%)",
+                          padding: "5px 10px",
+                        }}
+                      >
+                        <span
+                          className="modal-heading-text"
+                          style={{ fontSize: "13px" }}
+                        >
+                          AUCTION SELECTION
+                        </span>
+                      </div>
+                      <div
+                        className="modal-body"
+                        style={{ padding: "8px 12px", overflow: "hidden" }}
+                      >
+                        <div
+                          style={{
+                            textAlign: "center",
+                            margin: "6px 0",
+                            fontSize: "12px",
+                            lineHeight: "1.3",
+                          }}
+                        >
+                          Tap any single, unbuilt opponent property to auction it!
+                          <br />
+                          <span style={{ fontSize: "10.5px", color: "#666" }}>
+                            (Cannot auction built houses or break monopolies)
+                          </span>
+                        </div>
+                        <div
+                          className="modal-buttons"
+                          style={{ marginTop: "4px", padding: 0 }}
+                        >
+                          <button
+                            className="modal-btn cancel"
+                            style={{
+                              height: "26px",
+                              minHeight: "26px",
+                              fontSize: "11px",
+                              width: "100%",
+                            }}
+                            onClick={() => {
+                              setIsSelectingAuctionProperty(false);
+                              setShowAuctionInstructionModal(false);
+                              if (networkMode === "online") {
+                                sendGameAction("auction_cancel"); // Clear B&W state
+                                sendGameAction("end_turn");
+                              } else {
+                                endTurn(currentPlayer, false);
+                              }
+                            }}
+                          >
+                            CANCEL
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Selection Confirmation Modal */}
+                {pendingAuctionProperty && (
+                  <div className="modal-overlay">
+                    <div className="buy-modal auction-modal">
+                      <div
+                        className="modal-heading"
+                        style={{ background: "#D32F2F", padding: "5px 10px" }}
+                      >
+                        <span
+                          className="modal-heading-text"
+                          style={{ fontSize: "13px" }}
+                        >
+                          AUCTION PROPERTY?
+                        </span>
+                      </div>
+                      <div
+                        className="modal-body"
+                        style={{ padding: "6px 10px", overflow: "hidden" }}
+                      >
                         <div
                           className="modal-city-name"
                           style={{
-                            background:
-                              getPropertyByTileIndex(auctionState.propertyIndex)
-                                ?.color || "#ccc",
+                            background: pendingAuctionProperty.color,
                             color: "#fff",
                             textShadow: "0 1px 2px rgba(0,0,0,0.8)",
                             width: "120px",
@@ -13315,731 +13186,853 @@ function App() {
                             lineHeight: "1.1",
                           }}
                         >
-                          {getTileName(auctionState.propertyIndex)}
+                          {pendingAuctionProperty.name}
                         </div>
                         <div
                           style={{
-                            fontSize: "11px",
-                            color: "#4A2C18",
-                            fontWeight: "bold",
-                            marginTop: "3px",
+                            textAlign: "center",
+                            margin: "6px 0",
+                            fontSize: "13px",
                           }}
                         >
-                          Owner:{" "}
-                          {gamePlayers[auctionState.originalOwner]?.name ||
-                            gamePlayers[
-                              propertyOwnership[auctionState.propertyIndex]
-                            ]?.name}
+                          Force this property into auction? <br />
+                          <span
+                            style={{
+                              fontWeight: "bold",
+                              color: "#D32F2F",
+                              fontSize: "12px",
+                            }}
+                          >
+                            Fee: $2,000
+                          </span>
+                        </div>
+                        <div
+                          className="modal-buttons"
+                          style={{ gap: "6px", marginTop: "4px", padding: 0 }}
+                        >
+                          <button
+                            className="modal-btn cancel"
+                            style={{
+                              height: "28px",
+                              minHeight: "28px",
+                              fontSize: "11px",
+                              flex: 1,
+                            }}
+                            onClick={() => setPendingAuctionProperty(null)}
+                          >
+                            BACK
+                          </button>
+                          <button
+                            className="modal-btn buy"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)",
+                              height: "28px",
+                              minHeight: "28px",
+                              fontSize: "11px",
+                              flex: 1.5,
+                            }}
+                            onClick={handleAuctionConfirm}
+                          >
+                            PAY $2,000
+                          </button>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* 4. Active Bidding Interface */}
-              {auctionState.status === "active" && (
-                <div className="modal-overlay">
-                  <div className="buy-modal auction-modal">
-                    <div
-                      className="modal-heading"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #FF9800 0%, #F57C00 100%)",
-                        padding: "5px 10px",
-                      }}
-                    >
-                      <span
-                        className="modal-heading-text"
-                        style={{ fontSize: "13px" }}
+                {/* 3b. Announcement Modal */}
+                {auctionState.status === "announcing" && (
+                  <div className="modal-overlay">
+                    <div className="buy-modal auction-modal">
+                      <div
+                        className="modal-heading"
+                        style={{ background: "#FF9800", padding: "5px 10px" }}
                       >
-                        🔨 AUCTION: {getTileName(auctionState.propertyIndex)}
-                      </span>
-                    </div>
-                    <div
-                      className="modal-body"
-                      style={{
-                        padding: "6px 10px",
-                        overflow: "hidden",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "space-between",
-                        flex: "1 1 auto",
-                        boxSizing: "border-box",
-                      }}
-                    >
-                      {/* Top Bar: Current High Bid + Turn Indicator */}
-                      <div style={{ flexShrink: 0, marginBottom: "2px" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            background: "rgba(0, 0, 0, 0.04)",
-                            padding: "3px 8px",
-                            borderRadius: "6px",
-                            border: "1px solid rgba(0, 0, 0, 0.06)",
-                          }}
+                        <span
+                          className="modal-heading-text"
+                          style={{ fontSize: "13px" }}
                         >
-                          <div>
-                            <div
+                          AUCTION STARTING!
+                        </span>
+                      </div>
+                      <div
+                        className="modal-body"
+                        style={{ padding: "6px 10px", overflow: "hidden" }}
+                      >
+                        <div style={{ textAlign: "center", margin: "4px 0" }}>
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              marginBottom: "4px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "5px",
+                            }}
+                          >
+                            <img
+                              src={gamePlayers[auctionState.initiator]?.avatar}
+                              alt=""
                               style={{
-                                fontSize: "8.5px",
-                                color: "#5D4037",
-                                fontWeight: "bold",
-                                textTransform: "uppercase",
-                                letterSpacing: "0.5px",
-                                lineHeight: 1,
+                                width: "16px",
+                                height: "16px",
+                                borderRadius: "50%",
                               }}
-                            >
-                              Current High Bid
-                            </div>
-                            <div
-                              style={{
-                                fontSize: "14px",
-                                fontWeight: "bold",
-                                color: "#2E7D32",
-                                lineHeight: "1.1",
-                              }}
-                            >
-                              ${(auctionState.currentBid || 0).toLocaleString()}
-                            </div>
+                            />
+                            <span style={{ fontWeight: "bold" }}>
+                              {gamePlayers[auctionState.initiator]?.name}
+                            </span>{" "}
+                            chose:
                           </div>
-
-                          {/* Last Bidder Pill */}
-                          <div>
-                            {auctionState.bids &&
-                            auctionState.bids.length > 0 &&
-                            gamePlayers[auctionState.bids[0].player] ? (
-                              <div
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "4px",
-                                  background: "rgba(46, 125, 50, 0.12)",
-                                  padding: "2px 6px",
-                                  borderRadius: "10px",
-                                  border: "1px solid rgba(46, 125, 50, 0.25)",
-                                }}
-                              >
-                                <img
-                                  src={
-                                    gamePlayers[auctionState.bids[0].player]
-                                      ?.avatar
-                                  }
-                                  alt=""
-                                  style={{
-                                    width: "14px",
-                                    height: "14px",
-                                    borderRadius: "50%",
-                                    flexShrink: 0,
-                                  }}
-                                />
-                                <span
-                                  style={{
-                                    fontSize: "9.5px",
-                                    fontWeight: "bold",
-                                    color: "#1B5E20",
-                                  }}
-                                >
-                                  {gamePlayers[auctionState.bids[0].player]?.name}
-                                </span>
-                              </div>
-                            ) : (
-                              <span
-                                style={{
-                                  color: "#8D6E63",
-                                  fontStyle: "italic",
-                                  fontSize: "9px",
-                                }}
-                              >
-                                Opening Bid
-                              </span>
-                            )}
+                          <div
+                            className="modal-city-name"
+                            style={{
+                              background:
+                                getPropertyByTileIndex(auctionState.propertyIndex)
+                                  ?.color || "#ccc",
+                              color: "#fff",
+                              textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                              width: "120px",
+                              height: "38px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              margin: "4px auto",
+                              borderRadius: "6px",
+                              boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
+                              border: "2px solid white",
+                              fontSize: "11px",
+                              textAlign: "center",
+                              lineHeight: "1.1",
+                            }}
+                          >
+                            {getTileName(auctionState.propertyIndex)}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              color: "#4A2C18",
+                              fontWeight: "bold",
+                              marginTop: "3px",
+                            }}
+                          >
+                            Owner:{" "}
+                            {gamePlayers[auctionState.originalOwner]?.name ||
+                              gamePlayers[
+                                propertyOwnership[auctionState.propertyIndex]
+                              ]?.name}
                           </div>
                         </div>
-
-                        {/* Active Bidder Turn Indicator with Avatar */}
-                        {(() => {
-                          const currentBidderIdx = auctionState.currentBidder;
-                          const currentBidderPlayer =
-                            currentBidderIdx !== null &&
-                            currentBidderIdx !== undefined
-                              ? gamePlayers[currentBidderIdx]
-                              : null;
-                          const isMyTurn =
-                            networkMode === "online"
-                              ? currentBidderIdx === myPlayerIndex
-                              : true;
-
-                          return (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "5px",
-                                padding: "2px 8px",
-                                background: isMyTurn
-                                  ? "linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%)"
-                                  : "#F5F5F5",
-                                border: isMyTurn
-                                  ? "1.5px solid #FFB300"
-                                  : "1px solid #ddd",
-                                borderRadius: "6px",
-                                margin: "2px 0 0 0",
-                              }}
-                            >
-                              {currentBidderPlayer && (
-                                <img
-                                  src={currentBidderPlayer.avatar}
-                                  alt={currentBidderPlayer.name}
-                                  style={{
-                                    width: "16px",
-                                    height: "16px",
-                                    borderRadius: "50%",
-                                    flexShrink: 0,
-                                    border: "1.5px solid #FF9800",
-                                  }}
-                                />
-                              )}
-                              <span
-                                style={{
-                                  fontSize: "10px",
-                                  fontWeight: "bold",
-                                  color: "#4A2C18",
-                                }}
-                              >
-                                {networkMode === "online"
-                                  ? currentBidderIdx === myPlayerIndex
-                                    ? "⚡ YOUR TURN TO BID!"
-                                    : `${currentBidderPlayer?.name || "Player"} is bidding...`
-                                  : `⚡ ${currentBidderPlayer?.name || "Player"}'s Turn to Bid`}
-                              </span>
-                            </div>
-                          );
-                        })()}
                       </div>
+                    </div>
+                  </div>
+                )}
 
-                      {/* Middle: Scrollable Bid History List */}
+                {/* 4. Active Bidding Interface */}
+                {auctionState.status === "active" && (
+                  <div className="modal-overlay">
+                    <div className="buy-modal auction-modal">
                       <div
-                        className="auction-bid-history"
+                        className="modal-heading"
                         style={{
-                          flex: "1 1 auto",
-                          minHeight: "55px",
-                          overflowY: "auto",
-                          background: "rgba(0, 0, 0, 0.04)",
-                          border: "1px solid rgba(0, 0, 0, 0.07)",
-                          borderRadius: "6px",
-                          padding: "3px 5px",
-                          margin: "2px 0",
+                          background:
+                            "linear-gradient(135deg, #FF9800 0%, #F57C00 100%)",
+                          padding: "5px 10px",
+                        }}
+                      >
+                        <span
+                          className="modal-heading-text"
+                          style={{ fontSize: "13px" }}
+                        >
+                          🔨 AUCTION: {getTileName(auctionState.propertyIndex)}
+                        </span>
+                      </div>
+                      <div
+                        className="modal-body"
+                        style={{
+                          padding: "6px 10px",
+                          overflow: "hidden",
                           display: "flex",
                           flexDirection: "column",
-                          gap: "2px",
+                          justifyContent: "space-between",
+                          flex: "1 1 auto",
                           boxSizing: "border-box",
                         }}
                       >
-                        <div
-                          className="history-label"
-                          style={{
-                            fontSize: "8.5px",
-                            color: "#795548",
-                            fontWeight: 800,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px",
-                            marginBottom: "2px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <span>📜 BID HISTORY</span>
-                          <span
+                        {/* Top Bar: Current High Bid + Turn Indicator */}
+                        <div style={{ flexShrink: 0, marginBottom: "2px" }}>
+                          <div
                             style={{
-                              background: "rgba(0,0,0,0.08)",
-                              padding: "0 4px",
-                              borderRadius: "4px",
-                              fontSize: "8px",
-                              fontWeight: 700,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              background: "rgba(0, 0, 0, 0.04)",
+                              padding: "3px 8px",
+                              borderRadius: "6px",
+                              border: "1px solid rgba(0, 0, 0, 0.06)",
                             }}
                           >
-                            {auctionState.bids?.length || 0} bids
-                          </span>
-                        </div>
+                            <div>
+                              <div
+                                style={{
+                                  fontSize: "8.5px",
+                                  color: "#5D4037",
+                                  fontWeight: "bold",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.5px",
+                                  lineHeight: 1,
+                                }}
+                              >
+                                Current High Bid
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: "14px",
+                                  fontWeight: "bold",
+                                  color: "#2E7D32",
+                                  lineHeight: "1.1",
+                                }}
+                              >
+                                ${(auctionState.currentBid || 0).toLocaleString()}
+                              </div>
+                            </div>
 
-                        {auctionState.bids && auctionState.bids.length > 0 ? (
-                          auctionState.bids.map((b, idx) => {
-                            const bidderPlayer = gamePlayers[b.player];
-                            const isHighest = idx === 0;
+                            {/* Last Bidder Pill */}
+                            <div>
+                              {auctionState.bids &&
+                                auctionState.bids.length > 0 &&
+                                gamePlayers[auctionState.bids[0].player] ? (
+                                <div
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    background: "rgba(46, 125, 50, 0.12)",
+                                    padding: "2px 6px",
+                                    borderRadius: "10px",
+                                    border: "1px solid rgba(46, 125, 50, 0.25)",
+                                  }}
+                                >
+                                  <img
+                                    src={
+                                      gamePlayers[auctionState.bids[0].player]
+                                        ?.avatar
+                                    }
+                                    alt=""
+                                    style={{
+                                      width: "14px",
+                                      height: "14px",
+                                      borderRadius: "50%",
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  <span
+                                    style={{
+                                      fontSize: "9.5px",
+                                      fontWeight: "bold",
+                                      color: "#1B5E20",
+                                    }}
+                                  >
+                                    {gamePlayers[auctionState.bids[0].player]?.name}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span
+                                  style={{
+                                    color: "#8D6E63",
+                                    fontStyle: "italic",
+                                    fontSize: "9px",
+                                  }}
+                                >
+                                  Opening Bid
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Active Bidder Turn Indicator with Avatar */}
+                          {(() => {
+                            const currentBidderIdx = auctionState.currentBidder;
+                            const currentBidderPlayer =
+                              currentBidderIdx !== null &&
+                                currentBidderIdx !== undefined
+                                ? gamePlayers[currentBidderIdx]
+                                : null;
+                            const isMyTurn =
+                              networkMode === "online"
+                                ? currentBidderIdx === myPlayerIndex
+                                : true;
+
                             return (
                               <div
-                                key={idx}
-                                className={`bid-entry ${isHighest ? "highest-bid" : ""}`}
                                 style={{
                                   display: "flex",
                                   alignItems: "center",
-                                  justifyContent: "space-between",
-                                  padding: "2px 5px",
-                                  fontSize: "9px",
-                                  borderRadius: "4px",
-                                  background: isHighest ? "#E8F5E9" : "#ffffff",
-                                  border: isHighest
-                                    ? "1px solid #4CAF50"
-                                    : "1px solid rgba(0, 0, 0, 0.06)",
-                                  minHeight: "20px",
-                                  boxSizing: "border-box",
-                                  flexShrink: 0,
+                                  justifyContent: "center",
+                                  gap: "5px",
+                                  padding: "2px 8px",
+                                  background: isMyTurn
+                                    ? "linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%)"
+                                    : "#F5F5F5",
+                                  border: isMyTurn
+                                    ? "1.5px solid #FFB300"
+                                    : "1px solid #ddd",
+                                  borderRadius: "6px",
+                                  margin: "2px 0 0 0",
+                                }}
+                              >
+                                {currentBidderPlayer && (
+                                  <img
+                                    src={currentBidderPlayer.avatar}
+                                    alt={currentBidderPlayer.name}
+                                    style={{
+                                      width: "16px",
+                                      height: "16px",
+                                      borderRadius: "50%",
+                                      flexShrink: 0,
+                                      border: "1.5px solid #FF9800",
+                                    }}
+                                  />
+                                )}
+                                <span
+                                  style={{
+                                    fontSize: "10px",
+                                    fontWeight: "bold",
+                                    color: "#4A2C18",
+                                  }}
+                                >
+                                  {networkMode === "online"
+                                    ? currentBidderIdx === myPlayerIndex
+                                      ? "⚡ YOUR TURN TO BID!"
+                                      : `${currentBidderPlayer?.name || "Player"} is bidding...`
+                                    : `⚡ ${currentBidderPlayer?.name || "Player"}'s Turn to Bid`}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Middle: Scrollable Bid History List */}
+                        <div
+                          className="auction-bid-history"
+                          style={{
+                            flex: "1 1 auto",
+                            minHeight: "55px",
+                            overflowY: "auto",
+                            background: "rgba(0, 0, 0, 0.04)",
+                            border: "1px solid rgba(0, 0, 0, 0.07)",
+                            borderRadius: "6px",
+                            padding: "3px 5px",
+                            margin: "2px 0",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "2px",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <div
+                            className="history-label"
+                            style={{
+                              fontSize: "8.5px",
+                              color: "#795548",
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                              marginBottom: "2px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span>📜 BID HISTORY</span>
+                            <span
+                              style={{
+                                background: "rgba(0,0,0,0.08)",
+                                padding: "0 4px",
+                                borderRadius: "4px",
+                                fontSize: "8px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {auctionState.bids?.length || 0} bids
+                            </span>
+                          </div>
+
+                          {auctionState.bids && auctionState.bids.length > 0 ? (
+                            auctionState.bids.map((b, idx) => {
+                              const bidderPlayer = gamePlayers[b.player];
+                              const isHighest = idx === 0;
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`bid-entry ${isHighest ? "highest-bid" : ""}`}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    padding: "2px 5px",
+                                    fontSize: "9px",
+                                    borderRadius: "4px",
+                                    background: isHighest ? "#E8F5E9" : "#ffffff",
+                                    border: isHighest
+                                      ? "1px solid #4CAF50"
+                                      : "1px solid rgba(0, 0, 0, 0.06)",
+                                    minHeight: "20px",
+                                    boxSizing: "border-box",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    {bidderPlayer && (
+                                      <img
+                                        src={bidderPlayer.avatar}
+                                        alt=""
+                                        style={{
+                                          width: "14px",
+                                          height: "14px",
+                                          borderRadius: "50%",
+                                          flexShrink: 0,
+                                        }}
+                                      />
+                                    )}
+                                    <span
+                                      style={{
+                                        fontWeight: "bold",
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        maxWidth: "100px",
+                                        color: "#212121",
+                                      }}
+                                    >
+                                      {bidderPlayer?.name || `Player ${b.player + 1}`}
+                                    </span>
+                                    {isHighest && (
+                                      <span
+                                        style={{
+                                          fontSize: "7.5px",
+                                          color: "#2E7D32",
+                                          fontWeight: 800,
+                                          background: "rgba(46, 125, 50, 0.15)",
+                                          padding: "0 3px",
+                                          borderRadius: "3px",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        HIGH BID
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span
+                                    style={{
+                                      fontWeight: 800,
+                                      color: isHighest ? "#1B5E20" : "#5D4037",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    ${b.amount.toLocaleString()}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div
+                              style={{
+                                textAlign: "center",
+                                color: "#8D6E63",
+                                fontStyle: "italic",
+                                fontSize: "9.5px",
+                                padding: "10px 0",
+                              }}
+                            >
+                              No bids placed yet — starting at ${((auctionState.currentBid || 0) + 10).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Controls */}
+                        <div
+                          className="modal-buttons"
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "3px",
+                            padding: 0,
+                          }}
+                        >
+                          {/* Range Slider for Bid */}
+                          {auctionState.participants?.includes(
+                            auctionState.currentBidder ??
+                            (networkMode === "online"
+                              ? myPlayerIndex
+                              : currentPlayer),
+                          ) && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "2px",
+                                  margin: "2px 0",
                                 }}
                               >
                                 <div
                                   style={{
                                     display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                    overflow: "hidden",
+                                    justifyContent: "space-between",
+                                    fontSize: "10.5px",
                                   }}
                                 >
-                                  {bidderPlayer && (
-                                    <img
-                                      src={bidderPlayer.avatar}
-                                      alt=""
-                                      style={{
-                                        width: "14px",
-                                        height: "14px",
-                                        borderRadius: "50%",
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                  )}
+                                  <span
+                                    style={{ color: "#5D4037", fontWeight: 600 }}
+                                  >
+                                    Min: $
+                                    {(
+                                      (auctionState.currentBid || 0) + 10
+                                    ).toLocaleString()}
+                                  </span>
                                   <span
                                     style={{
                                       fontWeight: "bold",
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      maxWidth: "100px",
-                                      color: "#212121",
+                                      color: "#2E7D32",
+                                      fontSize: "12px",
                                     }}
                                   >
-                                    {bidderPlayer?.name || `Player ${b.player + 1}`}
+                                    ${auctionBidAmount.toLocaleString()}
                                   </span>
-                                  {isHighest && (
-                                    <span
-                                      style={{
-                                        fontSize: "7.5px",
-                                        color: "#2E7D32",
-                                        fontWeight: 800,
-                                        background: "rgba(46, 125, 50, 0.15)",
-                                        padding: "0 3px",
-                                        borderRadius: "3px",
-                                        flexShrink: 0,
-                                      }}
-                                    >
-                                      HIGH BID
-                                    </span>
-                                  )}
                                 </div>
-                                <span
-                                  style={{
-                                    fontWeight: 800,
-                                    color: isHighest ? "#1B5E20" : "#5D4037",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  ${b.amount.toLocaleString()}
-                                </span>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div
-                            style={{
-                              textAlign: "center",
-                              color: "#8D6E63",
-                              fontStyle: "italic",
-                              fontSize: "9.5px",
-                              padding: "10px 0",
-                            }}
-                          >
-                            No bids placed yet — starting at ${( (auctionState.currentBid || 0) + 10 ).toLocaleString()}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Controls */}
-                      <div
-                        className="modal-buttons"
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "3px",
-                          padding: 0,
-                        }}
-                      >
-                        {/* Range Slider for Bid */}
-                        {auctionState.participants?.includes(
-                          auctionState.currentBidder ??
-                            (networkMode === "online"
-                              ? myPlayerIndex
-                              : currentPlayer),
-                        ) && (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "2px",
-                              margin: "2px 0",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                fontSize: "10.5px",
-                              }}
-                            >
-                              <span
-                                style={{ color: "#5D4037", fontWeight: 600 }}
-                              >
-                                Min: $
-                                {(
-                                  (auctionState.currentBid || 0) + 10
-                                ).toLocaleString()}
-                              </span>
-                              <span
-                                style={{
-                                  fontWeight: "bold",
-                                  color: "#2E7D32",
-                                  fontSize: "12px",
-                                }}
-                              >
-                                ${auctionBidAmount.toLocaleString()}
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              min={(auctionState.currentBid || 0) + 10}
-                              max={Math.max(
-                                (auctionState.currentBid || 0) + 10,
-                                playerMoney[
-                                  auctionState.currentBidder ??
+                                <input
+                                  type="range"
+                                  min={(auctionState.currentBid || 0) + 10}
+                                  max={Math.max(
+                                    (auctionState.currentBid || 0) + 10,
+                                    playerMoney[
+                                    auctionState.currentBidder ??
                                     (networkMode === "online"
                                       ? myPlayerIndex
                                       : currentPlayer)
-                                ] || 0,
-                              )}
-                              step={10}
-                              value={auctionBidAmount}
-                              onChange={(e) =>
-                                setAuctionBidAmount(Number(e.target.value))
-                              }
+                                    ] || 0,
+                                  )}
+                                  step={10}
+                                  value={auctionBidAmount}
+                                  onChange={(e) =>
+                                    setAuctionBidAmount(Number(e.target.value))
+                                  }
+                                  disabled={
+                                    networkMode === "online" &&
+                                    auctionState.currentBidder !== myPlayerIndex
+                                  }
+                                  style={{
+                                    width: "100%",
+                                    height: "4px",
+                                    cursor:
+                                      networkMode !== "online" ||
+                                        auctionState.currentBidder === myPlayerIndex
+                                        ? "pointer"
+                                        : "not-allowed",
+                                    opacity:
+                                      networkMode !== "online" ||
+                                        auctionState.currentBidder === myPlayerIndex
+                                        ? 1
+                                        : 0.6,
+                                  }}
+                                />
+                              </div>
+                            )}
+
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "6px",
+                              marginTop: "2px",
+                            }}
+                          >
+                            <button
+                              className="modal-btn cancel"
+                              onClick={handleAuctionFold}
                               disabled={
                                 networkMode === "online" &&
                                 auctionState.currentBidder !== myPlayerIndex
                               }
                               style={{
-                                width: "100%",
-                                height: "4px",
-                                cursor:
-                                  networkMode !== "online" ||
-                                  auctionState.currentBidder === myPlayerIndex
-                                    ? "pointer"
-                                    : "not-allowed",
+                                flex: 1,
+                                height: "28px",
+                                minHeight: "28px",
+                                padding: "0 8px",
+                                fontSize: "11px",
                                 opacity:
-                                  networkMode !== "online" ||
-                                  auctionState.currentBidder === myPlayerIndex
-                                    ? 1
-                                    : 0.6,
+                                  networkMode === "online" &&
+                                    auctionState.currentBidder !== myPlayerIndex
+                                    ? 0.5
+                                    : 1,
                               }}
-                            />
-                          </div>
-                        )}
-
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "6px",
-                            marginTop: "2px",
-                          }}
-                        >
-                          <button
-                            className="modal-btn cancel"
-                            onClick={handleAuctionFold}
-                            disabled={
-                              networkMode === "online" &&
-                              auctionState.currentBidder !== myPlayerIndex
-                            }
-                            style={{
-                              flex: 1,
-                              height: "28px",
-                              minHeight: "28px",
-                              padding: "0 8px",
-                              fontSize: "11px",
-                              opacity:
-                                networkMode === "online" &&
-                                auctionState.currentBidder !== myPlayerIndex
-                                  ? 0.5
-                                  : 1,
-                            }}
-                          >
-                            FOLD
-                          </button>
-                          <button
-                            className="modal-btn buy"
-                            style={{
-                              flex: 1.5,
-                              height: "28px",
-                              minHeight: "28px",
-                              padding: "0 8px",
-                              fontSize: "11px",
-                              background:
-                                "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)",
-                              opacity:
-                                (networkMode === "online" &&
-                                  auctionState.currentBidder !==
+                            >
+                              FOLD
+                            </button>
+                            <button
+                              className="modal-btn buy"
+                              style={{
+                                flex: 1.5,
+                                height: "28px",
+                                minHeight: "28px",
+                                padding: "0 8px",
+                                fontSize: "11px",
+                                background:
+                                  "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)",
+                                opacity:
+                                  (networkMode === "online" &&
+                                    auctionState.currentBidder !==
                                     myPlayerIndex) ||
+                                    (playerMoney[
+                                      auctionState.currentBidder ??
+                                      (networkMode === "online"
+                                        ? myPlayerIndex
+                                        : currentPlayer)
+                                    ] || 0) < auctionBidAmount
+                                    ? 0.5
+                                    : 1,
+                              }}
+                              onClick={handleAuctionBid}
+                              disabled={
+                                (networkMode === "online" &&
+                                  auctionState.currentBidder !== myPlayerIndex) ||
                                 (playerMoney[
                                   auctionState.currentBidder ??
-                                    (networkMode === "online"
-                                      ? myPlayerIndex
-                                      : currentPlayer)
-                                ] || 0) < auctionBidAmount
-                                  ? 0.5
-                                  : 1,
-                            }}
-                            onClick={handleAuctionBid}
-                            disabled={
-                              (networkMode === "online" &&
-                                auctionState.currentBidder !== myPlayerIndex) ||
-                              (playerMoney[
-                                auctionState.currentBidder ??
                                   (networkMode === "online"
                                     ? myPlayerIndex
                                     : currentPlayer)
-                              ] || 0) < auctionBidAmount
-                            }
+                                ] || 0) < auctionBidAmount
+                              }
+                            >
+                              BID ${auctionBidAmount.toLocaleString()}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Result / Winner Modal */}
+                {auctionState.status === "complete" && (
+                  <div className="modal-overlay">
+                    <div className="buy-modal auction-modal">
+                      <div
+                        className="modal-heading"
+                        style={{ background: "#4CAF50", padding: "5px 10px" }}
+                      >
+                        <span
+                          className="modal-heading-text"
+                          style={{ fontSize: "13px" }}
+                        >
+                          🎉 SOLD!
+                        </span>
+                      </div>
+                      <div
+                        className="modal-body"
+                        style={{
+                          padding: "6px 10px",
+                          overflow: "hidden",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div style={{ margin: "4px 0" }}>
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              color: "#5D4037",
+                              fontWeight: "bold",
+                            }}
                           >
-                            BID ${auctionBidAmount.toLocaleString()}
+                            WINNER:
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "6px",
+                              margin: "2px 0",
+                            }}
+                          >
+                            <img
+                              src={gamePlayers[auctionState.winner]?.avatar}
+                              alt=""
+                              style={{
+                                width: "22px",
+                                height: "22px",
+                                borderRadius: "50%",
+                                border: "2px solid #4CAF50",
+                              }}
+                            />
+                            <span
+                              style={{
+                                fontSize: "15px",
+                                fontWeight: "bold",
+                                color: "#2E7D32",
+                              }}
+                            >
+                              {gamePlayers[auctionState.winner]?.name}
+                            </span>
+                          </div>
+
+                          {/* Property Won Display */}
+                          <div
+                            className="modal-city-name"
+                            style={{
+                              background:
+                                getPropertyByTileIndex(auctionState.propertyIndex)
+                                  ?.color || "#ccc",
+                              color: "#fff",
+                              textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                              width: "120px",
+                              height: "38px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              margin: "4px auto",
+                              borderRadius: "6px",
+                              boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
+                              border: "2px solid white",
+                              fontSize: "11px",
+                              textAlign: "center",
+                              lineHeight: "1.1",
+                            }}
+                          >
+                            {getTileName(auctionState.propertyIndex)}
+                          </div>
+                          <div style={{ fontSize: "12px", margin: "3px 0" }}>
+                            Final Price:{" "}
+                            <span
+                              style={{ fontWeight: "bold", color: "#2E7D32" }}
+                            >
+                              $
+                              {(
+                                auctionState.finalAmount ||
+                                auctionState.currentBid ||
+                                0
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          className="modal-buttons"
+                          style={{ marginTop: "4px", padding: 0 }}
+                        >
+                          <button
+                            className="modal-btn buy"
+                            style={{
+                              width: "100%",
+                              height: "28px",
+                              minHeight: "28px",
+                              fontSize: "12px",
+                            }}
+                            onClick={() => {
+                              setAuctionState((prev) => ({
+                                ...prev,
+                                status: "idle",
+                              }));
+                              if (networkMode !== "online") {
+                                endTurn(currentPlayer, false);
+                              }
+                            }}
+                          >
+                            CONTINUE
                           </button>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* 5. Result / Winner Modal */}
-              {auctionState.status === "complete" && (
-                <div className="modal-overlay">
-                  <div className="buy-modal auction-modal">
+                {/* Property Details Modal */}
+                {(showPropertyModal ||
+                  (isModalClosing && closingModal === "property")) &&
+                  selectedProperty && (
+                    <PropertyInfoModal
+                      property={selectedProperty}
+                      currentLevel={propertyLevels[selectedProperty.tileIndex] || 0}
+                      owner={propertyOwnership[selectedProperty.tileIndex]}
+                      ownerName={
+                        propertyOwnership[selectedProperty.tileIndex] !== undefined &&
+                          propertyOwnership[selectedProperty.tileIndex] !== null
+                          ? gamePlayers[propertyOwnership[selectedProperty.tileIndex]]?.name
+                          : null
+                      }
+                      ownerColor={
+                        propertyOwnership[selectedProperty.tileIndex] !== undefined &&
+                          propertyOwnership[selectedProperty.tileIndex] !== null
+                          ? gamePlayers[propertyOwnership[selectedProperty.tileIndex]]?.color
+                          : null
+                      }
+                      isMortgaged={!!mortgagedProperties[selectedProperty.tileIndex]}
+                      isMyProperty={propertyOwnership[selectedProperty.tileIndex] === currentPlayer}
+                      canMortgage={canMortgageProperty(selectedProperty.tileIndex, currentPlayer)}
+                      canRedeem={playerMoney[currentPlayer] >= Math.round((selectedProperty.price || 0) * 0.55)}
+                      mortgageValue={Math.round((selectedProperty.price || 0) / 2)}
+                      redeemCost={Math.round((selectedProperty.price || 0) * 0.55)}
+                      onMortgage={() => handleMortgageSingle(selectedProperty.tileIndex)}
+                      onRedeem={() => handleRedeemSingle(selectedProperty.tileIndex)}
+                      isClosing={isModalClosing && closingModal === "property"}
+                      onClose={() => closeAllModals()}
+                    />
+                  )}
+              </div>
+
+              {/* Player Pawns */}
+              <div className="pawns-container">
+                {gamePlayers.map((player, index) => {
+                  const isHopping =
+                    playerAnimationEnabled && hoppingPlayer === index;
+                  return (
                     <div
-                      className="modal-heading"
-                      style={{ background: "#4CAF50", padding: "5px 10px" }}
-                    >
-                      <span
-                        className="modal-heading-text"
-                        style={{ fontSize: "13px" }}
-                      >
-                        🎉 SOLD!
-                      </span>
-                    </div>
-                    <div
-                      className="modal-body"
+                      key={player.id}
+                      data-player={index}
+                      className={`player-pawn ${isHopping ? "is-hopping" : ""}`}
                       style={{
-                        padding: "6px 10px",
-                        overflow: "hidden",
-                        textAlign: "center",
+                        ...getPawnStyle(playerPositions[index], index),
+                        transition:
+                          playerAnimationEnabled && isHopping
+                            ? `top ${pawnTransitionDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1), left ${pawnTransitionDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`
+                            : playerAnimationEnabled
+                              ? "top 200ms ease, left 200ms ease"
+                              : "none",
                       }}
                     >
-                      <div style={{ margin: "4px 0" }}>
-                        <div
-                          style={{
-                            fontSize: "11px",
-                            color: "#5D4037",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          WINNER:
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "6px",
-                            margin: "2px 0",
-                          }}
-                        >
-                          <img
-                            src={gamePlayers[auctionState.winner]?.avatar}
-                            alt=""
-                            style={{
-                              width: "22px",
-                              height: "22px",
-                              borderRadius: "50%",
-                              border: "2px solid #4CAF50",
-                            }}
-                          />
-                          <span
-                            style={{
-                              fontSize: "15px",
-                              fontWeight: "bold",
-                              color: "#2E7D32",
-                            }}
-                          >
-                            {gamePlayers[auctionState.winner]?.name}
-                          </span>
-                        </div>
-
-                        {/* Property Won Display */}
-                        <div
-                          className="modal-city-name"
-                          style={{
-                            background:
-                              getPropertyByTileIndex(auctionState.propertyIndex)
-                                ?.color || "#ccc",
-                            color: "#fff",
-                            textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                            width: "120px",
-                            height: "38px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            margin: "4px auto",
-                            borderRadius: "6px",
-                            boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
-                            border: "2px solid white",
-                            fontSize: "11px",
-                            textAlign: "center",
-                            lineHeight: "1.1",
-                          }}
-                        >
-                          {getTileName(auctionState.propertyIndex)}
-                        </div>
-                        <div style={{ fontSize: "12px", margin: "3px 0" }}>
-                          Final Price:{" "}
-                          <span
-                            style={{ fontWeight: "bold", color: "#2E7D32" }}
-                          >
-                            $
-                            {(
-                              auctionState.finalAmount ||
-                              auctionState.currentBid ||
-                              0
-                            ).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div
-                        className="modal-buttons"
-                        style={{ marginTop: "4px", padding: 0 }}
-                      >
-                        <button
-                          className="modal-btn buy"
-                          style={{
-                            width: "100%",
-                            height: "28px",
-                            minHeight: "28px",
-                            fontSize: "12px",
-                          }}
-                          onClick={() => {
-                            setAuctionState((prev) => ({
-                              ...prev,
-                              status: "idle",
-                            }));
-                            if (networkMode !== "online") {
-                              endTurn(currentPlayer, false);
-                            }
-                          }}
-                        >
-                          CONTINUE
-                        </button>
-                      </div>
+                      <img
+                        src={player.avatar}
+                        alt={player.name}
+                        className="pawn-img"
+                      />
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Property Details Modal */}
-              {(showPropertyModal ||
-                (isModalClosing && closingModal === "property")) &&
-                selectedProperty && (
-                  <PropertyInfoModal
-                    property={selectedProperty}
-                    currentLevel={propertyLevels[selectedProperty.tileIndex] || 0}
-                    owner={propertyOwnership[selectedProperty.tileIndex]}
-                    ownerName={
-                      propertyOwnership[selectedProperty.tileIndex] !== undefined &&
-                      propertyOwnership[selectedProperty.tileIndex] !== null
-                        ? gamePlayers[propertyOwnership[selectedProperty.tileIndex]]?.name
-                        : null
-                    }
-                    ownerColor={
-                      propertyOwnership[selectedProperty.tileIndex] !== undefined &&
-                      propertyOwnership[selectedProperty.tileIndex] !== null
-                        ? gamePlayers[propertyOwnership[selectedProperty.tileIndex]]?.color
-                        : null
-                    }
-                    isMortgaged={!!mortgagedProperties[selectedProperty.tileIndex]}
-                    isMyProperty={propertyOwnership[selectedProperty.tileIndex] === currentPlayer}
-                    canMortgage={canMortgageProperty(selectedProperty.tileIndex, currentPlayer)}
-                    canRedeem={playerMoney[currentPlayer] >= Math.round((selectedProperty.price || 0) * 0.55)}
-                    mortgageValue={Math.round((selectedProperty.price || 0) / 2)}
-                    redeemCost={Math.round((selectedProperty.price || 0) * 0.55)}
-                    onMortgage={() => handleMortgageSingle(selectedProperty.tileIndex)}
-                    onRedeem={() => handleRedeemSingle(selectedProperty.tileIndex)}
-                    isClosing={isModalClosing && closingModal === "property"}
-                    onClose={() => closeAllModals()}
-                  />
-                )}
-            </div>
-
-            {/* Player Pawns */}
-            <div className="pawns-container">
-              {gamePlayers.map((player, index) => {
-                const isHopping =
-                  playerAnimationEnabled && hoppingPlayer === index;
-                return (
-                  <div
-                    key={player.id}
-                    data-player={index}
-                    className={`player-pawn ${isHopping ? "is-hopping" : ""}`}
-                    style={{
-                      ...getPawnStyle(playerPositions[index], index),
-                      transition:
-                        playerAnimationEnabled && isHopping
-                          ? `top ${pawnTransitionDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1), left ${pawnTransitionDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`
-                          : playerAnimationEnabled
-                            ? "top 200ms ease, left 200ms ease"
-                            : "none",
-                    }}
-                  >
-                    <img
-                      src={player.avatar}
-                      alt={player.name}
-                      className="pawn-img"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Floating Price Animations */}
-            {floatingPrices.map((fp, index) => (
-              <div
-                key={`${fp.key}-${index}`}
-                className={`floating-price ${fp.isPositive ? "positive" : "negative"}`}
-                style={{
-                  top: `${getFloatingPosition(fp.tileIndex).top}vh`,
-                  left: `${getFloatingPosition(fp.tileIndex).left}vh`,
-                }}
-              >
-                {fp.isPositive ? "+" : "-"}
-                {(fp.price || 0).toLocaleString()}
+                  );
+                })}
               </div>
-            ))}
-          </div>
+
+              {/* Floating Price Animations */}
+              {floatingPrices.map((fp, index) => (
+                <div
+                  key={`${fp.key}-${index}`}
+                  className={`floating-price ${fp.isPositive ? "positive" : "negative"}`}
+                  style={{
+                    top: `${getFloatingPosition(fp.tileIndex).top}vh`,
+                    left: `${getFloatingPosition(fp.tileIndex).left}vh`,
+                  }}
+                >
+                  {fp.isPositive ? "+" : "-"}
+                  {(fp.price || 0).toLocaleString()}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -14260,7 +14253,7 @@ function App() {
                       "pseudopoly_dev_taptomove",
                       String(next),
                     );
-                  } catch {}
+                  } catch { }
                   showToast(
                     `🎯 Dev Tap-to-Move: ${next ? "ON (tap any tile!)" : "OFF"}`,
                   );
@@ -14501,7 +14494,7 @@ function App() {
                           "pseudopoly_devmode",
                           String(next),
                         );
-                      } catch {}
+                      } catch { }
                     }}
                     style={{
                       padding: "6px 14px",
@@ -14566,7 +14559,7 @@ function App() {
                             "pseudopoly_dev_taptomove",
                             String(next),
                           );
-                        } catch {}
+                        } catch { }
                       }}
                       style={{
                         padding: "4px 12px",
